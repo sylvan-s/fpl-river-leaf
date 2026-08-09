@@ -26,6 +26,7 @@ echo
 echo "==> Building"
 python3 build_dashboard.py
 python3 build_workflow.py
+python3 build_squad_page.py
 
 echo
 echo "==> Deep verify: diagnostics page"
@@ -37,10 +38,9 @@ node verify_dashboard.js
 echo
 echo "==> Staging for Pages"
 mkdir -p docs
-# index.html stays the diagnostics page until the Squad page exists — the live
-# URL is already shared, so it must not 404 mid-build-out. analysis.html is its
-# permanent home, and index.html becomes Squad when that page lands.
-cp FPL_DIAGNOSTICS.html docs/index.html
+# build_squad_page.py writes docs/index.html directly — the squad page is now
+# the landing page, so the already-shared root URL opens on the team rather
+# than on the methodology diagnostics. The diagnostics live at analysis.html.
 cp FPL_DIAGNOSTICS.html docs/analysis.html
 
 echo
@@ -53,7 +53,7 @@ for f in docs/*.html; do printf "  %-22s %s\n" "$f" "$(du -h "$f" | cut -f1)"; d
 cat <<'EOF'
 
 Commit and push, then live at:
-  https://sylvan-s.github.io/fpl-river-leaf/            (diagnostics, for now)
-  https://sylvan-s.github.io/fpl-river-leaf/analysis.html
-  https://sylvan-s.github.io/fpl-river-leaf/workflow.html
+  https://sylvan-s.github.io/fpl-river-leaf/               squad — the landing page
+  https://sylvan-s.github.io/fpl-river-leaf/analysis.html  methodology diagnostics
+  https://sylvan-s.github.io/fpl-river-leaf/workflow.html  the weekly loop
 EOF
