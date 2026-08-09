@@ -91,12 +91,17 @@ assist 3.
 
 **One judgement survives, and it is stated rather than hidden.**
 `P(clearing the DC threshold)` is estimated from a **season mean**, in bands
-(≥1.3× the line → 0.75, ≥line → 0.55, ≥0.8× → 0.20, else 0.05). The award is
-**per match**, so consistency beats volume — a player averaging 14 is worth no
-more than one averaging 11, and one averaging 9 far less. A linear function of
-the mean would get all three wrong. **The honest fix is the true per-match hit
-rate** from `element-summary`, which needs current-season data (`accurate=True`
-on the screens).
+**SUPERSEDED 9 Aug 2026 — roadmap A4.** This was a four-band step function on
+the season mean (≥1.3× → 0.75, ≥line → 0.55, ≥0.8× → 0.20, else 0.05). It is now
+the player's **observed per-match hit rate**, shrunk toward a positional prior,
+from `dc_hit_rates.json`. The award is a per-match threshold, so the hit rate is
+the quantity itself rather than an estimate of it.
+
+The step function was wrong three ways: the 0.8–1.0× band assumed 0.20 against an
+actual **0.41** (0.42 xP/90 across 39 of 160 qualifying players); the 1.3× band
+was **unreachable** and never fired; and everyone above the line scored an
+identical 0.55 while real hit rates there ran **52%–70%**. `--legacy-dc` restores
+the old behaviour for the GW10 comparison.
 
 **Delta stays out of the model.** It is a discount signal for spotting underpriced
 players, not a component of expected points.
@@ -201,9 +206,12 @@ Fixtures break ties; they do not make the case.
 
 #### KNOWN FRAGILITY — the threshold bands create cliffs
 
-`p_threshold` is a **step function** (0.75 / 0.55 / 0.20 / 0.05). **52% of the
-pool sits within 15% of a band edge**, so a small fixture nudge can jump a player
-a whole band — worth 0.3–0.7 xP for no footballing reason.
+`p_threshold` is now a **continuous per-match hit rate**, not the old step
+function. The band-edge caution still applies and is if anything sharper: a
+Poisson fitted to the mean **overstates** the hit rate for players sitting at
+their line, by up to 14 percentage points. Counts are overdispersed
+(variance/mean ≈ 1.38), so the near-miss group beats a tight distribution and
+the at-the-line group falls short of it.
 
 Robustness check, workload scaling on vs off:
 

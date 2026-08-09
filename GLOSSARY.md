@@ -98,9 +98,21 @@ rather than just the number.
 
 | Value | Meaning |
 |---|---|
-| `yes` | Actually clears the threshold — a genuine 2pt floor |
-| `near` | Within 20% of the line — will miss often. **The floor is a mirage.** |
+| `yes` | Averages above the threshold |
+| `near` | Within 20% of the line |
 | `no` | Doesn't reach it |
+
+**Corrected 9 Aug 2026 — "a genuine 2pt floor" was wrong, and so was "the floor
+is a mirage".** Measured on 2025/26 per-match counts, *nobody* clears reliably:
+the very best DC assets in the league — Senesi, Elliot Anderson — hit their line
+in about **70%** of appearances, and `yes` players run from **52% to 70%**.
+Meanwhile `near` players clear **41%** of the time, not the ~20% the old model
+assumed: counts are overdispersed, so a fat right tail rescues them far more
+often than the label suggests.
+
+So `yes` is not a floor and `near` is not a mirage. Both are probabilities, and
+they are closer together than these three labels imply. The model now uses each
+player's **observed hit rate** rather than the band — see roadmap A4.
 
 **How rare is `yes`?** Only about **8 of 47** defenders and **4 of 47**
 midfielders in the mid-price bands clear their threshold. A player priced as a

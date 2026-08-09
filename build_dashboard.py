@@ -65,6 +65,11 @@ _squad_state = importlib.util.module_from_spec(_sq_spec)
 _sq_spec.loader.exec_module(_squad_state)
 SQUAD = _squad_state.load().name_set
 
+_bs_spec = importlib.util.spec_from_file_location(
+    "bs_for_dash", os.path.join(HERE, "build_squad.py"))
+_bs = importlib.util.module_from_spec(_bs_spec)
+_bs_spec.loader.exec_module(_bs)
+
 FIXTURE_WINDOW_PATH = os.path.join(HERE, "fixture_window.json")
 
 
@@ -186,15 +191,13 @@ def blank_risk(r):
       * starts but no CS, no DC, no return  -> exactly 2 pts
     Clean sheet is exp(-xGC/90) and returns are Poisson on xGI/90, matching the
     rest of the system. The DC term is a threshold, not a rate - a defender who
-    averages 10+ CBIT still misses it in low-volume matches, so it is capped at
-    a 0.55 hit rate rather than treated as certain.
+    averages 10+ CBIT still misses it in low-volume matches, so it uses the
+    player's OBSERVED per-match hit rate (roadmap A4), not a flat assumption.
     """
     import math
     p_start = min(max(r["stp"], 0.0), 0.98)
     p_cs = math.exp(-max(r["xgc90"], 0.05)) if r["pos"] in ("DEF", "GKP") else 0.0
-    if r["cbit90"] >= CBIT_THRESH:      p_dc = 0.55
-    elif r["cbit90"] >= CBIT_THRESH * NEAR: p_dc = 0.20
-    else:                                p_dc = 0.05
+    p_dc = p_threshold(r["cbit90"], CBIT_THRESH, key=f'{r["name"]}|{r["team"]}')
     p_ret = 1.0 - math.exp(-max(r["xgi90"], 0.0))
     played_blank = (1 - p_cs) * (1 - p_dc) * (1 - p_ret)
     return round(100.0 * ((1 - p_start) + p_start * played_blank), 1)
@@ -209,11 +212,11 @@ DC_PTS = 2
 DC_THRESH_POS = {"GKP": 99.0, "DEF": 10.0, "MID": 12.0, "FWD": 12.0}
 
 
-def p_threshold(mean, thresh):
-    if mean >= thresh * 1.30: return 0.75
-    if mean >= thresh:        return 0.55
-    if mean >= thresh * 0.80: return 0.20
-    return 0.05
+# Roadmap A4. This file used to hold a FOURTH copy of the step function, so the
+# published dashboard kept showing the superseded estimator after build_squad.py
+# had moved on. Delegate instead — one implementation, no drift.
+def p_threshold(mean, thresh, key=None):
+    return _bs.p_threshold(mean, thresh, key=key)
 
 
 def expected_points(r):
@@ -221,7 +224,8 @@ def expected_points(r):
     dc = r["cbit90"] if pos == "DEF" else r["cbirt90"]
     p_cs = math.exp(-max(r["xgc90"], 0.05)) if CS_PTS[pos] else 0.0
     xp = 2 + GOAL_PTS[pos]*r["xg90"] + ASSIST_PTS*r["xa90"] + CS_PTS[pos]*p_cs
-    xp += DC_PTS * p_threshold(dc, DC_THRESH_POS[pos])
+    xp += DC_PTS * p_threshold(dc, DC_THRESH_POS[pos],
+                               key=f'{r["name"]}|{r["team"]}')
     if pos in ("GKP", "DEF"): xp -= r["xgc90"]/2
     if pos == "GKP":          xp += r["saves90"]/3
     return round(xp, 2)
@@ -242,7 +246,8 @@ def expected_points_adj(r, att_x, def_x):
         dc *= def_x
         saves *= def_x
     xp = 2 + GOAL_PTS[pos]*xg + ASSIST_PTS*xa + CS_PTS[pos]*p_cs
-    xp += DC_PTS * p_threshold(dc, DC_THRESH_POS[pos])
+    xp += DC_PTS * p_threshold(dc, DC_THRESH_POS[pos],
+                               key=f'{r["name"]}|{r["team"]}')
     if pos in ("GKP", "DEF"): xp -= xgc/2
     if pos == "GKP":          xp += saves/3
     return xp
@@ -365,18 +370,20 @@ payload = dict(rows=rows, med_xgi_m=round(med_xgi_m,4), fixtures=FIXTURES, stats
 # actually WORTH. p_threshold() is the real conversion FPL scoring uses (a
 # per-match probability of clearing the line, not a continuous reward), so
 # bucket players by the POINTS that probability is worth instead.
-PTS_LABELS = ["0.1 pts (rarely clears)", "0.4 pts (near miss)",
-              "1.1 pts (clears)", "1.5 pts (clears comfortably)"]
-PTS_IDX = {0.05: 0, 0.20: 1, 0.55: 2, 0.75: 3}
+# A4: the rate is now CONTINUOUS, so the old lookup on four exact values
+# (0.05/0.20/0.55/0.75) would raise a KeyError. Bucket by the points earned.
+PTS_LABELS = ["under 0.5 pts (rarely clears)", "0.5-1.0 pts (near miss)",
+              "1.0-1.4 pts (clears)", "1.4+ pts (clears comfortably)"]
 
-def pts_bins(vals, thresh):
+def pts_bins(rows, metric, thresh):
     counts = [0, 0, 0, 0]
-    for v in vals:
-        counts[PTS_IDX[p_threshold(v, thresh)]] += 1
+    for r in rows:
+        pts = DC_PTS * p_threshold(r[metric], thresh, key=f'{r["name"]}|{r["team"]}')
+        counts[0 if pts < 0.5 else 1 if pts < 1.0 else 2 if pts < 1.4 else 3] += 1
     return PTS_LABELS, counts
 
-payload["hist_def_pts"] = pts_bins([r["cbit90"] for r in D], CBIT_THRESH)
-payload["hist_mid_pts"] = pts_bins([r["cbirt90"] for r in M], CBIRT_THRESH)
+payload["hist_def_pts"] = pts_bins(D, "cbit90", CBIT_THRESH)
+payload["hist_mid_pts"] = pts_bins(M, "cbirt90", CBIRT_THRESH)
 
 HTML = open(os.path.join(HERE, "template.html"), encoding="utf-8").read()
 # Shared chrome, inlined so the output stays a single self-contained file.
