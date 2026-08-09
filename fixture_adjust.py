@@ -195,9 +195,15 @@ def main():
     print(f"window source: {prov}\n")
     pool = adjust(bs.load())
     only_squad = "--squad" in sys.argv
-    SQ = {"Raya","Lacroix","Gabriel","Virgil","B.Fernandes","Schade","Mbeumo",
-          "Sarr","Calvert-Lewin","João Pedro","Thiago","Dubravka","Tavernier",
-          "Kayode","Shaw"}
+    # From squad.json via squad_state.py. This copy was the one that went stale
+    # on 9 Aug 2026 — it listed a player transferred out two changes earlier,
+    # because --squad is rarely run and nothing had exercised it. That is
+    # precisely why there is now one source instead of three.
+    import importlib.util as _iu
+    _s = _iu.spec_from_file_location("squad_state",
+                                     os.path.join(HERE, "squad_state.py"))
+    _m = _iu.module_from_spec(_s); _s.loader.exec_module(_m)
+    SQ = _m.load().name_set
     rows = [r for r in pool if (r["name"] in SQ) or not only_squad]
     rows.sort(key=lambda r: -r["fx_swing"])
     print(f"xP_adj over GW1-{HORIZON}  (workload scaling: "

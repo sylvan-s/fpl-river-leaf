@@ -25,7 +25,7 @@ Checking that strings are PRESENT in the file does not check that they PARSE.
 verify_dashboard.js executes the script against a stubbed DOM and asserts all
 five panels build with non-empty data.
 """
-import json, math, os, sys, datetime as dt
+import importlib.util, json, math, os, sys, datetime as dt
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SNAP = os.environ.get("FPL_SNAPSHOT") or os.path.join(HERE, "fpl_priors_2025_26_v2.json")
@@ -55,10 +55,15 @@ CBIT_THRESH, CBIRT_THRESH = 10.0, 12.0
 NEAR = 0.8                      # "near" = within 20% of the line
 MIN_MINS = 450
 
-# Keep in step with TEAM_CHANGE_LOG.md CURRENT STATE and optimise_squad.CURRENT_SQUAD.
-SQUAD = {"Raya","Lacroix","Gabriel","Virgil","B.Fernandes","Schade","Mbeumo",
-         "Sarr","Calvert-Lewin","João Pedro","Thiago","Dubravka","Tavernier",
-         "Kayode","Shaw"}
+# From squad.json via squad_state.py — the single source of truth. Was a
+# hardcoded set here until 9 Aug 2026. Unlike the last16 loader below, this is
+# DELIBERATELY coupled: there must be exactly one squad, so a private copy that
+# survives an interface change is a bug, not resilience.
+_sq_spec = importlib.util.spec_from_file_location(
+    "squad_state", os.path.join(HERE, "squad_state.py"))
+_squad_state = importlib.util.module_from_spec(_sq_spec)
+_sq_spec.loader.exec_module(_squad_state)
+SQUAD = _squad_state.load().name_set
 
 FIXTURE_WINDOW_PATH = os.path.join(HERE, "fixture_window.json")
 

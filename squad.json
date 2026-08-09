@@ -1,0 +1,47 @@
+{
+  "_comment": "SINGLE SOURCE OF TRUTH for live squad state. Read by squad_state.py, which optimise_squad.py, build_dashboard.py and fixture_adjust.py all import. TEAM_CHANGE_LOG.md remains the human narrative and the append-only history; this file is the current state that narrative describes. Update BOTH after every actioned transfer.",
+  "updated_utc": "2026-08-09T12:00:00Z",
+  "as_at_note": "GW1 pre-deadline. Deadline Fri 21 Aug 2026 17:30 UTC (18:30 BST).",
+  "gameweek": 1,
+  "formation": "3-4-3",
+  "bank": 0.5,
+  "squad_value": 99.5,
+  "captain": "Thiago",
+  "vice": "B.Fernandes",
+  "squad": [
+    {"name": "Raya",          "pos": "GKP", "team": "ARS", "price": 6.0,  "bought_for": 6.0,  "role": "XI",    "bench_order": null},
+    {"name": "Lacroix",       "pos": "DEF", "team": "CHE", "price": 6.0,  "bought_for": 6.0,  "role": "XI",    "bench_order": null},
+    {"name": "Gabriel",       "pos": "DEF", "team": "ARS", "price": 8.0,  "bought_for": 8.0,  "role": "XI",    "bench_order": null},
+    {"name": "Virgil",        "pos": "DEF", "team": "LIV", "price": 6.5,  "bought_for": 6.5,  "role": "XI",    "bench_order": null},
+    {"name": "B.Fernandes",   "pos": "MID", "team": "MUN", "price": 12.0, "bought_for": 12.0, "role": "XI",    "bench_order": null},
+    {"name": "Schade",        "pos": "MID", "team": "BRE", "price": 6.0,  "bought_for": 6.0,  "role": "XI",    "bench_order": null},
+    {"name": "Mbeumo",        "pos": "MID", "team": "MUN", "price": 8.0,  "bought_for": 8.0,  "role": "XI",    "bench_order": null},
+    {"name": "Sarr",          "pos": "MID", "team": "CRY", "price": 6.5,  "bought_for": 6.5,  "role": "XI",    "bench_order": null},
+    {"name": "Calvert-Lewin", "pos": "FWD", "team": "LEE", "price": 6.0,  "bought_for": 6.0,  "role": "XI",    "bench_order": null},
+    {"name": "João Pedro",    "pos": "FWD", "team": "CHE", "price": 7.5,  "bought_for": 7.5,  "role": "XI",    "bench_order": null},
+    {"name": "Thiago",        "pos": "FWD", "team": "BRE", "price": 8.0,  "bought_for": 8.0,  "role": "XI",    "bench_order": null},
+    {"name": "Dubravka",      "pos": "GKP", "team": "TOT", "price": 4.0,  "bought_for": 4.0,  "role": "BENCH", "bench_order": 0},
+    {"name": "Tavernier",     "pos": "MID", "team": "BOU", "price": 6.0,  "bought_for": 6.0,  "role": "BENCH", "bench_order": 1},
+    {"name": "Kayode",        "pos": "DEF", "team": "BRE", "price": 4.5,  "bought_for": 4.5,  "role": "BENCH", "bench_order": 2},
+    {"name": "Shaw",          "pos": "DEF", "team": "MUN", "price": 4.5,  "bought_for": 4.5,  "role": "BENCH", "bench_order": 3}
+  ],
+  "bought_for_note": "Pre-season, purchase price equals current price for every player. Once the season starts these diverge and FPL pays purchase price plus half any rise on sale — keep bought_for accurate from GW1.",
+  "chips": {
+    "set1": {
+      "expires_utc": "2027-01-02T13:30:00Z",
+      "expires_note": "GW19 deadline. Chips in set 1 do NOT carry over.",
+      "wildcard": "available",
+      "freehit": "available",
+      "benchboost": "available",
+      "triplecaptain": "available"
+    },
+    "set2": {
+      "expires_utc": null,
+      "expires_note": "Second set unlocks after the set-1 deadline.",
+      "wildcard": "available",
+      "freehit": "available",
+      "benchboost": "available",
+      "triplecaptain": "available"
+    }
+  }
+}

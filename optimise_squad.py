@@ -90,13 +90,18 @@ BUDGET, SQUAD, XI_SIZE, MAX_CLUB = 100.0, {"GKP": 2, "DEF": 5, "MID": 5, "FWD": 
 FORMATION = {"GKP": (1, 1), "DEF": (3, 5), "MID": (2, 5), "FWD": (1, 3)}
 HIT_COST = 4                     # points per transfer beyond the free allowance
 
-# The live squad. UPDATE AFTER EVERY ACTIONED TRANSFER - a stale list makes
-# transfer mode answer a question about a team that no longer exists.
-# Source of truth: TEAM_CHANGE_LOG.md CURRENT STATE.
-CURRENT_SQUAD = ["Raya", "Lacroix", "Gabriel", "Virgil", "B.Fernandes",
-                 "Schade", "Mbeumo", "Sarr", "Calvert-Lewin", "João Pedro",
-                 "Thiago", "Dubravka", "Tavernier", "Kayode", "Shaw"]
-BANK = 0.5                       # £m, per TEAM_CHANGE_LOG.md
+# The live squad, from squad.json via squad_state.py - the SINGLE source of
+# truth. These were hardcoded here, in build_dashboard.py and in
+# fixture_adjust.py until 9 Aug 2026; keeping three copies in step was a
+# standing instruction that still failed silently. Do not reintroduce a literal.
+_spec = importlib.util.spec_from_file_location("squad_state",
+                                               os.path.join(HERE, "squad_state.py"))
+squad_state = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(squad_state)
+_STATE = squad_state.load()
+
+CURRENT_SQUAD = _STATE.names
+BANK = _STATE.bank
 
 
 def optimise(pool, allow_haaland=False, verbose=True):
