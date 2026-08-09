@@ -102,6 +102,10 @@ def f(x):
 # archetypes remain the right tool for READING a screen; xP is the right tool
 # for CHOOSING between positions under a budget.
 
+# Roadmap A4. Set False (or pass --legacy-dc) to score on the superseded
+# step function, for the GW10 comparison.
+USE_EMPIRICAL_DC = "--legacy-dc" not in sys.argv
+
 GOAL   = {"GKP": 10, "DEF": 6, "MID": 5, "FWD": 4}
 ASSIST = 3
 CS     = {"GKP": 4, "DEF": 4, "MID": 1, "FWD": 0}
@@ -112,18 +116,87 @@ SAVES_PER_POINT = 3
 GC_PER_MINUS = 2                 # -1 per 2 goals conceded (GKP and DEF only)
 
 
-def p_threshold(mean, thresh):
-    """P(clearing the DC line in a given match), from the season mean.
+# --- Roadmap A4: empirical hit rates, built 9 Aug 2026 ----------------------
+# Loaded lazily and tolerantly: this file must still run before dc_hit_rates.json
+# exists, or the project cannot bootstrap. A missing file falls back to the step
+# function and SAYS SO on first use — silence would hide which estimator is live.
+_DC_RATES, _DC_WARNED = None, False
 
-    Consistency beats volume: the award is a capped THRESHOLD, so a player
-    averaging 14 is worth no more than one averaging 11, and one averaging 9 is
-    worth far less than 11. A linear function of the mean would get all three
-    wrong.
+
+_DC_DOC, _PRIOR_CACHE = None, {}
+
+
+def _dc_rates():
+    global _DC_RATES, _DC_DOC
+    if _DC_RATES is None:
+        try:
+            _DC_DOC = json.load(open(os.path.join(HERE, "dc_hit_rates.json"),
+                                     encoding="utf-8"))
+            _DC_RATES = _DC_DOC["players"]
+        except Exception:
+            _DC_DOC, _DC_RATES = {}, {}
+    return _DC_RATES
+
+
+def _prior_at(pos, eff):
+    """Positional mean hit rate AT this effective threshold, and shrinkage k.
+
+    Recomputed per threshold because a fixture-scaled line moves the whole
+    population, not just one player — shrinking toward a fixed prior would drag
+    every scaled estimate back toward the unscaled world.
+    """
+    ck = (pos, round(eff, 3))
+    if ck not in _PRIOR_CACHE:
+        rs = [sum(1 for x in r["counts"] if x >= eff) / len(r["counts"])
+              for r in _dc_rates().values()
+              if r["pos"] == pos and r["apps"] >= 20]
+        k = (_DC_DOC.get("priors", {}).get(pos, {}) or {}).get("k_pseudo_matches", 5.0)
+        _PRIOR_CACHE[ck] = ((sum(rs) / len(rs)) if rs else 0.3, k)
+    return _PRIOR_CACHE[ck]
+
+
+def p_threshold_legacy(mean, thresh):
+    """SUPERSEDED by the empirical hit rate. Kept for the GW10 comparison only.
+
+    Measured against 2025/26 per-match counts this was wrong three ways:
+    the 0.80-1.00x band assumed 0.20 against an actual 0.41 (0.42 xP/90 over
+    39 of 160 qualifying players); the 1.30x band was unreachable and never
+    fired; and everyone above the line scored an identical 0.55 while real
+    hit rates inside that band ran 52%-70%. See METHODOLOGY_ALTERNATIVES A4.
     """
     if mean >= thresh * 1.30: return 0.75
     if mean >= thresh:        return 0.55
     if mean >= thresh * 0.80: return 0.20
     return 0.05
+
+
+def p_threshold(mean, thresh, key=None):
+    """P(clearing the DC line in a given match).
+
+    Prefers the player's OBSERVED per-match hit rate, shrunk toward the
+    positional prior. The award is a per-match threshold, so the hit rate is
+    the quantity itself rather than an estimate of it — no distribution assumed,
+    no bands, no constants. Falls back to the step function only where the
+    player is absent from the archive.
+    """
+    global _DC_WARNED
+    if not USE_EMPIRICAL_DC:
+        return p_threshold_legacy(mean, thresh)
+    rec = _dc_rates().get(key or "")
+    if rec:
+        # `mean` arrives already fixture-scaled by fixture_adjust; recover the
+        # scale and move the THRESHOLD by the inverse, so P(X >= thresh/scale).
+        scale = (mean / rec["mean_dc"]) if rec.get("mean_dc") else 1.0
+        scale = min(max(scale, 0.5), 2.0)          # guard against a bad ratio
+        eff = thresh / scale
+        m, k = _prior_at(rec["pos"], eff)
+        hits = sum(1 for x in rec["counts"] if x >= eff)
+        return (hits + m * k) / (rec["apps"] + k)
+    if not _DC_WARNED and not _dc_rates():
+        _DC_WARNED = True
+        print("  NOTE: dc_hit_rates.json not found — using the superseded "
+              "p_threshold step function. Run build_dc_rates.py.", file=sys.stderr)
+    return p_threshold_legacy(mean, thresh)
 
 
 def expected_points(r):
@@ -133,7 +206,8 @@ def expected_points(r):
     xp = APPEARANCE
     xp += GOAL[pos] * r["xg90"] + ASSIST * r["xa90"]
     xp += CS[pos] * r["p_cs"]
-    xp += DC_PTS * p_threshold(dc_metric, DC_THRESH_POS[pos])
+    xp += DC_PTS * p_threshold(dc_metric, DC_THRESH_POS[pos],
+                           key=f'{r["name"]}|{r["team"]}')
     if pos in ("GKP", "DEF"):
         xp -= r["xgc90"] / GC_PER_MINUS
     if pos == "GKP":

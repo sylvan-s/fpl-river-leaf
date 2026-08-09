@@ -153,7 +153,12 @@ def adjust(pool, fixtures=None, scale_workload=SCALE_WORKLOAD):
         xp = bs.APPEARANCE
         xp += bs.GOAL[pos] * xg + bs.ASSIST * xa
         xp += bs.CS[pos] * p_cs
-        xp += bs.DC_PTS * bs.p_threshold(dc_metric, bs.DC_THRESH_POS[pos])
+        # Roadmap A4: the key must be passed, or this path silently keeps the
+        # superseded step function — which is exactly what happened on the
+        # first build, because a second copy of the scoring kept the old
+        # behaviour while build_squad.py had already moved on.
+        xp += bs.DC_PTS * bs.p_threshold(dc_metric, bs.DC_THRESH_POS[pos],
+                                         key=f'{r["name"]}|{r["team"]}')
         if pos in ("GKP", "DEF"):
             xp -= xgc / bs.GC_PER_MINUS
         if pos == "GKP":
