@@ -210,7 +210,33 @@ hold.**
 | 2026/27 | FPL API `element-summary/{id}/` | via the MCP or the SQLite cache's `player_gw` table |
 
 **`player_gw` holds only the current season and is empty pre-season**, so
-2026/27 populates naturally from GW1. Last season must be vendored.
+2026/27 populates naturally from GW1.
+
+### DECIDED 9 Aug 2026 — fetch at build time, and show where it came from
+
+**Fetch the 2025/26 archive at build time rather than vendoring it.** Keeps the
+repo small and avoids committing megabytes of someone else's data.
+
+**The condition is that provenance is exposed, not buried.** Fetching makes the
+build network-dependent and, worse, quietly stale — a page can look complete
+while describing an archive pulled weeks ago. Three requirements follow, and
+none is optional:
+
+1. **Stamp the fetch.** Record source URL, commit or release tag, the retrieval
+   timestamp and the row count into a provenance block, exactly as
+   `last16_starts.json` already stamps its source, window and unmatched list.
+   That file is the precedent; match it.
+2. **Render it on the page.** Every timeseries view states, visibly, where the
+   data came from and when it was pulled — with the caveat `last16_starts.json`
+   already carries: **this is a community archive mirroring the official API,
+   not the API itself.** Treat it as well-sourced but externally derived.
+3. **Fail loudly, never silently.** If the fetch fails, the build stops. It must
+   not fall back to a cached copy without saying so, and a page built from a
+   stale cache must say so on its face. A silently stale page is the same
+   failure class as a stale fixture window — it looks right and is wrong.
+
+Cache the fetch locally (gitignored) so repeated builds are cheap, but treat the
+cache as an optimisation with an expiry, not as a source.
 
 ### Metrics per gameweek
 
@@ -311,9 +337,9 @@ a Burnley start rate who is reported as backup at Spurs.
 
 - ~~Publish page 1 at all?~~ **Decided 9 Aug 2026: yes** — see the squad page
   section. The reason changes the design, not just the permission.
-- Vendor the 2025/26 vaastav data into the repo, or fetch at build time? In
-  repo is reproducible and offline-safe but adds megabytes; fetching is light
-  but makes the build network-dependent and silently stale.
+- ~~Vendor the 2025/26 vaastav data, or fetch at build time?~~ **Decided
+  9 Aug 2026: fetch at build time, with provenance exposed on the page and a
+  build that fails loudly rather than shipping stale data.** See page 3.
 - Does page 2 stay self-contained, or join the shared-data model? Recommend it
   stays — it is the page that currently works.
 
