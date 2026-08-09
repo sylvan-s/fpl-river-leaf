@@ -1369,6 +1369,43 @@ regenerable, which is why the store can live outside the folder without risk.
 
 ---
 
+### B7. Variance and overlap against Dylan — DEFERRED to ~GW20 by decision
+
+*Logged Sun 9 Aug 2026. **Decided: optimise on expected points only for now.***
+
+`optimise_squad.py` maximises expected points and is blind to three things that
+matter in a two-player league: the **variance** of the weekly score, the
+**overlap** with Dylan's squad, and the interaction between them.
+
+**The mechanic.** Only the difference between the two squads scores, so a player
+you both own contributes **exactly zero variance** to the gap, however volatile.
+The instrument for controlling variance is therefore **overlap**, not player
+steadiness. Win probability is `Φ((lead + N·μ) / (σ√N))`, and variance always
+drags that toward 50% — so:
+
+- **lead + N·μ > 0** → suppress σ. Own what he owns where you have no edge.
+- **lead + N·μ < 0** → manufacture σ. Own what he does not.
+
+Note the switch is **not** "am I ahead?" but "does my expected finishing position
+win?". With a genuine edge, low variance helps even at level scores, because
+variance dilutes an edge — at μ = +0.5/GW and scores level, P(win) is 70% at
+σ = 6 versus 58% at σ = 16.
+
+**Why deferred.** At GW1, level, with 38 weeks to play, `N·μ` dominates the lead
+term and there is no measured edge to protect — μ is the thing to maximise, which
+is exactly what the current objective does. The protect/chase distinction only
+becomes material once the gap is comparable to `σ√N`.
+
+**Gate: ~GW20.** By then roughly half the season is scored, `N` has halved, and a
+gap of any size starts to bind. GW20 also follows the set-1 chip deadline, so it
+is already a strategic checkpoint.
+
+**Prerequisite:** `get_squad(entry=87058)` returns 404 until the GW1 deadline
+passes. Overlap cannot be computed at all before then.
+
+**Kill criterion:** if the gap at GW20 is smaller than one gameweek's typical
+differential spread, this is noise — leave the objective alone and revisit at GW30.
+
 ## Tier C — conditional, may never be built
 
 ### C1. Full Bayesian / PyMC — see §1, step 3
@@ -1442,6 +1479,8 @@ GW10     ** THE GATE ** Backtest. Decides C1 outright. Re-read C4.
          Elite squad structure sampling unlocks (B5) — table no longer noise.
          Congestion overlay (A0.4) — only if A0.2/A0.3 have paid off.
 GW12–19  DGW/BGW forecasting (B4) ahead of chip-set-1 deadline.
+GW20     ** Protect/chase review (B7) ** — compute overlap with Dylan and the
+         gap vs sigma*sqrt(N). Only then consider a variance term.
 GW20     Split-half PERSISTENCE test (B6). The 0.63/0.12 assumption everything
          rests on becomes testable on our own data for the first time.
 GW20+    Shrinkage fades in value; raw data is reliable. Second chip set.
