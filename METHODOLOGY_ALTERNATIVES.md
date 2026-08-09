@@ -1042,6 +1042,79 @@ Same blind spot as A1, smaller. **Fold into A1 rather than building separately.*
 
 ---
 
+### A4. `p_threshold` is mis-calibrated — HIGH PRIORITY, BUILD NOW
+
+*Logged Sun 9 Aug 2026. **Not gated on a future gameweek.** The data needed to
+fix this arrived with `fetch_gw_history.py`; it can be built today.*
+
+**What the model does.** `build_squad.py` converts an average CBIT/CBIRT into
+expected DC points through a four-band step function on the season mean:
+
+```python
+xp += DC_PTS * p_threshold(dc_metric, DC_THRESH_POS[pos])   # DC_PTS = 2
+
+def p_threshold(mean, thresh):
+    if mean >= thresh * 1.30: return 0.75
+    if mean >= thresh:        return 0.55
+    if mean >= thresh * 0.80: return 0.20
+    return 0.05
+```
+
+The code already names this as its weak point: *"ONE judgement survives:
+P(clearing the DC threshold) is estimated from a season MEAN... The honest fix
+is the true per-match hit rate."* **That fix is now available.**
+
+**Measured against 2025/26 per-match counts** (60+ minute appearances, players
+with 20+ such appearances):
+
+| Band | n | Assumed | Actual | xP error |
+|---|---|---|---|---|
+| ≥1.30× | **0** | 0.75 | — | *unreachable — no player qualified* |
+| ≥1.00× | 15 | 0.55 | 0.59 | −0.09/90 |
+| **≥0.80×** | **39** | **0.20** | **0.41** | **−0.42/90** |
+| <0.80× | 106 | 0.05 | 0.10 | −0.10/90 |
+
+**Three defects, in order of cost:**
+
+1. **The 0.80–1.00 band understates by 0.21 in probability — 0.42 xP/90, about
+   16 points a season.** Four times the noise floor, and the largest known
+   mis-calibration in the model. It is the overdispersion effect: CBIT counts
+   have variance/mean ≈ **1.38**, so a fat right tail rescues near-miss players
+   far more often than a tight distribution would allow. **39 of 160 qualifying
+   players sit in this band** — it is not an edge case.
+2. **The top band never fires.** Not one qualifying player averaged 1.30× his
+   threshold. `0.75` is dead code wearing the appearance of a considered choice.
+3. **The bands hide the variation that matters.** Everyone at ≥1.00× scores an
+   identical 0.55, while actual hit rates inside that band run **52% to 70%** —
+   Senesi and Anderson at 70%, Keane and Bijol at 52%. A 0.36 xP/90 spread the
+   model cannot see, and precisely the difference between a real DC asset and a
+   player who merely averages above the line.
+
+**Every error runs the same way: the model UNDERSTATES DC.** Given the 2025/26
+champion identified DC as his decisive edge, systematically under-pricing it is
+the wrong direction to be wrong in.
+
+**Proposed fix.** Replace `p_threshold(mean, thresh)` with the **empirical
+per-match hit rate** — directly observable now that `docs/data/players/*.json`
+holds per-match counts. No distributional assumption, no bands, no constants to
+tune. Where a player has too few matches to estimate a rate, shrink toward the
+position-and-band mean rather than falling back to the step function; this is
+the same machinery as **A0.2**.
+
+**Interaction with A0.5.** Hit rate is a per-match probability, so it composes
+cleanly with a start-weighted objective. Build A4 first — it is smaller,
+independently valuable, and needs no flag.
+
+**Caveats, held honestly.** Per-match means here come from 60+ minute
+appearances while the model uses per-90 rates from season totals — close but not
+identical, so these figures are indicative. One season of a brand-new metric,
+so the dispersion estimate itself carries real uncertainty. And note the
+direction: an empirical rate fitted on 2025/26 assumes the DC rules and referee
+interpretation are stable into 2026/27.
+
+**Kill criterion.** If the empirical hit rate does not beat `p_threshold` at the
+GW10 backtest, revert. Do not keep both.
+
 ## Tier B — designed, gated on evidence
 
 ### B1. Price forecasting — see §0
@@ -1352,6 +1425,9 @@ had.** If P(haul) is badly calibrated, fix that before adding anything new.
 
 ```
 GW1–2    Build nothing. Priors only. Verify logging fires.
+NOW      ** A4: p_threshold recalibration ** — NOT gated. The data exists.
+         0.42 xP/90 understated for the 39 players in the 0.80-1.00 band;
+         the 1.30x band is unreachable and never fires.
 GW3      Price decision (B1). First calibration entries exist.
 GW5–6    Start-rate shrinkage (A0.2). Goalkeeper screen (A2). Bonus/BPS (A1).
          First calibration read.
@@ -1379,6 +1455,8 @@ GW20+    Shrinkage fades in value; raw data is reliable. Second chip set.
   its complexity. Remove it.
 - **Calibration skill score goes negative** → the probabilities are worse than
   guessing the average. Stop quoting them until fixed.
+- **A4 empirical hit rate does not beat `p_threshold` at GW10** → revert to the
+  step function and delete the hit-rate path. Do not carry both.
 - **Any tool needs an unfalsifiable input to work** → don't ship it. The system's
   main virtue is that every number can be traced to a source or a formula.
 - **A0.5 start-weighting does not beat per-90 at the GW10 backtest** → revert to
