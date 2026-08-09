@@ -18,3 +18,6 @@ dash.js
 _wtest.txt
 .DS_Store
 *.tmp
+
+# fetched at build time, never committed — see DASHBOARD_PLAN.md
+.cache_merged_gw.csv
