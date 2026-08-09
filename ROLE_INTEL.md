@@ -125,17 +125,75 @@ changed, by comparing the prior record's team against the current one. But the
 prior snapshot was taken *after* the January 2026 window, so it records each
 player's **current** club — not the club he actually played those minutes for.
 The check therefore cannot fire for anyone who moved *before* the snapshot.
-It works normally for transfers from 2026/27 onward.
 
-List mid-season movers here. Their personal prior is skipped and the D2 ladder
-falls through to team × position at the new club.
+**CORRECTED 9 Aug 2026.** This block previously claimed the check "works normally
+for transfers from 2026/27 onward." **It does not.** The snapshot was captured
+**8 Aug 2026**, by which point the entire 2026/27 summer window was already
+reflected in the `team` field. So a July 2026 signing reads as
+*new club + old club's minutes*, with **nothing flagging it** — the same defect
+as a January mover, over a window that moves far more players. The check only
+becomes reliable for transfers made **after 8 Aug 2026**.
+
+`stp` is affected as badly as the rate stats: `last16_starts.json` keys on
+`name|CURRENT_team`, so a mover's start rate is last season's club's start rate
+wearing this season's badge. **That is the number the 75% gate reads.**
+
+List movers here. Their personal prior is skipped and the D2 ladder falls
+through to team × position at the new club.
 
 Format: `player | reason`.
 
 ```contaminated
-Guéhi   | Crystal Palace -> Man City, Jan 2026; 2025/26 stats blend both clubs
-Semenyo | Bournemouth -> Man City, Jan 2026; 2025/26 stats blend both clubs
+Guéhi         | Crystal Palace -> Man City, Jan 2026; 2025/26 stats blend both clubs
+Semenyo       | Bournemouth -> Man City, Jan 2026; 2025/26 stats blend both clubs
+Anderson      | Nottingham Forest -> Man City, Jul 2026 (£116m); 37 starts / 94% stp / 13.9 CBIRT are ALL Forest figures
+Lacroix       | Crystal Palace -> Chelsea, 29 Jul 2026 (£51m); 81% stp is a Palace figure
+Dubravka      | Burnley -> Tottenham, free, Jul 2026; 35 apps / 81% stp are Burnley figures — and see role note below
 ```
+
+### Summer-2026 sweep — done 9 Aug 2026
+
+**Method.** The snapshot cannot reveal a player's previous club, so club change
+is undetectable from inside the data. Two things *are* detectable:
+
+1. **Promoted clubs are safe.** HUL, COV and IPS carry 0, 88 and 812 minutes of
+   2025/26 PL football across their whole squads. Their players never clear
+   gate 1 (900+ mins), so they are absent from the pool rather than contaminated.
+2. **Net inbound minutes flag the risk clubs.** A club generates 11 × 90 × 38 =
+   **37,620** minutes of its own PL football a season. Where the *current* squad
+   holds more 2025/26 minutes than that, the surplus arrived from elsewhere:
+
+   | club | 25/26 mins in current squad | vs baseline |
+   |---|---|---|
+   | TOT | 48,111 | **+10,491 (~3.1 players)** |
+   | CHE | 42,266 | +4,646 (~1.4) |
+   | MCI | 41,244 | +3,624 (~1.1) |
+   | MUN | 39,913 | +2,293 (~0.7) |
+
+   Every other club is net negative. **This does not name players** — it says
+   where to look, and it is worth re-running whenever the snapshot changes.
+
+**Verified against the current squad and live recommendations** (web-confirmed,
+not inferred). Clean: Raya, Gabriel, Virgil, B.Fernandes, Mbeumo, Shaw, Sarr,
+Schade, Thiago, Kayode, Tavernier, João Pedro, and **Calvert-Lewin** — who
+joined Leeds in summer **2025**, so 2025/26 is genuinely a Leeds season.
+
+**Not yet swept: the remaining ~250 pool players.** The four risk clubs above
+are where to start. Until that is done, treat any TOT, CHE, MCI or MUN player
+surfacing from a screen as unverified.
+
+### Dubravka is a role change, not just a contaminated prior
+
+He was **Burnley's first-choice** keeper in 2025/26 (35 PL appearances, hence
+the 81% start rate). At Tottenham he is reported as **backup to Antonin Kinsky**.
+His true P(start) is therefore near **zero**, not 81%.
+
+He is the bench GK, so the direct cost is small — `size_bench_value.py` prices
+that slot at 0.144 pts/GW, and the true figure is close to nil. But it is worth
+knowing that the GK bench slot is currently **dead weight**, and that a keeper
+who actually deputises would be worth roughly £4.0m better spent.
+
+**Falsifiable check:** who starts Spurs' GW1 fixture in goal.
 
 ## Reconciliation rules
 
