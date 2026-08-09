@@ -838,6 +838,120 @@ entered once per season, not a scraper, and belongs in `ROLE_INTEL.md` as a date
 block alongside `setpieces` and `contaminated`. **Do it last, and only if the
 cheaper layers have proved their worth.**
 
+#### A0.5 Start-weighted XI objective — NOT BUILT. Gate: build behind a flag now, decide at GW10
+
+*Logged Sun 9 Aug 2026. This is the layer A0.1–A0.4 were always feeding, and it
+was missing: the estimates improve P(start), but **nothing multiplies P(start)
+into the objective.***
+
+`optimise_squad.py` maximises **xP per 90** over the XI. `stp` enters only as a
+**hard gate at 75%**, never as a weight. So two players with equal xP/90 score
+identically whether they start 76% of the time or 98%.
+
+**Measured on the live GW1 squad (`size_bench_value.py --fixtures`):**
+
+| | |
+|---|---|
+| XI, xP per 90 | **49.94** |
+| XI, xP per gameweek (start-weighted) | **44.28** |
+| availability haircut | **5.66 — 11%** |
+
+**11% of the headline figure is never played**, and it is distributed *unevenly*:
+Sarr and Schade at 75% carry a quarter more headline xP than they deliver;
+Virgil and B.Fernandes at 100% carry none. Every weekly recommendation is
+currently ranked on that distorted scale.
+
+**The gate is doing two jobs and should be split.** (1) discounting availability
+— which a multiplier does properly and without a cliff; (2) protecting against
+noisy per-90 rates from thin samples — which is **gate 1's** job (900+ minutes)
+and **A0.2's** (shrinkage). The 75% line also creates a genuine discontinuity:
+74.9% and 75.1% differ by everything, which is exactly how **Sarr** went from
+invisible to eligible on the last-16 basis while his score already beat the
+incumbent's under either.
+
+**Proposed:** add `xp_gw = stp × xP_adj` **alongside** `score`, never
+overwriting it, selected by a flag so both objectives run side by side — the
+same pattern as `--season-starts`. Keep a low floor (~40–50%) to exclude genuine
+non-players. **A0.2 is a precondition, not a parallel option:** a gate only needs
+the ranking right near one threshold, whereas a multiplier propagates `stp` noise
+into every score.
+
+**Unit discipline — this bit is load-bearing.** The change makes the objective
+expected points **per gameweek**, so every historic xP/90 figure in
+`TEAM_CHANGE_LOG.md` stops being comparable. Date the switch in the log.
+
+**Kill criterion:** if `predictive_backtest` at GW10 shows start-weighted
+ranking does not beat per-90 ranking out of sample, revert to the gate and
+delete `xp_gw`. Do not keep both objectives indefinitely.
+
+#### A0.6 Autosub bench value — NOT BUILT. Gate: **after A0.5**, not before
+
+*Logged Sun 9 Aug 2026, with a corrected sizing. See `size_bench_value.py`.*
+
+`optimise_squad.py` scores the bench at **zero** — deliberately, so the model
+does not buy a luxury bench. But the bench does score, through autosubs.
+
+```
+E[outfield bench] = sum_k P(>= k blanks among the 10 outfield starters)
+                          * s_k * xP_k                      k = 1..3
+E[GK bench]       = (1 - s_gk_start) * s_gk_bench * xP_gk_bench
+```
+
+`P(>= k blanks)` is a **Poisson-binomial** over the starters' `(1 - s_i)`, exact
+by DP and cheap for eleven players.
+
+**Sized on the live GW1 squad:** expected blanks **1.19**, so
+`P(≥1) = 0.736 · P(≥2) = 0.339 · P(≥3) = 0.095`. The current bench is worth
+**3.72 pts/GW**, of which **Tavernier alone is 2.34 — 63%**. Reallocating the
+same £19.0m gains **+0.53 pts/GW**; moving £1m across from the XI nets
+**+0.86 pts/GW** after paying 0.18 in XI quality. Comfortably above the 0.10
+noise floor.
+
+**Slot 3 fires once in ten gameweeks.** Bench value is not spread across the
+bench — it concentrates in **one player**. You are buying a first substitute and
+two pieces of near-worthless insurance.
+
+**THE ORDERING IS NOT A PREFERENCE — IT IS A CORRECTNESS CONSTRAINT.** Adding
+this term to the *current* per-90 objective produces false results, because the
+bench term is start-weighted and the XI term is not. Worked example, the live
+`Tavernier → Anderson` recommendation:
+
+```
+                                    before    after   change
+XI, xP per 90 (current model)        49.94    50.31    +0.37
+XI, xP per GW (start-weighted)       44.28    45.40    +1.12
+bench autosub                         3.72     3.13    -0.59
+per-90 XI + bench   (INVALID)        53.66    53.44    -0.21   <- false reversal
+per-GW XI + bench   (correct)        48.00    48.53    +0.54   <- no reversal
+```
+
+Anderson (94%) replacing João Pedro (75%) in the XI means fewer blanks, so the
+bench is needed less. **Bench slots 2 and 3 hold the same players before and
+after and still lose 0.318 between them** — that fall is the transfer's benefit
+appearing with a minus sign. Bolted onto the per-90 objective, this term would
+**systematically penalise every upgrade in XI reliability**, which is precisely
+the class of transfer worth making.
+
+*This error was made and committed on 9 Aug 2026 (`70ae735`), then corrected
+(`ea9df51`). Recorded because the wrong answer was plausible, arithmetically
+clean, and pointed at a live recommendation.*
+
+**Known optimistic assumptions**, all inflating the estimate: formation validity
+ignored; blanks assumed independent when they cluster; bench players scored at
+their full per-90 rate; and **a 20-minute cameo treated as a start when it
+actually scores ~1 point and blocks the autosub entirely.** Tighten the cameo
+assumption first — it is the one most likely to be carrying the error.
+
+**Build shape** — the exact objective is **non-linear in the decision variables**
+(the blank distribution depends on which players are in the XI), so it cannot go
+into CBC directly. Two workable routes: **fixed-point iteration** on per-slot
+constants `π_k`, re-solving until stable (2–3 passes, start here); or **linear
+surrogate then exact re-ranking** of the top 20–50 squads. Optimising is hard;
+evaluating is free.
+
+**Side benefit:** a bench with real expected value prices **Bench Boost** for the
+first time — it currently has no model behind it at all.
+
 #### What is deliberately excluded
 
 Motivation — dead rubbers, relegation scraps, run-ins, a side already on the
@@ -1241,9 +1355,14 @@ GW1–2    Build nothing. Priors only. Verify logging fires.
 GW3      Price decision (B1). First calibration entries exist.
 GW5–6    Start-rate shrinkage (A0.2). Goalkeeper screen (A2). Bonus/BPS (A1).
          First calibration read.
+         Start-weighted objective (A0.5) behind a flag — needs A0.2 first.
+         Autosub bench value (A0.6) ONLY after A0.5 ships; before it, the
+         term is not merely premature, it gives wrong answers.
 GW8      Club rotation index (A0.3) + manager-change register. EO if
          sourceable (B2). Rank-awareness if wanted (B3).
 GW10     ** THE GATE ** Backtest. Decides C1 outright. Re-read C4.
+         Also decides A0.5: if start-weighted ranking does not beat per-90
+         out of sample, revert to the gate and delete xp_gw.
          Elite squad structure sampling unlocks (B5) — table no longer noise.
          Congestion overlay (A0.4) — only if A0.2/A0.3 have paid off.
 GW12–19  DGW/BGW forecasting (B4) ahead of chip-set-1 deadline.
@@ -1262,3 +1381,12 @@ GW20+    Shrinkage fades in value; raw data is reliable. Second chip set.
   guessing the average. Stop quoting them until fixed.
 - **Any tool needs an unfalsifiable input to work** → don't ship it. The system's
   main virtue is that every number can be traced to a source or a formula.
+- **A0.5 start-weighting does not beat per-90 at the GW10 backtest** → revert to
+  the 75% gate and delete `xp_gw`. Do not carry two objectives past the gate.
+- **A0.6 bench headroom falls below ~0.10 pts/GW once the cameo assumption is
+  tightened** → don't build it. The bench-as-pure-cost model was right, and the
+  current sizing is an upper bound resting on the most optimistic assumption in
+  the set.
+- **Two terms measured in different units are ever summed** → the result is void,
+  not approximate. See A0.6's worked example: it produced a clean, plausible,
+  entirely false reversal of a live recommendation.
