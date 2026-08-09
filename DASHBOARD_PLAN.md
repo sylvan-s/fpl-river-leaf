@@ -349,6 +349,38 @@ a Burnley start rate who is reported as backup at Spurs.
 |---|---|
 | 1 · `squad.json` + repoint three files | **done** — `c211ba3` |
 | 2 · Shared CSS/nav, workflow page, per-page verify | **done** — `7f80bc8` |
-| 3 · Page 5, availability & intel | not started |
-| 4 · Page 1, squad | unblocked by the 9 Aug decision |
-| 5 · Page 3, player timeseries | not started; needs the vaastav pipeline |
+| 3 · Page 5, availability & intel | **done** — `7a4317e` |
+| 4 · Page 1, squad | **done** — `afe271e`, live |
+| 5 · Page 3, player timeseries | **done** — `db47474`, live |
+
+All five pages build and verify. `publish_dashboard.sh` builds every page and
+refuses to publish if any fails.
+
+## What the build-out turned up that the pages did not
+
+The timeseries data pipeline was worth more than the page it was built for.
+
+**The archive records which club a player actually played for.** Club change was
+declared undetectable from inside the data on 9 Aug, and the contaminated
+register was to stay hand-maintained. That was wrong. Comparing the archive's
+team against the current snapshot detects it exactly: **19 pool players moved
+this summer, against 5 on the hand-kept list** — the 14 missing including four
+of Tottenham's five arrivals. The register is now derived from
+`docs/data/club_changes.json`.
+
+**Two useful columns arrived unasked for.** `defensive_contribution` is the DC
+metric the screens already threshold on, and `xP` is FPL's own expected points —
+an external benchmark for our model, available at the GW10 backtest.
+
+## Known limits, carried forward
+
+- **The archive is a finished season, so it does not need re-fetching weekly.**
+  A 2026/27 mid-season transfer will NOT appear in `club_changes.json` until the
+  2026-27 archive exists and is fetched. Mid-season movers still need the manual
+  route until then.
+- **`player.html` requires http(s)** and will not open off disk. Local preview:
+  `python3 -m http.server -d docs 8000`.
+- **`docs/data` is 7.1 MB committed** and will grow as 2026/27 fills in. Accepted
+  deliberately on 9 Aug; revisit if clone time becomes annoying.
+- **Six pool players are unmatched** and absent from the timeseries page. Named
+  in `docs/data/provenance.json`, not hidden.
