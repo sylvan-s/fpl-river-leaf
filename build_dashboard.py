@@ -379,6 +379,13 @@ payload["hist_def_pts"] = pts_bins([r["cbit90"] for r in D], CBIT_THRESH)
 payload["hist_mid_pts"] = pts_bins([r["cbirt90"] for r in M], CBIRT_THRESH)
 
 HTML = open(os.path.join(HERE, "template.html"), encoding="utf-8").read()
+# Shared chrome, inlined so the output stays a single self-contained file.
+_ps_spec = importlib.util.spec_from_file_location(
+    "page_shell", os.path.join(HERE, "page_shell.py"))
+_page_shell = importlib.util.module_from_spec(_ps_spec)
+_ps_spec.loader.exec_module(_page_shell)
+HTML = (HTML.replace("/*__CSS__*/", _page_shell.css())
+            .replace("<!--__NAV__-->", _page_shell.nav("analysis")))
 with open(OUT, "w", encoding="utf-8") as fh:
     fh.write(HTML.replace("/*__DATA__*/null", json.dumps(payload)))
 print(f"written: {OUT}  ({os.path.getsize(OUT)/1024:.0f} KB)")

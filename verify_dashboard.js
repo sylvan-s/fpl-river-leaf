@@ -77,7 +77,15 @@ try {
 console.log('panels rendered :', app.children.length);
 console.log('charts created  :', charts.length);
 charts.forEach(c => console.log(`   ${String(c.canvas).padEnd(5)} ${c.type.padEnd(8)} ${c.datasets} datasets, ${String(c.points).padStart(3)} points, ${c.triangles} triangles`));
-const SQUAD_DEF = 5, SQUAD_MID = 5;   // Lacroix Gabriel O'Reilly Kayode Shaw / Bruno Tavernier Mbeumo Enzo Berge
+// Derived from squad.json, the single source of truth. These were hardcoded as
+// `5, 5` beside a comment listing O'Reilly, Enzo and Berge — three players who
+// had already been transferred out. The numbers still happened to be right,
+// which is exactly why nobody noticed: a stale constant that agrees with
+// reality by coincidence is indistinguishable from a correct one until it
+// isn't. Deriving it means a transfer can no longer silently invalidate this.
+const _sq = require('./squad.json').squad;
+const SQUAD_DEF = _sq.filter(p => p.pos === 'DEF').length;
+const SQUAD_MID = _sq.filter(p => p.pos === 'MID').length;
 const triOk = charts.find(c => c.canvas === 'c1').triangles === SQUAD_DEF
            && charts.find(c => c.canvas === 'c3m').triangles === SQUAD_MID;
 console.log(`squad markers   : c1 expects ${SQUAD_DEF} triangles, c3m expects ${SQUAD_MID} -> ${triOk ? 'OK' : 'WRONG'}`);

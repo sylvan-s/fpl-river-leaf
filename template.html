@@ -3,47 +3,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>FPL Methodology Diagnostics</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
-<style>
-:root{--bg:#0f1216;--panel:#171c22;--line:#2a323c;--tx:#e6edf3;--dim:#8b98a5;
---a:#4ea3ff;--b:#ffc857;--c:#5fd38d;--d:#ff6b6b;--e:#c792ea;--grid:#232b34}
-@media(prefers-color-scheme:light){:root{--bg:#f6f7f9;--panel:#fff;--line:#dde3ea;
---tx:#1a1f26;--dim:#5b6673;--grid:#e8edf3}}
-*{box-sizing:border-box}
-body{margin:0;padding:28px;background:var(--bg);color:var(--tx);
-font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
-h1{font-size:22px;margin:0 0 4px} h2{font-size:16px;margin:0 0 2px}
-.sub{color:var(--dim);font-size:12.5px;margin:0 0 22px}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;
-padding:18px 20px;margin-bottom:18px}
-.tests{color:var(--dim);font-size:12.5px;margin:2px 0 14px;font-style:italic}
-.wrap{position:relative;height:380px}
-.wrap.short{height:300px}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-@media(max-width:900px){.grid2{grid-template-columns:1fr}}
-.find{border-left:3px solid var(--b);background:rgba(255,200,87,.08);
-padding:10px 14px;margin:14px 0 0;border-radius:0 6px 6px 0;font-size:13px}
-.find.bad{border-color:var(--d);background:rgba(255,107,107,.08)}
-.find.ok{border-color:var(--c);background:rgba(95,211,141,.08)}
-.find b{color:var(--tx)}
-table{border-collapse:collapse;width:100%;font-size:13px;margin-top:6px}
-th,td{text-align:right;padding:6px 9px;border-bottom:1px solid var(--line)}
-th:first-child,td:first-child{text-align:left}
-th{color:var(--dim);font-weight:600;font-size:12px}
-.mono{font-variant-numeric:tabular-nums;font-family:ui-monospace,Menlo,monospace}
-.tag{display:inline-block;padding:1px 7px;border-radius:99px;font-size:11px;
-font-weight:600}
-.tag.bad{background:rgba(255,107,107,.18);color:var(--d)}
-.tag.ok{background:rgba(95,211,141,.18);color:var(--c)}
-.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--dim);
-margin:10px 0 0}
-.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;
-margin-right:5px;vertical-align:-1px}
-input[type=range]{-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;background:var(--grid);outline:none}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--a);cursor:pointer;border:2px solid var(--panel)}
-input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--a);cursor:pointer;border:2px solid var(--panel)}
-footer{color:var(--dim);font-size:12px;margin-top:26px;border-top:1px solid var(--line);
-padding-top:14px}
-</style></head><body>
+<style>/*__CSS__*/</style></head><body>
+<!--__NAV__-->
 <h1>FPL Methodology Diagnostics</h1>
 <p class="sub" id="sub"></p>
 <div id="app"></div>
