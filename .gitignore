@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local caches — regenerated on demand, never authoritative
+fpl_history_cache.sqlite
+fpl_history_cache.sqlite-journal
+*.sqlite-journal
+
+# Generated dashboard output — rebuild with `python3 build_dashboard.py`
+FPL_DIAGNOSTICS.html
+FPL_DIAGNOSTICS_artifact.html
+dash.js
+
+# Scratch
+_wtest.txt
+.DS_Store
+*.tmp

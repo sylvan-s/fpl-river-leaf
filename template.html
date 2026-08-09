@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FPL Methodology Diagnostics</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
+<style>
+:root{--bg:#0f1216;--panel:#171c22;--line:#2a323c;--tx:#e6edf3;--dim:#8b98a5;
+--a:#4ea3ff;--b:#ffc857;--c:#5fd38d;--d:#ff6b6b;--e:#c792ea;--grid:#232b34}
+@media(prefers-color-scheme:light){:root{--bg:#f6f7f9;--panel:#fff;--line:#dde3ea;
+--tx:#1a1f26;--dim:#5b6673;--grid:#e8edf3}}
+*{box-sizing:border-box}
+body{margin:0;padding:28px;background:var(--bg);color:var(--tx);
+font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+h1{font-size:22px;margin:0 0 4px} h2{font-size:16px;margin:0 0 2px}
+.sub{color:var(--dim);font-size:12.5px;margin:0 0 22px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+padding:18px 20px;margin-bottom:18px}
+.tests{color:var(--dim);font-size:12.5px;margin:2px 0 14px;font-style:italic}
+.wrap{position:relative;height:380px}
+.wrap.short{height:300px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:900px){.grid2{grid-template-columns:1fr}}
+.find{border-left:3px solid var(--b);background:rgba(255,200,87,.08);
+padding:10px 14px;margin:14px 0 0;border-radius:0 6px 6px 0;font-size:13px}
+.find.bad{border-color:var(--d);background:rgba(255,107,107,.08)}
+.find.ok{border-color:var(--c);background:rgba(95,211,141,.08)}
+.find b{color:var(--tx)}
+table{border-collapse:collapse;width:100%;font-size:13px;margin-top:6px}
+th,td{text-align:right;padding:6px 9px;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--dim);font-weight:600;font-size:12px}
+.mono{font-variant-numeric:tabular-nums;font-family:ui-monospace,Menlo,monospace}
+.tag{display:inline-block;padding:1px 7px;border-radius:99px;font-size:11px;
+font-weight:600}
+.tag.bad{background:rgba(255,107,107,.18);color:var(--d)}
+.tag.ok{background:rgba(95,211,141,.18);color:var(--c)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--dim);
+margin:10px 0 0}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;
+margin-right:5px;vertical-align:-1px}
+input[type=range]{-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;background:var(--grid);outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--a);cursor:pointer;border:2px solid var(--panel)}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--a);cursor:pointer;border:2px solid var(--panel)}
+footer{color:var(--dim);font-size:12px;margin-top:26px;border-top:1px solid var(--line);
+padding-top:14px}
+</style></head><body>
+<h1>FPL Methodology Diagnostics</h1>
+<p class="sub" id="sub"></p>
+<div id="app"></div>
+<footer id="foot"></footer>
+<script>
+const DATA = /*__DATA__*/null;
+const C = {a:'#4ea3ff',b:'#ffc857',c:'#5fd38d',d:'#ff6b6b',e:'#c792ea',dim:'#8b98a5'};
+const css = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+Chart.defaults.color = css('--dim');
+Chart.defaults.borderColor = css('--grid');
+Chart.defaults.font.family = "ui-monospace,Menlo,monospace";
+const f2 = n => (Math.round(n*1000)/1000).toFixed(2);
+const f3 = n => (n>=0?'+':'') + n.toFixed(3);
+
+document.getElementById('sub').textContent =
+  `Prior season ${DATA.season} · ${DATA.rows.length} players with ${450}+ minutes · `+
+  `snapshot captured ${DATA.captured} · page generated ${DATA.generated}`;
+document.getElementById('foot').innerHTML =
+  `Source: <span class="mono">fpl_priors_2025_26_v2.json</span> (frozen prior-season snapshot). `+
+  `Fixture multipliers from <span class="mono">fixture_difficulty</span>, GW1&ndash;5, xG-derived &mdash; not FPL's FDR. `+
+  `Every panel here tests a claim in the methodology; panels that could only re-display a table were cut. `+
+  `Regenerate with <span class="mono">python3 build_dashboard.py</span>.`;
+
+function panel(id, title, tests, body){
+  const d = document.createElement('div'); d.className='panel';
+  d.innerHTML = `<h2>${title}</h2><p class="tests">${tests}</p>${body}`;
+  document.getElementById('app').appendChild(d); return d;
+}
+const S = DATA.stats;
+
+/* ---------- 1. defender independence ---------- */
+const ARCH = {BOTH:C.c, workhorse:C.a, cleansheet:C.e, borderline:C.b, avoid:C.d};
+const D = DATA.rows.filter(r=>r.pos==='DEF');
+const p1Min = Math.floor(Math.min(...D.map(r=>r.stp*100))/5)*5;
+const p1Max = Math.ceil(Math.max(...D.map(r=>r.stp*100))/5)*5;
+panel('p1','1 · Defenders: are the two routes really opposed?',
+ 'Tests the claim the archetypes rest on. If clean sheets and CBIT pulled against each other, this would slope.',
+ `<div style="display:flex;align-items:center;gap:12px;margin:0 0 14px;flex-wrap:wrap">
+    <label for="p1s" style="font-size:13px;color:var(--dim)">Minimum start%</label>
+    <input type="range" id="p1s" min="${p1Min}" max="${p1Max}" step="5" value="${p1Min}" style="flex:1;min-width:170px">
+    <span class="mono" id="p1v" style="font-size:13px;min-width:40px">${p1Min}%</span>
+    <span id="p1c" class="mono" style="font-size:12px;color:var(--dim);min-width:120px"></span>
+  </div>
+  <div class="wrap"><canvas id="c1"></canvas></div>
+  <div class="legend">${Object.entries(ARCH).map(([k,v])=>`<span><i style="background:${v}"></i>${k}</span>`).join('')}
+   <span>▲ = in your squad</span> <span>┄ dotted: 10+ CBIT line, median xGC</span></div>
+  <div class="find bad"><b>Claim not supported.</b> corr(CBIT/90, clean sheets) =
+  <span class="mono">${f3(S.corr_cbit_cs)}</span> &mdash; essentially zero. corr(CBIT/90, xGC/90) =
+  <span class="mono">${f3(S.corr_cbit_xgc)}</span>, weak. The routes are <b>near-independent, not opposed</b>.
+  The design still holds: independence is its own reason not to blend two routes into one number.</div>
+  <div class="find"><b>Filtered on start%</b>, not blank risk &mdash; a defender who reliably starts
+  is the precondition for either route to matter at all. Built from last-16-GW starts where matched
+  (see panel 7), season total otherwise. <b>Drag the slider up to keep only defenders who reliably
+  start.</b> The dotted lines mark the 10+ CBIT workhorse threshold and the group's median xGC/90,
+  the two reference points the archetypes are built against.</div>`);
+
+const edge = css('--tx');
+function d1(lim){
+  return Object.keys(ARCH).map(a=>{
+    const pts = D.filter(r=>r.arch===a && r.stp*100>=lim);
+    return {label:a, backgroundColor:ARCH[a],
+      data:pts.map(r=>({x:r.cbit90,y:r.xgc90,n:r.name,cs:r.cs,st:r.stp,sq:r.squad})),
+      pointStyle:pts.map(r=>r.squad?'triangle':'circle'),
+      pointRadius:pts.map(r=>r.squad?10:4+r.cs/6),
+      pointHoverRadius:pts.map(r=>r.squad?13:9),
+      borderColor:pts.map(r=>r.squad?edge:'transparent'),
+      borderWidth:pts.map(r=>r.squad?1.5:0)};
+  });
+}
+const lines1 = {id:'l1', afterDatasetsDraw(ch){
+  const {ctx, chartArea:ca, scales} = ch; ctx.save();
+  ctx.setLineDash([4,4]); ctx.lineWidth=1;
+  const xT = scales.x.getPixelForValue(10);
+  if (xT>ca.left && xT<ca.right){ ctx.strokeStyle=C.c;
+    ctx.beginPath(); ctx.moveTo(xT,ca.top); ctx.lineTo(xT,ca.bottom); ctx.stroke();
+    ctx.fillStyle=C.c; ctx.font='10px ui-monospace,Menlo,monospace';
+    ctx.fillText('10+ CBIT', xT+4, ca.top+11); }
+  const yM = scales.y.getPixelForValue(DATA.med_xgc);
+  if (yM>ca.top && yM<ca.bottom){ ctx.strokeStyle=css('--dim');
+    ctx.beginPath(); ctx.moveTo(ca.left,yM); ctx.lineTo(ca.right,yM); ctx.stroke();
+    ctx.fillStyle=css('--dim');
+    ctx.fillText('median xGC '+f2(DATA.med_xgc), ca.left+4, yM-4); }
+  ctx.restore();
+}};
+const ch1 = new Chart(c1,{type:'scatter',data:{datasets:d1(p1Min)},
+ options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:cx=>
+   `${cx.raw.n}${cx.raw.sq?' (yours)':''}  CBIT/90 ${f2(cx.raw.x)}  xGC/90 ${f2(cx.raw.y)}  CS ${cx.raw.cs}  st% ${(cx.raw.st*100).toFixed(0)}%`}}},
+  scales:{x:{title:{display:true,text:'CBIT per 90  →  busier'},grid:{color:css('--grid')}},
+          y:{title:{display:true,text:'xGC per 90  →  leakier'},grid:{color:css('--grid')}}}},
+ plugins:[lines1]});
+
+function p1Upd(v){
+  document.getElementById('p1v').textContent = v+'%';
+  ch1.data.datasets = d1(v); ch1.update();
+  const shown = D.filter(r=>r.stp*100>=v).length;
+  const sq = D.filter(r=>r.stp*100>=v && r.squad).length;
+  document.getElementById('p1c').textContent = `${shown} of ${D.length} · ${sq} yours`;
+}
+document.getElementById('p1s').addEventListener('input', e=>p1Upd(+e.target.value));
+p1Upd(p1Min);
+
+/* ---------- 2. threshold cliff ---------- */
+panel('p2','2 · The threshold cliff: what is a player&rsquo;s defensive work actually worth?',
+ 'The 2pt DC bonus is a per-match threshold, not a rate: a player either clears the line in a given match or he does not. Bars show the probability of clearing it, converted to expected points (prob &times; 2).',
+ `<div class="grid2">
+   <div><div class="wrap short"><canvas id="c2a"></canvas></div></div>
+   <div><div class="wrap short"><canvas id="c2b"></canvas></div></div>
+  </div>
+  <div class="find"><b>Averaging above the line is not the same as reliably earning the points.</b>
+  Defenders: <b>${S.def_clear}/${S.def_n}</b> clear 10+ CBIT/90 (worth 1.1&ndash;1.5 expected points a
+  match), but <b>${S.def_near}</b> sit within 20% of the line (worth only 0.4). Midfielders:
+  <b>${S.mid_clear}/${S.mid_n}</b> clear 12+ CBIRT/90, with <b>${S.mid_near}</b> near it. A third of
+  each population is priced for a floor it does not reliably earn &mdash; the 0.4pt
+  <span class="mono">near miss</span> bucket is the modal outcome for the rest, not an edge case.</div>`);
+function ptsBar(cv,[labels,counts],label){
+  const cols = [C.d, C.b, C.c, C.a];
+  new Chart(cv,{type:'bar',data:{labels,datasets:[{data:counts,backgroundColor:cols,
+    borderWidth:0}]},options:{plugins:{legend:{display:false},
+    tooltip:{callbacks:{label:cx=>`${cx.raw} players`}},
+    title:{display:true,text:label,color:css('--tx')}},
+    scales:{x:{grid:{display:false}},y:{title:{display:true,text:'players'},grid:{color:css('--grid')}}}}});
+}
+ptsBar(c2a,DATA.hist_def_pts,'DEF — expected CBIT points per match');
+ptsBar(c2b,DATA.hist_mid_pts,'MID — expected CBIRT points per match');
+
+/* ---------- 3. midfielder archetypes ---------- */
+const MARCH = {'box-to-box':C.c, holder:C.a, attacker:C.e, borderline:C.b, limited:C.d};
+const MD = DATA.rows.filter(r=>r.pos==='MID');
+const p3Min = Math.floor(Math.min(...MD.map(r=>r.stp*100))/5)*5;
+const p3Max = Math.ceil(Math.max(...MD.map(r=>r.stp*100))/5)*5;
+panel('p3','3 · Midfielders: the two routes, and how few have both',
+ 'Defensive axis is the REAL 12+ CBIRT line. Attacking axis is the group median — xGI has no absolute cut-off.',
+ `<div style="display:flex;align-items:center;gap:12px;margin:0 0 14px;flex-wrap:wrap">
+    <label for="p3s" style="font-size:13px;color:var(--dim)">Minimum start%</label>
+    <input type="range" id="p3s" min="${p3Min}" max="${p3Max}" step="5" value="${p3Min}" style="flex:1;min-width:170px">
+    <span class="mono" id="p3v" style="font-size:13px;min-width:44px">${p3Min}%</span>
+    <span id="p3c" class="mono" style="font-size:12px;color:var(--dim);min-width:120px"></span>
+  </div>
+  <div class="wrap"><canvas id="c3m"></canvas></div>
+  <div class="legend">${Object.entries(MARCH).map(([k,v])=>`<span><i style="background:${v}"></i>${k}</span>`).join('')}
+   <span>▲ = in your squad</span></div>
+  <div class="find"><b>CBIRT, not CBIT.</b> Midfielders are judged on clearances, blocks,
+  interceptions, tackles <i>and recoveries</i> against a <b>12+</b> line — a higher bar than
+  defenders' 10, because recoveries are high-volume. Plotting CBIT here would not match the
+  archetype colours.</div>
+  <div class="find bad"><b>The top-right quadrant is empty.</b> Not one midfielder in this pool
+  is <span class="mono">box-to-box</span> — clearing 12+ CBIRT <i>and</i> beating median xGI.
+  <b>${S.mid_clear} of ${S.mid_n}</b> clear the line at all, and every one of them sits below
+  median xGI. <b>All four of your starting midfielders are <span class="mono">attacker</span></b>:
+  ceiling, no floor.</div>
+  <div class="find"><b>That shape is a consequence, not a choice — and it is fragile.</b>
+  The selection score does reward the floor (<span class="mono">+2.0</span> for clearing 12+),
+  but holders post 0.07–0.22 xGI/90 against 0.45–0.68 for the players picked, so the bonus
+  never bridges the gap. <b>The closest call was 5.62 vs 5.21 — 0.41 on a hand-chosen
+  constant.</b> At <span class="mono">+2.5</span> a holder displaces Tavernier and this
+  midfield stops being all-attacker. Flagged for the GW10 backtest.</div>`);
+
+function d3m(minStp){
+  return Object.keys(MARCH).map(a=>{
+    const pts = MD.filter(r=>r.arch===a && r.stp*100>=minStp);
+    return {label:a, backgroundColor:MARCH[a],
+      data:pts.map(r=>({x:r.cbirt90,y:r.xgi90,n:r.name,tm:r.team,mn:r.mins,st:r.stp,pr:r.price,sq:r.squad})),
+      pointStyle:pts.map(r=>r.squad?'triangle':'circle'),
+      pointRadius:pts.map(r=>r.squad?10:4),
+      pointHoverRadius:pts.map(r=>r.squad?13:9),
+      borderColor:pts.map(r=>r.squad?edge:'transparent'),
+      borderWidth:pts.map(r=>r.squad?1.5:0)};
+  });
+}
+const lines3 = {id:'l3', afterDatasetsDraw(ch){
+  const {ctx, chartArea:ca, scales} = ch; ctx.save();
+  ctx.setLineDash([4,4]); ctx.lineWidth=1;
+  const xT = scales.x.getPixelForValue(12);
+  if (xT>ca.left && xT<ca.right){ ctx.strokeStyle=C.c;
+    ctx.beginPath(); ctx.moveTo(xT,ca.top); ctx.lineTo(xT,ca.bottom); ctx.stroke();
+    ctx.fillStyle=C.c; ctx.font='10px ui-monospace,Menlo,monospace';
+    ctx.fillText('12+ CBIRT', xT+4, ca.top+11); }
+  const yM = scales.y.getPixelForValue(DATA.med_xgi_m);
+  if (yM>ca.top && yM<ca.bottom){ ctx.strokeStyle=css('--dim');
+    ctx.beginPath(); ctx.moveTo(ca.left,yM); ctx.lineTo(ca.right,yM); ctx.stroke();
+    ctx.fillStyle=css('--dim');
+    ctx.fillText('median xGI '+f2(DATA.med_xgi_m), ca.left+4, yM-4); }
+  ctx.restore();
+}};
+const ch3m = new Chart(c3m,{type:'scatter',data:{datasets:d3m(p3Min)},
+ options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:cx=>
+   `${cx.raw.n} (${cx.raw.tm}) £${cx.raw.pr.toFixed(1)}m${cx.raw.sq?' · yours':''}  CBIRT ${f2(cx.raw.x)}  xGI/90 ${f2(cx.raw.y)}  st% ${(cx.raw.st*100).toFixed(0)}%  ${cx.raw.mn} mins`}}},
+  scales:{x:{title:{display:true,text:'CBIRT per 90  →  more defensive work'},grid:{color:css('--grid')}},
+          y:{title:{display:true,text:'xGI per 90  →  more attacking threat'},grid:{color:css('--grid')}}}},
+ plugins:[lines3]});
+
+function p3Upd(v){
+  document.getElementById('p3v').textContent = v+'%';
+  ch3m.data.datasets = d3m(v); ch3m.update();
+  const shown = MD.filter(r=>r.stp*100>=v).length;
+  const sq = MD.filter(r=>r.stp*100>=v && r.squad).length;
+  document.getElementById('p3c').textContent = `${shown} of ${MD.length} · ${sq} yours`;
+}
+document.getElementById('p3s').addEventListener('input', e=>p3Upd(+e.target.value));
+p3Upd(p3Min);
+
+/* ---------- 4. xGI x delta ---------- */
+panel('p4','4 · The transfer decision surface: xGI against delta',
+ 'High xGI with negative delta is the buy zone — real chance creation whose goals have not landed yet. Coloured by price band; your squad is ringed.',
+ `<div style="display:flex;align-items:center;gap:14px;margin:0 0 14px;flex-wrap:wrap">
+    <span style="font-size:13px;color:var(--dim)">Position</span>
+    <span id="p4pos" style="display:flex;gap:6px"></span>
+    <label for="p4s" style="font-size:13px;color:var(--dim);margin-left:8px">Minimum start%</label>
+    <input type="range" id="p4s" min="0" max="100" step="5" value="0" style="flex:1;min-width:140px">
+    <span class="mono" id="p4v" style="font-size:13px;min-width:40px">0%</span>
+    <span id="p4c" class="mono" style="font-size:12px;color:var(--dim);min-width:120px"></span>
+  </div>
+  <div class="wrap"><canvas id="c3"></canvas></div>
+  <div class="legend" id="p4leg"></div>
+  <div class="find"><b>Read it as a discount, not a prediction.</b> Delta finds which
+  <i>already high-xGI</i> players are underpriced. Never sell high xGI on positive delta alone &mdash;
+  the xGI is the asset, and regular penalty takers run structurally positive. Colour is price band,
+  not position &mdash; the question this panel answers is "is this shirt cheap for what it creates",
+  and price is the other half of that question.</div>`);
+const BANDS4 = [
+  {key:'lt55', label:'<£5.5m',      max:5.5,      color:C.a},
+  {key:'m',    label:'£5.5–7.5m',   max:7.5,      color:C.b},
+  {key:'p',    label:'£7.5–9.5m',   max:9.5,      color:C.c},
+  {key:'e',    label:'£9.5m+',      max:Infinity, color:C.d},
+];
+function bandOf(price){ return BANDS4.find(b=>price<b.max) || BANDS4[BANDS4.length-1]; }
+document.getElementById('p4leg').innerHTML =
+  BANDS4.map(b=>`<span><i style="background:${b.color}"></i>${b.label}</span>`).join('') +
+  '<span>▲ = in your squad</span>';
+const A4 = DATA.rows.filter(r=>['DEF','MID','FWD'].includes(r.pos));
+let p4Pos = 'ALL';
+const P4POSES = ['ALL','DEF','MID','FWD'];
+document.getElementById('p4pos').innerHTML = P4POSES.map(p=>
+  `<button data-p="${p}" style="font-size:12px;padding:4px 10px;border-radius:6px;cursor:pointer;border:1px solid var(--line);background:${p==='ALL'?C.a:'transparent'};color:${p==='ALL'?'#fff':'var(--tx)'}">${p}</button>`).join('');
+function d4(pos,minStp){
+  const pool = A4.filter(r=>(pos==='ALL'||r.pos===pos) && r.stp*100>=minStp);
+  return BANDS4.map(b=>{
+    const pts = pool.filter(r=>bandOf(r.price)===b);
+    return {label:b.label, backgroundColor:b.color,
+      data:pts.map(r=>({x:r.xgi90,y:r.delta,n:r.name,pos:r.pos,pr:r.price,sq:r.squad})),
+      pointStyle:pts.map(r=>r.squad?'triangle':'circle'),
+      pointRadius:pts.map(r=>r.squad?9:4),
+      pointHoverRadius:pts.map(r=>r.squad?12:8),
+      borderColor:pts.map(r=>r.squad?edge:'transparent'),
+      borderWidth:pts.map(r=>r.squad?1.5:0)};
+  });
+}
+const ch4x = new Chart(c3,{type:'scatter',data:{datasets:d4('ALL',0)},
+ options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:cx=>
+   `${cx.raw.n} (${cx.raw.pos}) £${cx.raw.pr.toFixed(1)}m${cx.raw.sq?' · yours':''}  xGI/90 ${f2(cx.raw.x)}  delta ${f3(cx.raw.y)}`}}},
+  scales:{x:{title:{display:true,text:'xGI per 90  →  better chance creation'},grid:{color:css('--grid')}},
+          y:{title:{display:true,text:'delta = (G+A) − xGI   ↓ underperforming = cheap'},grid:{color:css('--grid')}}}}});
+function p4Upd(v){
+  document.getElementById('p4v').textContent = v+'%';
+  ch4x.data.datasets = d4(p4Pos, v); ch4x.update();
+  const pool = A4.filter(r=>(p4Pos==='ALL'||r.pos===p4Pos) && r.stp*100>=v);
+  const sq = pool.filter(r=>r.squad).length;
+  document.getElementById('p4c').textContent = `${pool.length} shown · ${sq} yours`;
+}
+document.getElementById('p4pos').addEventListener('click', e=>{
+  if (!e.target.dataset.p) return;
+  p4Pos = e.target.dataset.p;
+  document.querySelectorAll('#p4pos button').forEach(btn=>{
+    const on = btn.dataset.p===p4Pos;
+    btn.style.background = on ? C.a : 'transparent';
+    btn.style.color = on ? '#fff' : 'var(--tx)';
+  });
+  p4Upd(+document.getElementById('p4s').value);
+});
+document.getElementById('p4s').addEventListener('input', e=>p4Upd(+e.target.value));
+p4Upd(0);
+
+/* ---------- 5. fixtures ---------- */
+const fx5Sorted = DATA.fixtures.slice().sort((a,b)=>b[1]-a[1]);
+const fx5BestAtt = fx5Sorted[0];
+const fx5BestDef = DATA.fixtures.slice().sort((a,b)=>a[2]-b[2])[0];
+panel('p5','5 · Fixtures: whose NEXT games are kind, not who is good',
+ `Tests whether one FDR integer could ever be enough. Every point here is a team&rsquo;s next
+  ${DATA.fixture_info.horizon} opponents&rsquo; strength, not the team&rsquo;s own quality &mdash;
+  a struggling side can sit top-right if its next few opponents happen to be weak.`,
+ `<div class="wrap"><canvas id="c4"></canvas></div>
+  <div class="find bad"><b>Read this as a fixture list, not a form table.</b> ${fx5BestAtt[0]}'s
+  ATT× is high because ITS UPCOMING OPPONENTS are leaky, not because ${fx5BestAtt[0]} itself has a
+  potent attack &mdash; and ${fx5BestDef[0]}'s low DEF× means its upcoming opponents attack weakly,
+  not that ${fx5BestDef[0]}'s own defence is good. <b>A team can look great here and still be
+  fighting relegation</b>: this chart only knows who they are about to play, over
+  ${DATA.fixture_info.horizon} games, generated for GW${DATA.fixture_info.generated_for_gw}. It says
+  nothing about their squad, form, or table position.</div>
+  <div class="find"><b>Best attacking run and best defensive run belong to different teams anyway.</b>
+  ${fx5BestAtt[0]} leads for attacking fixtures (${fx5BestAtt[1].toFixed(2)}&times;);
+  ${fx5BestDef[0]} for defensive ones (${fx5BestDef[2].toFixed(2)}&times; conceded). A single
+  difficulty number cannot express both. Note the axis range: multipliers span roughly
+  0.85&ndash;1.20 &mdash; over a ${DATA.fixture_info.horizon}-game window <b>player quality usually
+  dominates fixtures</b>. Fixtures break ties; they do not make the case.</div>`);
+new Chart(c4,{type:'scatter',data:{datasets:[{
+  data:DATA.fixtures.map(([t,a,d])=>({x:d,y:a,n:t})),
+  backgroundColor:DATA.fixtures.map(([t])=>t===fx5BestAtt[0]||t===fx5BestDef[0]?C.b:C.a),
+  pointRadius:DATA.fixtures.map(([t])=>t===fx5BestAtt[0]||t===fx5BestDef[0]?9:6)}]},
+ options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:cx=>
+   `${cx.raw.n}  next ${DATA.fixture_info.horizon} GWs — attacking-fixture boost ${cx.raw.y.toFixed(2)}×  clean-sheet-fixture boost (lower=better) ${cx.raw.x.toFixed(2)}×`}}},
+  scales:{x:{title:{display:true,text:'DEF × on upcoming opponents\' attack  →  lower = kinder for clean sheets'},
+             grid:{color:css('--grid')}},
+          y:{title:{display:true,text:'ATT × on upcoming opponents\' defence  →  higher = kinder for goals/assists'},
+             grid:{color:css('--grid')}}}},
+ plugins:[{id:'lbl',afterDatasetsDraw(ch){const{ctx}=ch;ctx.save();
+   ctx.font='10px ui-monospace,Menlo,monospace';ctx.fillStyle=css('--dim');
+   ch.getDatasetMeta(0).data.forEach((p,i)=>ctx.fillText(DATA.fixtures[i][0],p.x+8,p.y+3));
+   ctx.restore();}}]});
+
+/* ---------- 7. xP explorer ---------- */
+const ARCHCOL = {'BOTH':C.c,'workhorse':C.a,'cleansheet':C.e,'borderline':C.b,'avoid':C.d,
+                 'box-to-box':C.c,'holder':C.a,'attacker':C.e,'limited':C.d};
+panel('p7','7 · Expected points per 90 — every player',
+ 'One number per player, built entirely from FPL&rsquo;s scoring table. xP/90 &times; 38 &asymp; season points.',
+ `<div style="display:flex;align-items:center;gap:14px;margin:0 0 12px;flex-wrap:wrap">
+    <span style="font-size:13px;color:var(--dim)">Position</span>
+    <span id="posbtns" style="display:flex;gap:6px"></span>
+    <label for="p7s" style="font-size:13px;color:var(--dim);display:flex;align-items:center;gap:6px;margin-left:8px">
+      Min start% <input type="range" id="p7s" min="0" max="100" step="5" value="0" style="width:110px">
+      <span class="mono" id="p7v">0%</span></label>
+    <span style="font-size:13px;color:var(--dim);margin-left:8px">Show</span>
+    <select id="nsel">
+      <option>10</option><option selected>25</option><option>50</option>
+      <option>100</option><option value="9999">all</option>
+    </select>
+    <label style="font-size:13px;color:var(--dim);display:flex;align-items:center;gap:6px">
+      <input type="checkbox" id="mineonly"> my squad only</label>
+    <span id="xpcount" class="mono" style="font-size:12px;color:var(--dim);margin-left:auto"></span>
+  </div>
+  <div id="xptable"></div>
+  <div class="find"><b>Archetype answers a different question from xP.</b> The label says
+  <i>which route to points a player has</i>; xP says <i>how many</i>. Both are kept because
+  an archetype cannot compare a keeper to a forward, and xP hides the difference between a
+  reliable floor and a lucky average. <b>A <span class="mono">borderline</span> label still
+  beats a good xP</b> when you are judging reliability.</div>
+  <div class="find bad"><b>Goalkeepers have no archetype.</b> The goalkeeper methodology
+  (A2) is still undefined &mdash; for keepers saves and clean sheets genuinely trade off
+  (corr &minus;0.579), unlike defenders. Inventing a label to fill the column would be
+  worse than an honest blank.</div>
+  <div class="find" style="margin-top:10px"><b>st% changed 9 Aug 2026 &mdash; last 16
+  gameweeks of 2025/26 (${DATA.last16.window}), not the full season.</b> Sourced from a
+  third-party mirror of the official FPL API (<span class="mono">vaastav/Fantasy-Premier-League</span>
+  on GitHub) and name-matched, because no per-gameweek data for last season exists anywhere
+  in this project's own pipeline. <b>${DATA.last16.n_matched} of ${DATA.last16.n_total}</b>
+  players on this page matched; the rest (mostly outside the squad-selection pool, which is
+  gated at 900+ minutes) show a <span class="mono">*</span> and fall back to the season
+  figure. Sort by <span class="mono">st%</span> and look for the asterisk before trusting a
+  borderline row.</div>
+  <div class="find" style="margin-top:10px"><b>xP4_adj replaces blank% here.</b> It is each
+  player's flat xP/90 re-priced for his actual next ${DATA.fixture_info.horizon} opponents &mdash;
+  same scoring table, same opponent multipliers <span class="mono">fixture_adjust.py</span> uses,
+  sourced from <span class="mono">${DATA.fixture_info.source}</span>
+  ${DATA.fixture_info.generated_for_gw?`(generated for GW${DATA.fixture_info.generated_for_gw})`:''},
+  then summed over the window. It answers "how many points is this shirt actually worth for the
+  run he's about to play" &mdash; a question blank% could not.</div>`);
+
+let xpPos = 'ALL', xpSort = 'xp', xpDesc = true, xpMinStp = 0;
+const POSES = ['ALL','GKP','DEF','MID','FWD'];
+document.getElementById('posbtns').innerHTML = POSES.map(p=>
+  `<button data-p="${p}" style="font-size:12px;padding:4px 10px;border-radius:6px;cursor:pointer;border:1px solid var(--line);background:${p==='ALL'?C.a:'transparent'};color:${p==='ALL'?'#fff':'var(--tx)'}">${p}</button>`).join('');
+
+function xpRender(){
+  let rs = DATA.rows.filter(r=>xpPos==='ALL'||r.pos===xpPos);
+  if (document.getElementById('mineonly').checked) rs = rs.filter(r=>r.squad);
+  rs = rs.filter(r=>r.stp*100>=xpMinStp);
+  const total = rs.length;
+  rs = rs.slice().sort((a,b)=>{
+    const va=a[xpSort], vb=b[xpSort];
+    const c = (typeof va==='string') ? va.localeCompare(vb) : va-vb;
+    return xpDesc ? -c : c;
+  });
+  const n = +document.getElementById('nsel').value;
+  rs = rs.slice(0, n);
+  const cols = [['name','Player'],['team','Tm'],['arch','Archetype'],['price','GBPm'],
+                ['stp','st% (L16)'],['xp','xP/90'],['xgi90','xGI/90'],['xp4_adj','xP4_adj']];
+  document.getElementById('xptable').innerHTML =
+    `<table class="xp"><thead><tr>${cols.map(([k,l])=>`<th data-k="${k}" ${k==='stp'?'title="Last-16-GW starts (2025/26 GW23-38). * = no archive match, showing season-total instead."':''}${k==='xp4_adj'?'title="Expected points over the next window, adjusted for opponent strength (same methodology as fixture_adjust.py)"':''}>${l}${xpSort===k?(xpDesc?' ▾':' ▴'):''}</th>`).join('')}</tr></thead><tbody>${rs.map(r=>`<tr class="${r.squad?'mine':''}"><td>${r.squad?'▲ ':''}${r.name}</td><td>${r.team}</td><td><span style="color:${ARCHCOL[r.arch]||'var(--dim)'}">${r.arch}</span></td><td class="mono">${r.price.toFixed(1)}</td><td class="mono" title="${r.stp_src==='season_fallback'?`season-total (no last-16 match): ${(r.stp_season*100).toFixed(0)}%`:`last-16 GWs: ${(r.stp*100).toFixed(0)}%`}">${(r.stp*100).toFixed(0)}%${r.stp_src==='season_fallback'?'<span style="color:var(--dim)">*</span>':''}</td><td class="mono" style="font-weight:500">${r.xp.toFixed(2)}</td><td class="mono">${r.xgi90.toFixed(2)}</td><td class="mono">${r.xp4_adj.toFixed(2)}</td></tr>`).join('')}</tbody></table>`;
+  document.getElementById('xpcount').textContent = `${Math.min(n,total)} of ${total} shown`;
+  document.querySelectorAll('#xptable th').forEach(th=>th.onclick=()=>{
+    const k = th.dataset.k;
+    if (xpSort===k) xpDesc = !xpDesc;
+    else { xpSort = k; xpDesc = !['name','team','arch'].includes(k); }
+    xpRender();
+  });
+}
+document.getElementById('posbtns').addEventListener('click', e=>{
+  if (!e.target.dataset.p) return;
+  xpPos = e.target.dataset.p;
+  document.querySelectorAll('#posbtns button').forEach(btn=>{
+    const on = btn.dataset.p===xpPos;
+    btn.style.background = on ? C.a : 'transparent';
+    btn.style.color = on ? '#fff' : 'var(--tx)';
+  });
+  xpRender();
+});
+document.getElementById('nsel').addEventListener('change', xpRender);
+document.getElementById('mineonly').addEventListener('change', xpRender);
+document.getElementById('p7s').addEventListener('input', e=>{
+  xpMinStp = +e.target.value;
+  document.getElementById('p7v').textContent = xpMinStp+'%';
+  xpRender();
+});
+xpRender();
+
+/* ---------- 6. shrinkage (moved to end) ---------- */
+const rowsK = DATA.kpanel.map(k=>`<tr><td>${k.label}</td><td class="mono">${k.n}</td>
+ <td class="mono">${k.total.toFixed(5)}</td><td class="mono">${k.samp.toFixed(5)}</td>
+ <td class="mono">${f3(k.between)}</td>
+ <td class="mono">${k.k_before.toFixed(1)} ${k.deg_before?'<span class="tag bad">fallback</span>':''}</td>
+ <td class="mono">${k.k_after.toFixed(1)} ${k.deg_after?'<span class="tag bad">fallback</span>':'<span class="tag ok">derived</span>'}</td></tr>`).join('');
+panel('p6','6 · Shrinkage: is k derived, or quietly defaulted?',
+ 'The panel that found a live bug. k is in units of 90s, so k = 60 means 60 matches before a player&rsquo;s own data carries half the weight. A season is 38.',
+ `<table><thead><tr><th>pool</th><th>n</th><th>total var</th><th>sampling var</th>
+   <th>between</th><th>k before</th><th>k after fix</th></tr></thead><tbody>${rowsK}</tbody></table>
+  <div class="wrap short" style="margin-top:16px"><canvas id="c5"></canvas></div>
+  <div class="find bad"><b>Bug found and fixed, 8 Aug 2026.</b> The Poisson noise model
+  (<span class="mono">rate/n90</span>) is right for counts but wrong for xGI, which is a sum of
+  ~0.11 per-shot probabilities, not whole events. It drove between-player variance
+  <b>negative</b> for forwards and pinned k to its cap. Every attacker would have stayed
+  frozen on his prior all season. Fixed with a per-metric dispersion factor.</div>
+  <div class="find ok"><b>GKP still shows a fallback, and that is correct.</b> Keepers genuinely
+  do not differ on xGI, so shrinking hard is the right answer. The fallback fires where it should
+  &mdash; it no longer fires where it should not.</div>`);
+const xs = Array.from({length:39},(_,i)=>i);
+new Chart(c5,{type:'line',data:{labels:xs,datasets:DATA.kpanel.map((k,i)=>({
+  label:`${k.label} (k=${k.k_after.toFixed(1)})`,
+  data:xs.map(n=>n/(n+k.k_after)),borderColor:[C.a,C.e,C.c,C.d][i],
+  pointRadius:0,borderWidth:2,tension:.25}))},
+ options:{plugins:{title:{display:true,text:'weight on a player\'s OWN data as matches accumulate',color:css('--tx')}},
+  scales:{x:{title:{display:true,text:'matches played (season = 38)'},grid:{color:css('--grid')}},
+          y:{min:0,max:1,title:{display:true,text:'weight on own data'},grid:{color:css('--grid')}}}}});
+</script></body></html>

@@ -1,0 +1,118 @@
+<svg viewBox="0 0 700 790" xmlns="http://www.w3.org/2000/svg" width="700" height="790" role="img" aria-labelledby="ttl dsc">
+<title id="ttl">FPL weekly workflow and decision logic — River Leaf FC</title>
+<desc id="dsc">A five-phase vertical flow: read the change log and role intel; screen players by position using three different scoring models; adjust for role intel and fixtures; decide chips and captaincy; run the exact optimiser before proposing any transfer; then record predictions before the deadline and update the log. Teal boxes mark where the method branches by position or by distribution.</desc>
+
+<style>
+  .bg   { fill: #FCFCFB; }
+  .card { fill: #F1EFE8; stroke: #5F5E5A; stroke-width: 1; }
+  .key  { fill: #E1F5EE; stroke: #0F6E56; stroke-width: 1; }
+  .must { stroke-width: 2.4; }
+  .hd   { fill: #0B0B0B; font-weight: 500; }
+  .t    { fill: #444441; font-weight: 500; }
+  .tk   { fill: #085041; font-weight: 500; }
+  .ts   { fill: #5F5E5A; }
+  .tsk  { fill: #0F6E56; }
+  .ph   { fill: #898781; }
+  .ln   { stroke: #888780; stroke-width: 1.4; fill: none; }
+  text  { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  @media (prefers-color-scheme: dark) {
+    .bg   { fill: #1A1A19; }
+    .card { fill: #444441; stroke: #B4B2A9; }
+    .key  { fill: #085041; stroke: #5DCAA5; }
+    .hd   { fill: #FFFFFF; }
+    .t    { fill: #D3D1C7; }
+    .tk   { fill: #9FE1CB; }
+    .ts   { fill: #B4B2A9; }
+    .tsk  { fill: #5DCAA5; }
+    .ph   { fill: #898781; }
+  }
+</style>
+
+<defs>
+<marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M0,1 L9,5 L0,9" fill="none" stroke="#888780" stroke-width="1.6"/>
+</marker>
+</defs>
+
+<rect class="bg" x="0" y="0" width="700" height="790"/>
+
+<text class="hd" x="12" y="26" font-size="15">FPL weekly brief — flow and decision logic</text>
+<text class="ph" x="12" y="44" font-size="11">River Leaf FC (entry 1041614) · teal = where the method branches</text>
+
+<text class="ph" x="12" y="86" font-size="11">0 · READ</text>
+<rect class="card" x="96" y="66" width="270" height="52" rx="4"/>
+<text class="t"  x="110" y="88"  font-size="13">Change log</text>
+<text class="ts" x="110" y="106" font-size="11">the only record of your squad</text>
+<rect class="card" x="388" y="66" width="270" height="52" rx="4"/>
+<text class="t"  x="402" y="88"  font-size="13">Role intel</text>
+<text class="ts" x="402" y="106" font-size="11">what the data cannot see</text>
+<line class="ln" x1="231" y1="118" x2="231" y2="150" marker-end="url(#ar)"/>
+<line class="ln" x1="523" y1="118" x2="523" y2="150" marker-end="url(#ar)"/>
+
+<text class="ph" x="12" y="182" font-size="11">1 · SCREEN</text>
+<text class="ph" x="12" y="198" font-size="11">by position</text>
+<rect class="key" x="96" y="156" width="176" height="72" rx="4"/>
+<text class="tk"  x="108" y="178" font-size="13">Forwards</text>
+<text class="tsk" x="108" y="196" font-size="11">xGI leads</text>
+<text class="tsk" x="108" y="212" font-size="11">delta = discount only</text>
+<rect class="key" x="284" y="156" width="176" height="72" rx="4"/>
+<text class="tk"  x="296" y="178" font-size="13">Midfielders</text>
+<text class="tsk" x="296" y="196" font-size="11">xGI vs 12+ CBIRT</text>
+<text class="tsk" x="296" y="212" font-size="11">4 archetypes</text>
+<rect class="key" x="472" y="156" width="186" height="72" rx="4"/>
+<text class="tk"  x="484" y="178" font-size="13">Defenders</text>
+<text class="tsk" x="484" y="196" font-size="11">clean sheet vs 10+ CBIT</text>
+<text class="tsk" x="484" y="212" font-size="11">near-independent: never blend</text>
+<line class="ln" x1="377" y1="228" x2="377" y2="264" marker-end="url(#ar)"/>
+<text class="ph" x="388" y="250" font-size="11">shrunk early · raw late</text>
+
+<text class="ph" x="12" y="296" font-size="11">2 · ADJUST</text>
+<rect class="card" x="96" y="272" width="270" height="66" rx="4"/>
+<text class="t"  x="110" y="294" font-size="13">Reconcile intel</text>
+<text class="ts" x="110" y="312" font-size="11">role change beats history</text>
+<text class="ts" x="110" y="328" font-size="11">and disqualifies the prior</text>
+<rect class="card" x="388" y="272" width="270" height="66" rx="4"/>
+<text class="t"  x="402" y="294" font-size="13">Fixtures</text>
+<text class="ts" x="402" y="312" font-size="11">two columns, never one</text>
+<text class="ts" x="402" y="328" font-size="11">attack is not defence</text>
+<line class="ln" x1="377" y1="338" x2="377" y2="372" marker-end="url(#ar)"/>
+
+<text class="ph" x="12" y="404" font-size="11">3 · DECIDE</text>
+<rect class="card" x="96" y="380" width="270" height="66" rx="4"/>
+<text class="t"  x="110" y="402" font-size="13">Chip review</text>
+<text class="ts" x="110" y="420" font-size="11">doubles, blanks, backstops</text>
+<text class="ts" x="110" y="436" font-size="11">set 1 dies at GW19</text>
+<rect class="key" x="388" y="380" width="270" height="66" rx="4"/>
+<text class="tk"  x="402" y="402" font-size="13">Captaincy</text>
+<text class="tsk" x="402" y="420" font-size="11">P(haul), P(blank), ownership</text>
+<text class="tsk" x="402" y="436" font-size="11">not fixture difficulty</text>
+<line class="ln" x1="377" y1="446" x2="377" y2="470" marker-end="url(#ar)"/>
+
+<text class="ph" x="12" y="500" font-size="11">3b · OPTIMISE</text>
+<rect class="key" x="96" y="476" width="270" height="66" rx="4"/>
+<text class="tk"  x="110" y="498" font-size="13">Run the optimiser</text>
+<text class="tsk" x="110" y="516" font-size="11">exact ILP over expected points</text>
+<text class="tsk" x="110" y="532" font-size="11">before proposing any transfer</text>
+<rect class="card" x="388" y="476" width="270" height="66" rx="4"/>
+<text class="t"  x="402" y="498" font-size="13">HOLD is a valid answer</text>
+<text class="ts" x="402" y="516" font-size="11">a hit needs a hold horizon</text>
+<text class="ts" x="402" y="532" font-size="11">breakeven GWs, not raw gain</text>
+<line class="ln" x1="377" y1="542" x2="377" y2="570" marker-end="url(#ar)"/>
+
+<text class="ph" x="12" y="602" font-size="11">4 · RECORD</text>
+<rect class="card must" x="96" y="578" width="270" height="66" rx="4"/>
+<text class="t"  x="110" y="600" font-size="13">Log predictions</text>
+<text class="ts" x="110" y="618" font-size="11">BEFORE the deadline</text>
+<text class="ts" x="110" y="634" font-size="11">a missed week is lost</text>
+<rect class="card" x="388" y="578" width="270" height="66" rx="4"/>
+<text class="t"  x="402" y="600" font-size="13">Update change log</text>
+<text class="ts" x="402" y="618" font-size="11">append corrections</text>
+<text class="ts" x="402" y="634" font-size="11">never delete</text>
+<line class="ln" x1="377" y1="644" x2="377" y2="678" marker-end="url(#ar)"/>
+
+<rect class="card" x="96" y="686" width="562" height="60" rx="4"/>
+<text class="t"  x="110" y="708" font-size="13">Three options + next week's model</text>
+<text class="ts" x="110" y="726" font-size="11">hold · value transfer · aggressive — each names its screen, its chip line and its risk</text>
+
+<text class="ph" x="12" y="772" font-size="11">Not shown (not weekly): GW10 predictive backtest · GW15+ calibration review — the gates that decide whether this survives contact with real data.</text>
+</svg>

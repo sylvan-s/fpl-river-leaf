@@ -1,0 +1,1331 @@
+{
+ "source": "vaastav/Fantasy-Premier-League (community archive mirroring the official FPL API, GW-by-GW)",
+ "season": "2025-26",
+ "window_gws": [
+  23,
+  38
+ ],
+ "window_size": 16,
+ "generated_utc": "2026-08-09T09:28:46",
+ "match_method": "web_name/team matched by surname token(s) against archive full name, disambiguated by position/team/initial where needed",
+ "matched": {
+  "Raya|ARS": {
+   "starts": 15,
+   "games": 16,
+   "pos": "GKP"
+  },
+  "Gabriel|ARS": {
+   "starts": 15,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "J.Timber|ARS": {
+   "starts": 9,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Saliba|ARS": {
+   "starts": 13,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Calafiori|ARS": {
+   "starts": 6,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Hincapie|ARS": {
+   "starts": 10,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Mosquera|ARS": {
+   "starts": 5,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Saka|ARS": {
+   "starts": 9,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Rice|ARS": {
+   "starts": 15,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Eze|ARS": {
+   "starts": 10,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Ødegaard|ARS": {
+   "starts": 4,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Madueke|ARS": {
+   "starts": 9,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Merino|ARS": {
+   "starts": 0,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Martinelli|ARS": {
+   "starts": 4,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Zubimendi|ARS": {
+   "starts": 13,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Gyökeres|ARS": {
+   "starts": 9,
+   "games": 16,
+   "pos": "FWD"
+  },
+  "Martinez|AVL": {
+   "starts": 14,
+   "games": 16,
+   "pos": "GKP"
+  },
+  "Digne|AVL": {
+   "starts": 7,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Konsa|AVL": {
+   "starts": 13,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Cash|AVL": {
+   "starts": 13,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Mings|AVL": {
+   "starts": 9,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Pau|AVL": {
+   "starts": 7,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Bogarde|AVL": {
+   "starts": 6,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Maatsen|AVL": {
+   "starts": 9,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Lindelöf|AVL": {
+   "starts": 5,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Buendía|AVL": {
+   "starts": 11,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Guessand|AVL": {
+   "starts": 3,
+   "games": 16,
+   "pos": "MID"
+  },
+  "McGinn|AVL": {
+   "starts": 7,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Kamara|AVL": {
+   "starts": 0,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Onana|AVL": {
+   "starts": 10,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Watkins|AVL": {
+   "starts": 14,
+   "games": 16,
+   "pos": "FWD"
+  },
+  "Garnacho|AVL": {
+   "starts": 3,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Petrović|BOU": {
+   "starts": 16,
+   "games": 16,
+   "pos": "GKP"
+  },
+  "Hill|BOU": {
+   "starts": 16,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Truffert|BOU": {
+   "starts": 16,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Diakité|BOU": {
+   "starts": 0,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Smith|BOU": {
+   "starts": 6,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Rayan|BOU": {
+   "starts": 13,
+   "games": 15,
+   "pos": "MID"
+  },
+  "Tavernier|BOU": {
+   "starts": 11,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Scott|BOU": {
+   "starts": 15,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Kluivert|BOU": {
+   "starts": 0,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Adams|BOU": {
+   "starts": 6,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Brooks|BOU": {
+   "starts": 2,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Christie|BOU": {
+   "starts": 8,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Adli|BOU": {
+   "starts": 6,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Kroupi.Jr|BOU": {
+   "starts": 13,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Evanilson|BOU": {
+   "starts": 15,
+   "games": 16,
+   "pos": "FWD"
+  },
+  "Kelleher|BRE": {
+   "starts": 15,
+   "games": 16,
+   "pos": "GKP"
+  },
+  "Collins|BRE": {
+   "starts": 11,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Van den Berg|BRE": {
+   "starts": 13,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Lewis-Potter|BRE": {
+   "starts": 12,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Ajer|BRE": {
+   "starts": 8,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Kayode|BRE": {
+   "starts": 15,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Henry|BRE": {
+   "starts": 7,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Schade|BRE": {
+   "starts": 12,
+   "games": 16,
+   "pos": "MID"
+  },
+  "O.Dango|BRE": {
+   "starts": 13,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Damsgaard|BRE": {
+   "starts": 10,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Jensen|BRE": {
+   "starts": 16,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Janelt|BRE": {
+   "starts": 7,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Yarmoliuk|BRE": {
+   "starts": 10,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Thiago|BRE": {
+   "starts": 16,
+   "games": 16,
+   "pos": "FWD"
+  },
+  "Verbruggen|BHA": {
+   "starts": 16,
+   "games": 16,
+   "pos": "GKP"
+  },
+  "F.Kadıoğlu|BHA": {
+   "starts": 16,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "De Cuyper|BHA": {
+   "starts": 5,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Dunk|BHA": {
+   "starts": 11,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Mitoma|BHA": {
+   "starts": 10,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Minteh|BHA": {
+   "starts": 8,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Hinshelwood|BHA": {
+   "starts": 13,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Groß|BHA": {
+   "starts": 16,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Georginio|BHA": {
+   "starts": 4,
+   "games": 16,
+   "pos": "FWD"
+  },
+  "Gomez|BHA": {
+   "starts": 10,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Ayari|BHA": {
+   "starts": 4,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Wieffer|BHA": {
+   "starts": 10,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Baleba|BHA": {
+   "starts": 9,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Struijk|BHA": {
+   "starts": 14,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Rogers|CHE": {
+   "starts": 15,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Henderson|CHE": {
+   "starts": 7,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Welbeck|CHE": {
+   "starts": 13,
+   "games": 16,
+   "pos": "FWD"
+  },
+  "Sánchez|CHE": {
+   "starts": 14,
+   "games": 16,
+   "pos": "GKP"
+  },
+  "James|CHE": {
+   "starts": 5,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Chalobah|CHE": {
+   "starts": 10,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Gusto|CHE": {
+   "starts": 13,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Fofana|CHE": {
+   "starts": 11,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Hato|CHE": {
+   "starts": 10,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Palmer|CHE": {
+   "starts": 14,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Enzo|CHE": {
+   "starts": 15,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Neto|CHE": {
+   "starts": 10,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Caicedo|CHE": {
+   "starts": 16,
+   "games": 16,
+   "pos": "MID"
+  },
+  "João Pedro|CHE": {
+   "starts": 12,
+   "games": 16,
+   "pos": "FWD"
+  },
+  "Delap|CHE": {
+   "starts": 4,
+   "games": 16,
+   "pos": "FWD"
+  },
+  "Lacroix|CHE": {
+   "starts": 13,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Henderson|CRY": {
+   "starts": 15,
+   "games": 16,
+   "pos": "GKP"
+  },
+  "Muñoz|CRY": {
+   "starts": 15,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Richards|CRY": {
+   "starts": 13,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Canvot|CRY": {
+   "starts": 12,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Mitchell|CRY": {
+   "starts": 14,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Sarr|CRY": {
+   "starts": 12,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Johnson|CRY": {
+   "starts": 10,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Wharton|CRY": {
+   "starts": 9,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Yeremy|CRY": {
+   "starts": 8,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Hughes|CRY": {
+   "starts": 8,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Lerma|CRY": {
+   "starts": 10,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Kamada|CRY": {
+   "starts": 8,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Strand Larsen|CRY": {
+   "starts": 12,
+   "games": 16,
+   "pos": "FWD"
+  },
+  "Mateta|CRY": {
+   "starts": 3,
+   "games": 16,
+   "pos": "FWD"
+  },
+  "Pickford|EVE": {
+   "starts": 16,
+   "games": 16,
+   "pos": "GKP"
+  },
+  "Tarkowski|EVE": {
+   "starts": 15,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Keane|EVE": {
+   "starts": 10,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "O'Brien|EVE": {
+   "starts": 15,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Mykolenko|EVE": {
+   "starts": 14,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Dewsbury-Hall|EVE": {
+   "starts": 15,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Ndiaye|EVE": {
+   "starts": 16,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Garner|EVE": {
+   "starts": 16,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Iroegbunam|EVE": {
+   "starts": 6,
+   "games": 16,
+   "pos": "MID"
+  },
+  "McNeil|EVE": {
+   "starts": 8,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Barry|EVE": {
+   "starts": 7,
+   "games": 16,
+   "pos": "FWD"
+  },
+  "Leno|FUL": {
+   "starts": 16,
+   "games": 16,
+   "pos": "GKP"
+  },
+  "Andersen|FUL": {
+   "starts": 12,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Robinson|FUL": {
+   "starts": 10,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "J.Cuenca|FUL": {
+   "starts": 3,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Tete|FUL": {
+   "starts": 5,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Bassey|FUL": {
+   "starts": 13,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Castagne|FUL": {
+   "starts": 11,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Iwobi|FUL": {
+   "starts": 13,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Smith Rowe|FUL": {
+   "starts": 12,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Kevin|FUL": {
+   "starts": 3,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Bobb|FUL": {
+   "starts": 6,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Berge|FUL": {
+   "starts": 13,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Lukić|FUL": {
+   "starts": 5,
+   "games": 16,
+   "pos": "MID"
+  },
+  "King|FUL": {
+   "starts": 4,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Sessegnon|FUL": {
+   "starts": 6,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Muniz|FUL": {
+   "starts": 6,
+   "games": 16,
+   "pos": "FWD"
+  },
+  "Perri|LEE": {
+   "starts": 0,
+   "games": 16,
+   "pos": "GKP"
+  },
+  "Bijol|LEE": {
+   "starts": 10,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Rodon|LEE": {
+   "starts": 13,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Bogle|LEE": {
+   "starts": 13,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Gudmundsson|LEE": {
+   "starts": 10,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Justin|LEE": {
+   "starts": 16,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Stach|LEE": {
+   "starts": 10,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Okafor|LEE": {
+   "starts": 5,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Aaronson|LEE": {
+   "starts": 15,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Ampadu|LEE": {
+   "starts": 16,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Longstaff|LEE": {
+   "starts": 0,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Gruev|LEE": {
+   "starts": 7,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Tanaka|LEE": {
+   "starts": 7,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Calvert-Lewin|LEE": {
+   "starts": 15,
+   "games": 16,
+   "pos": "FWD"
+  },
+  "Nmecha|LEE": {
+   "starts": 4,
+   "games": 16,
+   "pos": "FWD"
+  },
+  "A.Becker|LIV": {
+   "starts": 9,
+   "games": 16,
+   "pos": "GKP"
+  },
+  "Virgil|LIV": {
+   "starts": 16,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Frimpong|LIV": {
+   "starts": 7,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Kerkez|LIV": {
+   "starts": 9,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Bradley|LIV": {
+   "starts": 0,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Wirtz|LIV": {
+   "starts": 10,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Gakpo|LIV": {
+   "starts": 16,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Szoboszlai|LIV": {
+   "starts": 15,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Gravenberch|LIV": {
+   "starts": 14,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Mac Allister|LIV": {
+   "starts": 14,
+   "games": 16,
+   "pos": "MID"
+  },
+  "C.Jones|LIV": {
+   "starts": 8,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Ekitiké|LIV": {
+   "starts": 7,
+   "games": 16,
+   "pos": "FWD"
+  },
+  "Grealish|MCI": {
+   "starts": 0,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Donnarumma|MCI": {
+   "starts": 15,
+   "games": 16,
+   "pos": "GKP"
+  },
+  "O'Reilly|MCI": {
+   "starts": 13,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Guéhi|MCI": {
+   "starts": 15,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Matheus N.|MCI": {
+   "starts": 15,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Rúben|MCI": {
+   "starts": 5,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Gvardiol|MCI": {
+   "starts": 1,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Aït-Nouri|MCI": {
+   "starts": 9,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Khusanov|MCI": {
+   "starts": 10,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Semenyo|MCI": {
+   "starts": 16,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Foden|MCI": {
+   "starts": 4,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Cherki|MCI": {
+   "starts": 9,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Doku|MCI": {
+   "starts": 6,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Rodrigo|MCI": {
+   "starts": 11,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Reijnders|MCI": {
+   "starts": 3,
+   "games": 16,
+   "pos": "MID"
+  },
+  "N.Gonzalez|MCI": {
+   "starts": 2,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Haaland|MCI": {
+   "starts": 12,
+   "games": 16,
+   "pos": "FWD"
+  },
+  "Anderson|MCI": {
+   "starts": 15,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Tielemans|MUN": {
+   "starts": 7,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Andrey Santos|MUN": {
+   "starts": 8,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Darlow|MUN": {
+   "starts": 16,
+   "games": 16,
+   "pos": "GKP"
+  },
+  "Lammens|MUN": {
+   "starts": 16,
+   "games": 16,
+   "pos": "GKP"
+  },
+  "Dorgu|MUN": {
+   "starts": 2,
+   "games": 16,
+   "pos": "MID"
+  },
+  "De Ligt|MUN": {
+   "starts": 0,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Dalot|MUN": {
+   "starts": 12,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Maguire|MUN": {
+   "starts": 14,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Martinez|MUN": {
+   "starts": 8,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Yoro|MUN": {
+   "starts": 6,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Heaven|MUN": {
+   "starts": 3,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Mazraoui|MUN": {
+   "starts": 5,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Shaw|MUN": {
+   "starts": 16,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "B.Fernandes|MUN": {
+   "starts": 16,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Mbeumo|MUN": {
+   "starts": 14,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Cunha|MUN": {
+   "starts": 13,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Mount|MUN": {
+   "starts": 2,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Amad|MUN": {
+   "starts": 12,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Mainoo|MUN": {
+   "starts": 15,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Šeško|MUN": {
+   "starts": 6,
+   "games": 16,
+   "pos": "FWD"
+  },
+  "Pope|NEW": {
+   "starts": 11,
+   "games": 16,
+   "pos": "GKP"
+  },
+  "Thiaw|NEW": {
+   "starts": 15,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Schär|NEW": {
+   "starts": 0,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Botman|NEW": {
+   "starts": 12,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Burn|NEW": {
+   "starts": 10,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Hall|NEW": {
+   "starts": 13,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Livramento|NEW": {
+   "starts": 3,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Bruno G.|NEW": {
+   "starts": 7,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Barnes|NEW": {
+   "starts": 9,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Elanga|NEW": {
+   "starts": 7,
+   "games": 16,
+   "pos": "MID"
+  },
+  "J.Ramsey|NEW": {
+   "starts": 11,
+   "games": 16,
+   "pos": "MID"
+  },
+  "J.Murphy|NEW": {
+   "starts": 7,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Joelinton|NEW": {
+   "starts": 7,
+   "games": 16,
+   "pos": "MID"
+  },
+  "L.Miley|NEW": {
+   "starts": 5,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Willock|NEW": {
+   "starts": 8,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Woltemade|NEW": {
+   "starts": 7,
+   "games": 16,
+   "pos": "FWD"
+  },
+  "Sels|NFO": {
+   "starts": 13,
+   "games": 16,
+   "pos": "GKP"
+  },
+  "N.Williams|NFO": {
+   "starts": 14,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Milenković|NFO": {
+   "starts": 15,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Murillo|NFO": {
+   "starts": 9,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Aina|NFO": {
+   "starts": 12,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Savona|NFO": {
+   "starts": 0,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Gibbs-White|NFO": {
+   "starts": 14,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Hudson-Odoi|NFO": {
+   "starts": 9,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Ndoye|NFO": {
+   "starts": 0,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Hutchinson|NFO": {
+   "starts": 9,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Dominguez|NFO": {
+   "starts": 8,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Sangaré|NFO": {
+   "starts": 13,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Igor Jesus|NFO": {
+   "starts": 14,
+   "games": 16,
+   "pos": "FWD"
+  },
+  "Van Hecke|TOT": {
+   "starts": 15,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Tonali|TOT": {
+   "starts": 12,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Vicario|TOT": {
+   "starts": 9,
+   "games": 16,
+   "pos": "GKP"
+  },
+  "Dubravka|TOT": {
+   "starts": 13,
+   "games": 16,
+   "pos": "GKP"
+  },
+  "Senesi|TOT": {
+   "starts": 16,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Pedro Porro|TOT": {
+   "starts": 12,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Romero|TOT": {
+   "starts": 5,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Danso|TOT": {
+   "starts": 10,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Robertson|TOT": {
+   "starts": 7,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Van de Ven|TOT": {
+   "starts": 14,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Spence|TOT": {
+   "starts": 7,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Udogie|TOT": {
+   "starts": 8,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Kudus|TOT": {
+   "starts": 0,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Xavi|TOT": {
+   "starts": 8,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Tel|TOT": {
+   "starts": 7,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Bentancur|TOT": {
+   "starts": 6,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Odobert|TOT": {
+   "starts": 3,
+   "games": 16,
+   "pos": "MID"
+  },
+  "P.M.Sarr|TOT": {
+   "starts": 6,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Gallagher|TOT": {
+   "starts": 13,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Bergvall|TOT": {
+   "starts": 1,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Gray|TOT": {
+   "starts": 9,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Solanke|TOT": {
+   "starts": 11,
+   "games": 16,
+   "pos": "FWD"
+  },
+  "Richarlison|TOT": {
+   "starts": 7,
+   "games": 16,
+   "pos": "FWD"
+  },
+  "Roefs|SUN": {
+   "starts": 13,
+   "games": 16,
+   "pos": "GKP"
+  },
+  "Ballard|SUN": {
+   "starts": 10,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Mukiele|SUN": {
+   "starts": 12,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Hume|SUN": {
+   "starts": 14,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Alderete|SUN": {
+   "starts": 15,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "Reinildo|SUN": {
+   "starts": 10,
+   "games": 16,
+   "pos": "DEF"
+  },
+  "E.Le Fée|SUN": {
+   "starts": 14,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Diarra|SUN": {
+   "starts": 11,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Xhaka|SUN": {
+   "starts": 10,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Sadiki|SUN": {
+   "starts": 16,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Talbi|SUN": {
+   "starts": 7,
+   "games": 16,
+   "pos": "MID"
+  },
+  "Brobbey|SUN": {
+   "starts": 14,
+   "games": 16,
+   "pos": "FWD"
+  },
+  "Isidor|SUN": {
+   "starts": 0,
+   "games": 16,
+   "pos": "FWD"
+  }
+ },
+ "unmatched_current_squad_pool": [
+  "Gomes|AVL",
+  "Wilson|LEE",
+  "Fernandes|TOT",
+  "Beto|EVE",
+  "Morato|NFO"
+ ],
+ "unmatched_note": "Name-matching failed or was ambiguous for these 5 (out of 267 in the 900+min last-season pool). build_squad.py falls back to the season-total start rate for them; verify manually before trusting a gate decision that hinges on one of these five."
+}
