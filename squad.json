@@ -1,13 +1,13 @@
 {
-  "_comment": "SINGLE SOURCE OF TRUTH for live squad state. Read by squad_state.py, which optimise_squad.py, build_dashboard.py and fixture_adjust.py all import. TEAM_CHANGE_LOG.md remains the human narrative and the append-only history; this file is the current state that narrative describes. Update BOTH after every actioned transfer.",
-  "updated_utc": "2026-08-09T12:00:00Z",
-  "as_at_note": "GW1 pre-deadline. Deadline Fri 21 Aug 2026 17:30 UTC (18:30 BST).",
+  "_comment": "SINGLE SOURCE OF TRUTH for live squad state. Read by squad_state.py. TEAM_CHANGE_LOG.md is the human narrative. Update BOTH after every actioned transfer.",
+  "updated_utc": "2026-08-09T21:37:24Z",
+  "as_at_note": "GW1 pre-deadline, REBUILT under roadmap A4 (empirical DC hit rates). Deadline Fri 21 Aug 2026 17:30 UTC.",
   "gameweek": 1,
-  "formation": "3-4-3",
+  "formation": "3-5-2",
   "bank": 0.5,
   "squad_value": 99.5,
-  "captain": "Thiago",
-  "vice": "B.Fernandes",
+  "captain": "B.Fernandes",
+  "vice": "Thiago",
   "squad": [
     {
       "name": "Raya",
@@ -20,16 +20,6 @@
       "selected_on": "19 clean sheets, best xGC in the league (0.74)"
     },
     {
-      "name": "Lacroix",
-      "pos": "DEF",
-      "team": "CHE",
-      "price": 6.0,
-      "bought_for": 6.0,
-      "role": "XI",
-      "bench_order": null,
-      "selected_on": "CBIT 10.8 — clears the 10+ defensive-contribution floor; 11 clean sheets"
-    },
-    {
       "name": "Gabriel",
       "pos": "DEF",
       "team": "ARS",
@@ -37,7 +27,17 @@
       "bought_for": 8.0,
       "role": "XI",
       "bench_order": null,
-      "selected_on": "xGC 0.72, 18 clean sheets, 23.7 bonus points per 90"
+      "selected_on": "xGC 0.72, 18 clean sheets, 23.7 bps/90 — and a 37% DC hit rate the old model scored at 0.20"
+    },
+    {
+      "name": "O'Reilly",
+      "pos": "DEF",
+      "team": "MCI",
+      "price": 6.5,
+      "bought_for": 6.5,
+      "role": "XI",
+      "bench_order": null,
+      "selected_on": "Attacking defender: 5 goals, 4 assists, 14 clean sheets in 2025/26. Low DC (4%) — he is here for returns and clean sheets, not the defensive floor"
     },
     {
       "name": "Virgil",
@@ -47,7 +47,7 @@
       "bought_for": 6.5,
       "role": "XI",
       "bench_order": null,
-      "selected_on": "xGC 1.25, 10 clean sheets — and the best defensive fixture run in GW1–4 (DEF x 0.69)"
+      "selected_on": "42% DC hit rate, 100% starts, and the best defensive fixture run in GW1-4 (DEF x 0.69)"
     },
     {
       "name": "B.Fernandes",
@@ -57,17 +57,7 @@
       "bought_for": 12.0,
       "role": "XI",
       "bench_order": null,
-      "selected_on": "xGI/90 0.68 — the highest in the game"
-    },
-    {
-      "name": "Schade",
-      "pos": "MID",
-      "team": "BRE",
-      "price": 6.0,
-      "bought_for": 6.0,
-      "role": "XI",
-      "bench_order": null,
-      "selected_on": "flat xP 4.55 (before fixtures), delta −1.1, 8 goals — underperforming his chances, so underpriced"
+      "selected_on": "xGI/90 0.68 — the highest in the game. 100% starts"
     },
     {
       "name": "Mbeumo",
@@ -77,7 +67,7 @@
       "bought_for": 8.0,
       "role": "XI",
       "bench_order": null,
-      "selected_on": "xGI/90 0.58, delta −3.0. Booked 4 times in 2025/26 — a tendency worth watching, but cards reset each season, so he starts 2026/27 on zero"
+      "selected_on": "xGI/90 0.58, delta -3.0 — underperforming his chances. Cards reset each season, so last season's 4 yellows are a tendency, not a risk"
     },
     {
       "name": "Sarr",
@@ -87,27 +77,27 @@
       "bought_for": 6.5,
       "role": "XI",
       "bench_order": null,
-      "selected_on": "flat xP 4.78 (before fixtures), xGI/90 0.50, delta −1.1 — only visible once gate 2 moved to a last-16 window"
+      "selected_on": "flat xP 4.78 (before fixtures), xGI/90 0.50, delta -1.1 — only visible once gate 2 moved to a last-16 window"
     },
     {
-      "name": "Calvert-Lewin",
-      "pos": "FWD",
-      "team": "LEE",
+      "name": "O.Dango",
+      "pos": "MID",
+      "team": "BRE",
+      "price": 6.5,
+      "bought_for": 6.5,
+      "role": "XI",
+      "bench_order": null,
+      "selected_on": "Ouattara: 7 goals, 8 assists, 162 ICT. Attacking midfield value at £6.5m"
+    },
+    {
+      "name": "Schade",
+      "pos": "MID",
+      "team": "BRE",
       "price": 6.0,
       "bought_for": 6.0,
       "role": "XI",
       "bench_order": null,
-      "selected_on": "xGI/90 0.55, delta −0.6"
-    },
-    {
-      "name": "João Pedro",
-      "pos": "FWD",
-      "team": "CHE",
-      "price": 7.5,
-      "bought_for": 7.5,
-      "role": "XI",
-      "bench_order": null,
-      "selected_on": "xGI/90 0.57 — but delta +7.1, meaning he has scored well above his chances. Watch"
+      "selected_on": "flat xP 4.55 (before fixtures), delta -1.1, 8 goals — underperforming his chances, so underpriced"
     },
     {
       "name": "Thiago",
@@ -117,37 +107,47 @@
       "bought_for": 8.0,
       "role": "XI",
       "bench_order": null,
-      "selected_on": "xGI/90 0.62 and the best availability in the squad — hence the armband"
+      "selected_on": "xGI/90 0.62, 22 goals, 100% starts — the best availability in the squad"
     },
     {
-      "name": "Dubravka",
+      "name": "Calvert-Lewin",
+      "pos": "FWD",
+      "team": "LEE",
+      "price": 6.0,
+      "bought_for": 6.0,
+      "role": "XI",
+      "bench_order": null,
+      "selected_on": "14 goals, xGI/90 0.55, delta -0.6 at £6.0m"
+    },
+    {
+      "name": "Verbruggen",
       "pos": "GKP",
-      "team": "TOT",
-      "price": 4.0,
-      "bought_for": 4.0,
+      "team": "BHA",
+      "price": 4.5,
+      "bought_for": 4.5,
       "role": "BENCH",
       "bench_order": 0,
-      "selected_on": "Goalkeeper cover. Chosen on price, not merit"
+      "selected_on": "Goalkeeper cover — and unlike the player he replaces, a first-choice keeper (3420 mins, 100% starts) rather than a reported backup"
     },
     {
-      "name": "Tavernier",
-      "pos": "MID",
+      "name": "Evanilson",
+      "pos": "FWD",
       "team": "BOU",
       "price": 6.0,
       "bought_for": 6.0,
       "role": "BENCH",
       "bench_order": 1,
-      "selected_on": "First substitute. Below the 75% starts line, so he cannot start — but he is the most valuable autosub in the squad"
+      "selected_on": "First substitute. 94% starts and xP 3.61 — the most valuable autosub in the squad"
     },
     {
-      "name": "Kayode",
+      "name": "Justin",
       "pos": "DEF",
-      "team": "BRE",
+      "team": "LEE",
       "price": 4.5,
       "bought_for": 4.5,
       "role": "BENCH",
       "bench_order": 2,
-      "selected_on": "Bench fodder — price and availability only"
+      "selected_on": "Bench cover at £4.5m with 100% starts and a 20% DC rate"
     },
     {
       "name": "Shaw",
@@ -157,10 +157,10 @@
       "bought_for": 4.5,
       "role": "BENCH",
       "bench_order": 3,
-      "selected_on": "Bench fodder. xGI/90 0.08 and it does not matter: merit plays no part in bench picks"
+      "selected_on": "Bench fodder — price and availability only. Merit plays no part in bench picks"
     }
   ],
-  "bought_for_note": "Pre-season, purchase price equals current price for every player. Once the season starts these diverge and FPL pays purchase price plus half any rise on sale — keep bought_for accurate from GW1.",
+  "bought_for_note": "Pre-season, purchase price equals current price. Keep bought_for accurate from GW1 — FPL pays purchase price plus half any rise on sale.",
   "chips": {
     "set1": {
       "expires_utc": "2027-01-02T13:30:00Z",
@@ -179,5 +179,5 @@
       "triplecaptain": "available"
     }
   },
-  "selected_on_note": "One line per player explaining WHY he is in the squad, mirroring TEAM_CHANGE_LOG.md CURRENT STATE 'Selected on'. Lives here so the dashboard renders the reasoning without parsing prose. Update alongside the log when a player changes."
+  "selected_on_note": "One line per player explaining WHY he is in the squad, mirroring TEAM_CHANGE_LOG.md. Update alongside the log."
 }

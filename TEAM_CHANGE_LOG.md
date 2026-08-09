@@ -15,136 +15,62 @@ one-line record. What remains is what actually governs a decision today.
 
 ---
 
-## CURRENT STATE — as at Sun 9 Aug 2026, 00:45 BST (GW1 pre-deadline)
+## CURRENT STATE — as at Sun 9 Aug 2026, 22:40 BST (GW1 pre-deadline)
 
-**Deadline:** Fri 21 Aug 2026, 18:30 BST · **Formation:** 3-4-3
-**Last change:** Enzo → Sarr, Sun 9 Aug (Gate 2 last-16-starts finding, +0.42 xP/90)
-**Squad value** £99.5m · **Bank** £0.5m · **Transfers** 0 pts (all free pre-season)
+**Deadline:** Fri 21 Aug 2026, 18:30 BST · **Formation:** 3-5-2
+**Last change:** **REBUILT 9 Aug** under roadmap A4 — 5 transfers, 0 pts (all free pre-season)
+**Squad value** £99.5m · **Bank** £0.5m · **Captain** B.Fernandes · **Vice** Thiago
 
-**Expected points (xP) are computed from FPL's own scoring table** — goals,
-assists, clean sheets, the DC threshold, appearance — weighted exactly as FPL
-weights them, nothing invented. See `SELECTION_FRAMEWORK.md` (Gate 4) and
-`build_squad.py` for the full weights.
+**Why the rebuild.** `p_threshold` converted an average CBIT/CBIRT into expected
+DC points through a four-band step function on the season mean. Measured against
+2025/26 per-match counts it was wrong three ways — the 0.80–1.00× band assumed
+0.20 against an actual **0.41**, the 1.30× band was **unreachable**, and everyone
+above the line scored an identical 0.55 while real hit rates ran **52%–70%**.
+Roadmap **A4** replaced it with each player's observed per-match hit rate.
+Scored under the corrected model, rebuilding is worth **+1.17 pts/GW (~44
+pts/season)** over holding.
 
-**Rebuilt from scratch 9 Aug** under `SELECTION_FRAMEWORK.md`'s gates, in
-order: 900+ min sample → ≥75% starts → available now → position core metric →
-£100.0m / 2-5-5-3 / max 3 per club. **No inherited players remain.**
-**Reproducible:** `python3 build_squad.py` regenerates this exact squad.
+| Pos | Player | Club | Price | st% | DC hit | Selected on |
+|---|---|---|---|---|---|---|
+| GK | Raya | ARS | £6.0m | 94% | — | 19 CS, best xGC (0.74) |
+| DEF | Gabriel | ARS | £8.0m | 94% | 37% | xGC 0.72, 18 CS, bps/90 23.7 |
+| DEF | O'Reilly | MCI | £6.5m | 81% | 4% | **5 goals, 4 assists, 14 CS** — returns, not a defensive floor |
+| DEF | Virgil | LIV | £6.5m | **100%** | 42% | best DEF x 0.69 in GW1–4 |
+| MID | B.Fernandes | MUN | £12.0m | **100%** | 15% | xGI/90 0.68, highest in game · **CAPTAIN** |
+| MID | Mbeumo | MUN | £8.0m | 88% | 0% | xGI/90 0.58, delta −3.0 |
+| MID | Sarr | CRY | £6.5m | 75% | 0% | flat xP 4.78, delta −1.1 |
+| MID | O.Dango | BRE | £6.5m | 81% | 8% | 7 goals, 8 assists at £6.5m |
+| MID | Schade | BRE | £6.0m | 75% | 0% | flat xP 4.55, delta −1.1 |
+| FWD | Thiago | BRE | £8.0m | **100%** | 3% | 22 goals, best availability · **VICE** |
+| FWD | Calvert-Lewin | LEE | £6.0m | 94% | 0% | 14 goals, delta −0.6 |
+| BEN | Verbruggen | BHA | £4.5m | **100%** | — | GK cover — a **first-choice** keeper |
+| BEN | Evanilson | BOU | £6.0m | 94% | 0% | bench 1 · the autosub that matters |
+| BEN | Justin | LEE | £4.5m | **100%** | 20% | bench 2 |
+| BEN | Shaw | MUN | £4.5m | **100%** | 14% | bench 3 |
 
-**Berge → Schade actioned 9 Aug, 0 pts** — the first change from the
-corrected xP model. Schade starts on xP 4.55 vs Tavernier's 4.31, who drops
-to the bench.
+**Club counts:** MUN 3 and BRE 3 — **both at the cap.**
 
-**A selection that looks wrong until you read the bench rule:**
-**Shaw, xGI/90 0.08** — **not in the XI.** Bench fodder, chosen on price and
-availability only (£4.5m, 38/38 starts). Merit plays no part in bench picks.
+### The 5 transfers, and why
 
-**st% below is the last-16-GW figure (GW23–38, 2025/26), not season-total —
-changed 9 Aug 2026, see `SELECTION_FRAMEWORK.md` Gate 2.**
+| Out | In | Reason |
+|---|---|---|
+| **Lacroix** (CHE) | **O'Reilly** (MCI) | Lacroix's 57% DC was already scored generously at 0.55 by the old model, so A4 barely moved him while it raised others past him. He also carries a **Crystal Palace** record — see the contaminated fence. |
+| **Dubravka** (TOT) | **Verbruggen** (BHA) | Dubravka is a **Burnley** record *and* reported second choice at Spurs. Verbruggen is a genuine first-choice keeper at the same price. |
+| **João Pedro** (CHE) | **O.Dango** (BRE) | delta **+7.1** — one of the largest overperformances in the game, and unlikely to persist. |
+| **Tavernier** (BOU) | **Evanilson** (BOU) | Tavernier could not start (69%, below the 75% gate). Evanilson starts 94% and is worth more as the first substitute. |
+| **Kayode** (BRE) | **Justin** (LEE) | Club cap: BRE was full. Justin is the same price with 100% starts. |
 
-| Pos | Player | Club | Price | st% (L16) | Selected on |
-|---|---|---|---|---|---|
-| GK | Raya | ARS | £6.0m | 94% | 19 CS, best xGC in league (0.74) |
-| DEF | Lacroix | CHE | £6.0m | 81% | **CBIT 10.8 — clears the 10+ floor**, 11 CS |
-| DEF | Gabriel | ARS | £8.0m | 94% | xGC 0.72, 18 CS, bps/90 23.7 |
-| DEF | Virgil | LIV | £6.5m | **100%** | xGC 1.25, 10 CS · **best DEF x 0.69 in GW1–4** |
-| MID | B.Fernandes | MUN | £12.0m | **100%** | xGI/90 0.68 — highest in game · **VICE** |
-| MID | Schade | BRE | £6.0m | 75% | xP 4.55 · delta −1.1 · 8 goals |
-| MID | Mbeumo | MUN | £8.0m | 88% | 0.58, delta −3.0 · **4/5 yellows** |
-| MID | Sarr | CRY | £6.5m | 75% | xP 4.78 · 0.50 xGI/90 · delta −1.1 — **Gate 2 find, see below** |
-| FWD | Calvert-Lewin | LEE | £6.0m | 94% | 0.55, delta −0.6 |
-| FWD | João Pedro | CHE | £7.5m | 75% | 0.57 — **delta +7.1, watch** |
-| FWD | Thiago | BRE | £8.0m | **100%** | 0.62, best availability · **CAPTAIN** |
-| BEN | Dubravka | TOT | £4.0m | 81% | GK cover |
-| BEN | Tavernier | BOU | £6.0m | **69%** | bench 1 · below the 75% XI line now — see note below |
-| BEN | Kayode | BRE | £4.5m | 94% | bench 2 |
-| BEN | Shaw | MUN | £4.5m | **100%** | bench 3 |
+**Both contaminated players fell out on their own.** The corrected DC estimator
+dropped Lacroix and Dubravka without being told anything about club changes —
+two independent lines of evidence landing on the same two players.
 
-**Club counts:** MUN 3 (B.Fernandes, Mbeumo, Shaw) — **at the cap, no further
-additions.** CHE dropped to 2 (Lacroix, João Pedro) with Enzo's exit — **there
-is now room for a third Chelsea player**, which is exactly the room Sylvan
-flagged Palmer against (see Gate 2 note below). ARS 2, BRE 2, CRY 1 (Sarr, new),
-LIV 1 (Virgil), rest 1.
+**Captaincy is provisional.** B.Fernandes has the highest xP (5.27) at 100%
+starts, but **captaincy is free until the deadline** — confirm with
+`captaincy_odds` on team news, not on this table.
 
-**Squad shape:** every starter still clears ≥75% on the last-16 basis
-(Schade and João Pedro sit exactly on the line at 75%). Tavernier, bench
-fodder, has dropped to 69% — still clears the 60% bench floor, so no action,
-but his minutes share is trending down. Still **no midfielder clears the 12+
-CBIRT threshold** — see the sensitivity note below.
-
-**Gate 2 methodology change, 9 Aug 2026 — starts% now measured over the last
-16 GWs of 2025/26, not the full season.** Full rationale, data source, and
-match caveats in `SELECTION_FRAMEWORK.md`. Headline result: the new window
-is *less* restrictive overall (108 players clear the XI gate vs 91 before),
-but it surfaced one real, above-noise-floor transfer that season-total starts
-was hiding: **Enzo → Sarr (CRY, £6.5m), +0.42 xP/90, free** (`optimise_squad.py
---fixtures --transfers 1`). Sarr's flat score already beat Enzo's under either
-basis (4.78 vs 4.63); he was simply invisible before because his season-total
-starts (63%) sat below the 75% gate while his last-16 figure (75% exactly)
-does not.
-
-**ACTIONED Sun 9 Aug 2026, 0 pts.** Sarr slotted straight into the XI, no
-auto-benching. Squad value £100.0m → £99.5m, **bank £0.0m → £0.5m.** Captain
-reverted to João Pedro on confirm — fourth occasion — reset to Thiago and
-verified by zooming the armband.
-
-**Why now, beyond the raw gain (Sylvan's reasoning):** the swap also frees a
-Chelsea slot. CHE was at the 3-per-club cap (Lacroix, Enzo, João Pedro);
-dropping Enzo takes it to 2, opening room for **Palmer (CHE, £9.5m)**.
-
-**Checked, and the premise needs correcting: Palmer's starts are not in
-question.** He clears the last-16 gate comfortably at **88%** (14/16) — this
-was never a reliability problem. His score is **5.11 xP/90, the highest of
-any midfielder in the pool**, above even B.Fernandes (5.04). The actual
-barrier is **price**: £9.5m needs more than the £0.5m this swap freed, and
-CHE still can't take a fourth (Lacroix + João Pedro + Palmer would already be
-3). **Not a watch-and-wait case — it's a pure budget/formation question for
-Wildcard 1 or a future double-down sale.** Logged on WATCHLIST as a live
-priority, not a conditional one.
-
-**Why the midfield reads attacker-heavy — and how sensitive that is.** Zero
-true box-to-box midfielders exist in the pool: the 7 who clear 12+ CBIRT post
-only 0.07–0.22 xGI/90, against 0.45–0.68 for the ones picked. It's a
-consequence of the pool, not a deliberate choice — and the shape genuinely is
-higher-variance: an `attacker` has no 2pt floor, so returns are lumpy, while a
-`holder` banks 2 most weeks. The DC-threshold probability behind this is
-estimated in bands from a season mean, so it's touchier than it looks: Schade
-(xP 4.55) beats a holder like Scott (4.21, 89% starts) by only **0.34** xP.
-The honest fix is true per-match hit rates from current-season data —
-flagged for the GW10 backtest.
-
-**Captaincy — Thiago**, decided by `captaincy_odds`, not by price or fixture:
-
-| | E[pts] | P(haul) | P(blank) | DiffUp | Own% |
-|---|---|---|---|---|---|
-| **Thiago** | **5.15** | **15.1%** | **48.6%** | **12.7** | 16.1 |
-| B.Fernandes | 5.05 | 9.9% | 43.6% | 5.1 | 48.6 |
-| Mbeumo | 4.69 | 8.8% | 45.8% | 7.0 | 19.9 |
-| João Pedro | 4.39 | 9.5% | 59.9% | 4.3 | 54.8 |
-
-**Thiago tops all four measures** — rare, and decisive. FPL had auto-assigned
-João Pedro, who ranks 4th on E[pts] with a 59.9% blank chance.
-
-**Chips:** all unused. Set 1 expires GW19 deadline, Sat 2 Jan 2027 13:30 GMT.
-
-**Open decisions:**
-- **O'Reilly → Virgil actioned 9 Aug** — full rationale in CHANGE HISTORY.
-- **Enzo → Sarr actioned 9 Aug** — surfaced by the Gate 2 change (last-16
-  starts), see the Gate 2 note above. Freed a Chelsea slot and £0.5m; **Palmer
-  (5.11 xP/90, best midfielder in the pool, 88% last-16 starts — the barrier
-  is price, not reliability) is the follow-up candidate, now on WATCHLIST.**
-- **PATTERN CONFIRMED: every transfer resets the captain.** Four occasions
-  now, each reverting to João Pedro. **Re-set and re-verify the armband by
-  zooming it after every single transfer** — a glance at a screenshot is not
-  sufficient.
-- **Mbeumo on 4/5 yellows** — ~13% chance a booking this GW triggers a
-  1-match ban next week. Hold signal, not a blank signal.
-- **João Pedro delta +7.1** — the squad's largest regression risk, retained
-  because 0.57 xGI/90 survives the delta penalty. **Review at GW4.**
-- **Overrides active: 0 of 3.** The rebuild used none — every pick came from
-  the gates. See OVERRIDES below.
-
----
+**HOLDING THE FIXTURE-WINDOW CAVEAT.** These figures use the GW1–4 window stamped
+for GW1. The objective remains **xP per 90**, so it is blind to how often a
+player starts (roadmap A0.5 — the availability haircut is ~11%).
 
 ## CHIP STRATEGY — SET 1 (expires GW19 deadline, Sat 2 Jan 2027 13:30 GMT)
 
