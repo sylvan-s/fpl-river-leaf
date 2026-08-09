@@ -9,21 +9,156 @@
   "captain": "Thiago",
   "vice": "B.Fernandes",
   "squad": [
-    {"name": "Raya",          "pos": "GKP", "team": "ARS", "price": 6.0,  "bought_for": 6.0,  "role": "XI",    "bench_order": null},
-    {"name": "Lacroix",       "pos": "DEF", "team": "CHE", "price": 6.0,  "bought_for": 6.0,  "role": "XI",    "bench_order": null},
-    {"name": "Gabriel",       "pos": "DEF", "team": "ARS", "price": 8.0,  "bought_for": 8.0,  "role": "XI",    "bench_order": null},
-    {"name": "Virgil",        "pos": "DEF", "team": "LIV", "price": 6.5,  "bought_for": 6.5,  "role": "XI",    "bench_order": null},
-    {"name": "B.Fernandes",   "pos": "MID", "team": "MUN", "price": 12.0, "bought_for": 12.0, "role": "XI",    "bench_order": null},
-    {"name": "Schade",        "pos": "MID", "team": "BRE", "price": 6.0,  "bought_for": 6.0,  "role": "XI",    "bench_order": null},
-    {"name": "Mbeumo",        "pos": "MID", "team": "MUN", "price": 8.0,  "bought_for": 8.0,  "role": "XI",    "bench_order": null},
-    {"name": "Sarr",          "pos": "MID", "team": "CRY", "price": 6.5,  "bought_for": 6.5,  "role": "XI",    "bench_order": null},
-    {"name": "Calvert-Lewin", "pos": "FWD", "team": "LEE", "price": 6.0,  "bought_for": 6.0,  "role": "XI",    "bench_order": null},
-    {"name": "João Pedro",    "pos": "FWD", "team": "CHE", "price": 7.5,  "bought_for": 7.5,  "role": "XI",    "bench_order": null},
-    {"name": "Thiago",        "pos": "FWD", "team": "BRE", "price": 8.0,  "bought_for": 8.0,  "role": "XI",    "bench_order": null},
-    {"name": "Dubravka",      "pos": "GKP", "team": "TOT", "price": 4.0,  "bought_for": 4.0,  "role": "BENCH", "bench_order": 0},
-    {"name": "Tavernier",     "pos": "MID", "team": "BOU", "price": 6.0,  "bought_for": 6.0,  "role": "BENCH", "bench_order": 1},
-    {"name": "Kayode",        "pos": "DEF", "team": "BRE", "price": 4.5,  "bought_for": 4.5,  "role": "BENCH", "bench_order": 2},
-    {"name": "Shaw",          "pos": "DEF", "team": "MUN", "price": 4.5,  "bought_for": 4.5,  "role": "BENCH", "bench_order": 3}
+    {
+      "name": "Raya",
+      "pos": "GKP",
+      "team": "ARS",
+      "price": 6.0,
+      "bought_for": 6.0,
+      "role": "XI",
+      "bench_order": null,
+      "selected_on": "19 clean sheets, best xGC in the league (0.74)"
+    },
+    {
+      "name": "Lacroix",
+      "pos": "DEF",
+      "team": "CHE",
+      "price": 6.0,
+      "bought_for": 6.0,
+      "role": "XI",
+      "bench_order": null,
+      "selected_on": "CBIT 10.8 — clears the 10+ defensive-contribution floor; 11 clean sheets"
+    },
+    {
+      "name": "Gabriel",
+      "pos": "DEF",
+      "team": "ARS",
+      "price": 8.0,
+      "bought_for": 8.0,
+      "role": "XI",
+      "bench_order": null,
+      "selected_on": "xGC 0.72, 18 clean sheets, 23.7 bonus points per 90"
+    },
+    {
+      "name": "Virgil",
+      "pos": "DEF",
+      "team": "LIV",
+      "price": 6.5,
+      "bought_for": 6.5,
+      "role": "XI",
+      "bench_order": null,
+      "selected_on": "xGC 1.25, 10 clean sheets — and the best defensive fixture run in GW1–4 (DEF x 0.69)"
+    },
+    {
+      "name": "B.Fernandes",
+      "pos": "MID",
+      "team": "MUN",
+      "price": 12.0,
+      "bought_for": 12.0,
+      "role": "XI",
+      "bench_order": null,
+      "selected_on": "xGI/90 0.68 — the highest in the game"
+    },
+    {
+      "name": "Schade",
+      "pos": "MID",
+      "team": "BRE",
+      "price": 6.0,
+      "bought_for": 6.0,
+      "role": "XI",
+      "bench_order": null,
+      "selected_on": "xP 4.55, delta −1.1, 8 goals — underperforming his chances, so underpriced"
+    },
+    {
+      "name": "Mbeumo",
+      "pos": "MID",
+      "team": "MUN",
+      "price": 8.0,
+      "bought_for": 8.0,
+      "role": "XI",
+      "bench_order": null,
+      "selected_on": "xGI/90 0.58, delta −3.0 — but on 4 of 5 yellows, so a suspension is one booking away"
+    },
+    {
+      "name": "Sarr",
+      "pos": "MID",
+      "team": "CRY",
+      "price": 6.5,
+      "bought_for": 6.5,
+      "role": "XI",
+      "bench_order": null,
+      "selected_on": "xP 4.78, xGI/90 0.50, delta −1.1 — only visible once gate 2 moved to a last-16 window"
+    },
+    {
+      "name": "Calvert-Lewin",
+      "pos": "FWD",
+      "team": "LEE",
+      "price": 6.0,
+      "bought_for": 6.0,
+      "role": "XI",
+      "bench_order": null,
+      "selected_on": "xGI/90 0.55, delta −0.6"
+    },
+    {
+      "name": "João Pedro",
+      "pos": "FWD",
+      "team": "CHE",
+      "price": 7.5,
+      "bought_for": 7.5,
+      "role": "XI",
+      "bench_order": null,
+      "selected_on": "xGI/90 0.57 — but delta +7.1, meaning he has scored well above his chances. Watch"
+    },
+    {
+      "name": "Thiago",
+      "pos": "FWD",
+      "team": "BRE",
+      "price": 8.0,
+      "bought_for": 8.0,
+      "role": "XI",
+      "bench_order": null,
+      "selected_on": "xGI/90 0.62 and the best availability in the squad — hence the armband"
+    },
+    {
+      "name": "Dubravka",
+      "pos": "GKP",
+      "team": "TOT",
+      "price": 4.0,
+      "bought_for": 4.0,
+      "role": "BENCH",
+      "bench_order": 0,
+      "selected_on": "Goalkeeper cover. Chosen on price, not merit"
+    },
+    {
+      "name": "Tavernier",
+      "pos": "MID",
+      "team": "BOU",
+      "price": 6.0,
+      "bought_for": 6.0,
+      "role": "BENCH",
+      "bench_order": 1,
+      "selected_on": "First substitute. Below the 75% starts line, so he cannot start — but he is the most valuable autosub in the squad"
+    },
+    {
+      "name": "Kayode",
+      "pos": "DEF",
+      "team": "BRE",
+      "price": 4.5,
+      "bought_for": 4.5,
+      "role": "BENCH",
+      "bench_order": 2,
+      "selected_on": "Bench fodder — price and availability only"
+    },
+    {
+      "name": "Shaw",
+      "pos": "DEF",
+      "team": "MUN",
+      "price": 4.5,
+      "bought_for": 4.5,
+      "role": "BENCH",
+      "bench_order": 3,
+      "selected_on": "Bench fodder. xGI/90 0.08 and it does not matter: merit plays no part in bench picks"
+    }
   ],
   "bought_for_note": "Pre-season, purchase price equals current price for every player. Once the season starts these diverge and FPL pays purchase price plus half any rise on sale — keep bought_for accurate from GW1.",
   "chips": {
@@ -43,5 +178,6 @@
       "benchboost": "available",
       "triplecaptain": "available"
     }
-  }
+  },
+  "selected_on_note": "One line per player explaining WHY he is in the squad, mirroring TEAM_CHANGE_LOG.md CURRENT STATE 'Selected on'. Lives here so the dashboard renders the reasoning without parsing prose. Update alongside the log when a player changes."
 }

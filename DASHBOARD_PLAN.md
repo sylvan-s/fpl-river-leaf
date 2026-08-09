@@ -152,12 +152,37 @@ delta bar against the current:
 - **One transfer** — the optimiser's recommendation, shown *with* its bench
   consequence, not just the XI gain.
 
-> **Publishing caution.** This page is materially more strategically loaded
-> than page 2. The diagnostics reveal a squad; this reveals **intended
-> transfers and shortlists, before the deadline, to the one person you are
-> playing against.** That is a defensible choice — but make it deliberately.
-> Options: publish page 1 post-deadline only; or keep pages 1 and 5 out of
-> `docs/` and local-only, publishing 2, 3 and 4.
+### DECIDED 9 Aug 2026 — publish it, and change the design accordingly
+
+**Publish page 1, squad and alternatives included.** Rationale: these are not
+heavy competitive secrets, and there is more value in Dylan seeing the
+analytical approach than there is edge in hiding it. He may find it
+interesting; he may not; that is a better bet than a marginal points advantage
+in a two-player league.
+
+**This is not merely a permission — it changes what the page should be.** If
+the audience is someone learning, then a state dump is the wrong artefact. The
+page has to make the *reasoning* legible, not just the outcome:
+
+1. **Every player carries his reason.** `squad.json` now holds `selected_on`
+   per player, mirroring TEAM_CHANGE_LOG's "Selected on" column, so the card
+   can say *why* — "below the 75% starts line, so he cannot start, but he is
+   the most valuable autosub in the squad" — rather than only *what*.
+2. **Show what was rejected, not only what was picked.** The gates are the
+   interesting part. A panel showing how 700-odd players become 267 become 15,
+   with the count falling at each gate, teaches more than the final fifteen.
+3. **Alternatives become a teaching device**, not just an options list: the
+   same £100m spent three ways, with the cost of each difference named.
+4. **Link the jargon.** `GLOSSARY.md` exists; xGI, CBIT, delta and xP_adj
+   should all be hoverable rather than assumed.
+5. **Do not hide the uncertainty — it is the best lesson on the page.**
+   Lacroix starts on a Crystal Palace start rate and Dubravka is a bench keeper
+   on a Burnley one. Showing "this number is not what it appears to be, and
+   here is how we caught it" is more instructive than a page that looks
+   authoritative. The contamination flags should be prominent, not tucked away.
+
+The honest-about-limits framing also happens to be the project's actual
+character, so the page will be truer for it.
 
 ---
 
@@ -284,9 +309,20 @@ a Burnley start rate who is reported as backup at Spurs.
 
 ## Open questions
 
-- Publish page 1 at all, or keep it local until after each deadline?
+- ~~Publish page 1 at all?~~ **Decided 9 Aug 2026: yes** — see the squad page
+  section. The reason changes the design, not just the permission.
 - Vendor the 2025/26 vaastav data into the repo, or fetch at build time? In
   repo is reproducible and offline-safe but adds megabytes; fetching is light
   but makes the build network-dependent and silently stale.
 - Does page 2 stay self-contained, or join the shared-data model? Recommend it
   stays — it is the page that currently works.
+
+## Progress
+
+| Step | State |
+|---|---|
+| 1 · `squad.json` + repoint three files | **done** — `c211ba3` |
+| 2 · Shared CSS/nav, workflow page, per-page verify | **done** — `7f80bc8` |
+| 3 · Page 5, availability & intel | not started |
+| 4 · Page 1, squad | unblocked by the 9 Aug decision |
+| 5 · Page 3, player timeseries | not started; needs the vaastav pipeline |
