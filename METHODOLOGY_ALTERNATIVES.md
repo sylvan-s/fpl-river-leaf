@@ -1406,6 +1406,63 @@ passes. Overlap cannot be computed at all before then.
 **Kill criterion:** if the gap at GW20 is smaller than one gameweek's typical
 differential spread, this is noise — leave the objective alone and revisit at GW30.
 
+### B6-P. Split-half persistence — **CLOSED 9 Aug 2026, a year early**
+
+*The gate said GW20 2026/27. The 2025/26 archive answered it now. Reproduce with
+`python3 persistence_test.py`.*
+
+The xGI-first method rested on two numbers taken from external literature and
+flagged as unverifiable without two seasons of our own data. Both are now
+measured, and **both are more favourable to the method than assumed**:
+
+| Quantity | Assumed | **Measured** |
+|---|---|---|
+| chance creation persists | 0.63 | **0.84** (xGI/90, r) |
+| finishing over-performance persists | 0.12 | **−0.01** (delta/90, r) |
+
+n = 256 players with 450+ minutes in both halves of 2025/26, split at GW19.
+xG 0.83 · xA 0.76 · actual G+A 0.59 · finishing (G−xG) −0.09.
+
+**Delta retains nothing.** By first-half quintile, the heaviest over-performers
+(+0.246/90) kept **9%**; the heaviest under-performers (−0.137/90) crossed zero
+and finished **positive**. Cherki +4.2 → −0.4. Buendía +3.5 → −1.1.
+
+**"Good finishers stay good" — tested and not supported.** FWD −0.10 (n=28),
+MID −0.12, DEF +0.03. Nor does it emerge with shot volume: no first-half xG
+bucket shows positive persistence. Of the ten best first-half finishers, **four**
+stayed positive in the second; a coin gives five. Haaland +2.5 → −1.0.
+
+**The honest limit.** With 28 forwards the interval on r is roughly ±0.39, so
+this rules out a *large* finishing effect, not a modest one. Half a season is
+~40–60 shots against the hundreds the supporting literature uses. The defensible
+claim is **"not detectable at the horizon this model operates on"** — which for
+selection has the same consequence: a positive delta cannot be traded on.
+
+**What changes.** Nothing in the code — the delta rule was already "never sell
+high xGI on positive delta alone". It is now **evidence, not borrowed belief**,
+and if anything understated. Update the caveat wording wherever 0.63/0.12 appear.
+
+**Other limits:** one season, one split; requiring minutes in both halves selects
+for players who stayed fit; the January window sits inside the split, so some
+players moved club mid-sample — `docs/data/club_changes.json` allows a stricter
+re-run if ever wanted.
+
+### B6-Q. Position-specific persistence — NOT BUILT. Gate: a second season
+
+*Fell out of B6-P, 9 Aug 2026.*
+
+xG persistence is **not uniform by position**: MID 0.73, FWD 0.47, DEF 0.23. The
+model applies a single figure to everyone.
+
+**Do not act on this yet.** Much of the spread is likely a statistical artefact —
+forwards are a narrower, higher-xG group, and restricted range attenuates
+correlation. Distinguishing genuine positional difference from range restriction
+needs a second season, or a within-position variance-corrected estimate.
+
+**Kill criterion:** if the 2026/27 split reproduces a similar ordering *after*
+correcting for range, build position-specific shrinkage into A0.2's machinery.
+If not, keep one number and stop asking.
+
 ## Tier C — conditional, may never be built
 
 ### C1. Full Bayesian / PyMC — see §1, step 3
@@ -1481,8 +1538,9 @@ GW10     ** THE GATE ** Backtest. Decides C1 outright. Re-read C4.
 GW12–19  DGW/BGW forecasting (B4) ahead of chip-set-1 deadline.
 GW20     ** Protect/chase review (B7) ** — compute overlap with Dylan and the
          gap vs sigma*sqrt(N). Only then consider a variance term.
-GW20     Split-half PERSISTENCE test (B6). The 0.63/0.12 assumption everything
-         rests on becomes testable on our own data for the first time.
+GW20     Split-half persistence — ** CLOSED EARLY 9 Aug 2026 ** using the
+         2025/26 archive. xGI r=0.84 (assumed 0.63), delta r=-0.01 (assumed
+         0.12). See B6-P. Re-run to confirm on 2026/27; B6-Q still open.
 GW20+    Shrinkage fades in value; raw data is reliable. Second chip set.
 ```
 
