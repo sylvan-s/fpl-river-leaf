@@ -32,6 +32,34 @@ WHY THIS IS AN UPPER BOUND, so a small answer here is decisive:
     assumption in the list
 
 If the upper bound is below the noise floor, the exact model cannot rescue it.
+
+THE UNIT TRAP — read this before quoting any total
+--------------------------------------------------
+The bench term below is expected points PER GAMEWEEK: it is already multiplied
+by start probability. `optimise_squad.py`'s XI objective is expected points
+PER 90: it is not. **Adding the two is invalid**, and it fails in a specific,
+seductive direction.
+
+Worked example, the live GW1 squad, Tavernier -> Anderson:
+
+                                    before    after   change
+    XI, xP per 90 (current model)    49.94    50.31    +0.37
+    XI, xP per GW (start-weighted)   44.28    45.40    +1.12
+    bench autosub                     3.72     3.13    -0.59
+    per-90 XI + bench   (INVALID)    53.66    53.44    -0.21   <- reversal
+    per-GW XI + bench   (correct)    48.00    48.53    +0.54   <- no reversal
+
+Anderson (94% starts) replacing Joao Pedro (75%) in the XI makes the XI more
+reliable, so fewer blanks, so the bench is needed less often. Bench slots 2
+and 3 hold the SAME players before and after, and still lose 0.318 between
+them — that fall is the transfer's benefit appearing with a minus sign. The
+per-90 XI column cannot see the gain, but the bench column charges the
+knock-on in full, so the transfer looks like a loss when it is a clear win.
+
+CONSEQUENCE FOR THE BUILD ORDER: an autosub term cannot be added to the
+current objective. It would systematically penalise every upgrade in XI
+reliability — precisely the transfers worth making. Start-weighting the XI is
+a PRECONDITION for the bench term, not a parallel option.
 """
 import importlib.util, os, sys
 
@@ -147,8 +175,14 @@ def main():
 
     print(f"SIZING THE BENCH PRIZE   objective: {label}")
     print("=" * 74)
-    xi_total = sum(r["score"] for r in xi)
-    print(f"\ncurrent XI               {xi_total:6.2f} xP per 90")
+    xi_p90 = sum(r["score"] for r in xi)
+    xi_pgw = sum(r["stp"] * r["score"] for r in xi)
+    print(f"\ncurrent XI, xP per 90            {xi_p90:6.2f}   <- optimise_squad.py's objective")
+    print(f"current XI, xP per GW            {xi_pgw:6.2f}   <- start-weighted, comparable to the bench")
+    print(f"availability haircut             {xi_p90-xi_pgw:6.2f}   "
+          f"({(1-xi_pgw/xi_p90)*100:.0f}% of the per-90 figure is never played)")
+    print("\nDO NOT ADD the bench total below to the per-90 line. See THE UNIT TRAP\n"
+          "in the module docstring — it manufactures false reversals.")
 
     cur, rows, dist = bench_value(xi, bench)
     print(f"\nBlank distribution across the 10 outfield starters:")
