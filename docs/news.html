@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Availability & intel</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
+<style>
+
+:root{--bg:#0f1216;--panel:#171c22;--line:#2a323c;--tx:#e6edf3;--dim:#8b98a5;
+--a:#4ea3ff;--b:#ffc857;--c:#5fd38d;--d:#ff6b6b;--e:#c792ea;--grid:#232b34}
+@media(prefers-color-scheme:light){:root{--bg:#f6f7f9;--panel:#fff;--line:#dde3ea;
+--tx:#1a1f26;--dim:#5b6673;--grid:#e8edf3}}
+*{box-sizing:border-box}
+body{margin:0;padding:28px;background:var(--bg);color:var(--tx);
+font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+h1{font-size:22px;margin:0 0 4px} h2{font-size:16px;margin:0 0 2px}
+.sub{color:var(--dim);font-size:12.5px;margin:0 0 22px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+padding:18px 20px;margin-bottom:18px}
+.tests{color:var(--dim);font-size:12.5px;margin:2px 0 14px;font-style:italic}
+.wrap{position:relative;height:380px}
+.wrap.short{height:300px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:900px){.grid2{grid-template-columns:1fr}}
+.find{border-left:3px solid var(--b);background:rgba(255,200,87,.08);
+padding:10px 14px;margin:14px 0 0;border-radius:0 6px 6px 0;font-size:13px}
+.find.bad{border-color:var(--d);background:rgba(255,107,107,.08)}
+.find.ok{border-color:var(--c);background:rgba(95,211,141,.08)}
+.find b{color:var(--tx)}
+table{border-collapse:collapse;width:100%;font-size:13px;margin-top:6px}
+th,td{text-align:right;padding:6px 9px;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--dim);font-weight:600;font-size:12px}
+.mono{font-variant-numeric:tabular-nums;font-family:ui-monospace,Menlo,monospace}
+.tag{display:inline-block;padding:1px 7px;border-radius:99px;font-size:11px;
+font-weight:600}
+.tag.bad{background:rgba(255,107,107,.18);color:var(--d)}
+.tag.ok{background:rgba(95,211,141,.18);color:var(--c)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--dim);
+margin:10px 0 0}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;
+margin-right:5px;vertical-align:-1px}
+input[type=range]{-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;background:var(--grid);outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--a);cursor:pointer;border:2px solid var(--panel)}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--a);cursor:pointer;border:2px solid var(--panel)}
+footer{color:var(--dim);font-size:12px;margin-top:26px;border-top:1px solid var(--line);
+padding-top:14px}
+
+/* ---- shared nav (added 9 Aug 2026 with the multipage split) ---- */
+nav.top{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 20px;padding:4px;
+background:var(--panel);border:1px solid var(--line);border-radius:10px}
+nav.top a,nav.top span{padding:6px 12px;border-radius:7px;font-size:13px;
+font-weight:600;text-decoration:none;color:var(--dim);white-space:nowrap}
+nav.top a:hover{background:var(--grid);color:var(--tx)}
+nav.top a.on{background:var(--a);color:#fff}
+nav.top span.soon{color:var(--dim);opacity:.45;cursor:not-allowed}
+nav.top span.soon::after{content:" · planned";font-weight:400;font-size:11px}
+.diagram{background:#FCFCFB;border-radius:8px;padding:14px;overflow:auto}
+.diagram svg{display:block;max-width:100%;height:auto;margin:0 auto}
+</style>
+<style>
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.kv{font-size:22px;font-weight:700} .kl{font-size:12px;color:var(--dim);margin-top:2px}
+.kn{font-size:11px;color:var(--dim);opacity:.75;margin-top:3px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.pc{flex:1 1 300px;background:var(--bg);border:1px solid var(--line);
+border-radius:9px;padding:10px 12px}
+.pc-h{font-size:14px;margin-bottom:3px} .pc-m{font-size:11.5px;color:var(--dim)}
+.pc-w{font-size:12px;margin-top:7px;padding-top:7px;border-top:1px solid var(--line)}
+.pc-w.chk{color:var(--dim)}
+@media(max-width:700px){.pc{flex:1 1 100%}}
+</style>
+</head><body>
+<nav class="top">
+<a href="index.html" data-page="squad">Squad</a>
+<a href="analysis.html" data-page="analysis">Player analysis</a>
+<span class="soon" data-page="player">Player timeseries</span>
+<a href="workflow.html" data-page="workflow">Weekly workflow</a>
+<a href="news.html" data-page="news" class="on">Availability &amp; intel</a>
+</nav>
+
+<h1>Availability & intel</h1>
+<p class="sub">Rendered from ROLE_INTEL.md · GW1 · page generated 2026-08-09 21:09</p>
+<div class="kpis"><div class="kpi"><div class="kv mono">5</div><div class="kl">Contaminated priors</div><div class="kn">2 in your squad</div></div><div class="kpi"><div class="kv mono">1</div><div class="kl">Contested places</div><div class="kn">1 in your squad</div></div><div class="kpi"><div class="kv mono">2</div><div class="kl">Set-piece claims</div><div class="kn">all unconfirmed pre-season</div></div><div class="kpi"><div class="kv mono">5</div><div class="kl">Active intel entries</div><div class="kn">each with a check</div></div></div>
+<div class="panel">
+  <h2>Prior belongs to a different club</h2>
+  <p class="tests">The snapshot records each player's <b>current</b> club against
+  <b>last season's</b> statistics. A summer transfer therefore reads as new badge,
+  old numbers — and nothing in the data flags it.</p>
+  <table><thead><tr><th>Player</th><th style="text-align:left">Why the number misleads</th></tr></thead>
+  <tbody><tr><td><b>Guéhi</b></td><td style='text-align:left'>Crystal Palace -&gt; Man City, Jan 2026; 2025/26 stats blend both clubs</td></tr><tr><td><b>Semenyo</b></td><td style='text-align:left'>Bournemouth -&gt; Man City, Jan 2026; 2025/26 stats blend both clubs</td></tr><tr><td><b>Anderson</b></td><td style='text-align:left'>Nottingham Forest -&gt; Man City, Jul 2026 (£116m); 37 starts / 94% stp / 13.9 CBIRT are ALL Forest figures</td></tr><tr><td><b>Lacroix</b> <span class="tag ok">in squad</span></td><td style='text-align:left'>Crystal Palace -&gt; Chelsea, 29 Jul 2026 (£51m); 81% stp is a Palace figure</td></tr><tr><td><b>Dubravka</b> <span class="tag ok">in squad</span></td><td style='text-align:left'>Burnley -&gt; Tottenham, free, Jul 2026; 35 apps / 81% stp are Burnley figures — and see role note below</td></tr></tbody></table>
+  <div class="find bad">The automatic club-change check <b>cannot fire</b> for
+  anyone who moved before the snapshot was captured on 8 Aug 2026 — which is the
+  whole summer window. This list is maintained by hand; a name missing from it is
+  not evidence of a clean prior.</div>
+</div>
+<div class="panel">
+  <h2>Place in the side contested</h2>
+  <p class="tests">Distinct from a contaminated prior: there the numbers belong to
+  another club, here they belong to another <b>role</b>. The history is right and
+  the conclusion is wrong.</p>
+  <table><thead><tr><th>Player</th><th>Status</th><th>Logged</th>
+  <th style="text-align:left">Detail</th></tr></thead><tbody><tr><td><b>Dubravka</b> <span class="tag ok">in squad</span></td><td><span class='tag bad'>backup</span></td><td class='mono'>2026-08-09</td><td style='text-align:left'>First-choice at Burnley (35 apps, 81% starts); reported behind Antonin Kinsky at Spurs. True P(start) near zero, not 81%</td></tr></tbody></table>
+  <div class="find">Start rate is the most load-bearing number in the model — it
+  gates selection today and will weight the objective under roadmap item A0.5. A
+  player who was first choice and is now second is invisible to the data, because
+  last season he did start.</div>
+</div>
+<div class="panel">
+  <h2>Role and minutes intel</h2>
+  <p class="tests">What the screens structurally cannot see: a new penalty taker, a
+  tactical shift, a berth opening through injury. Every entry carries a check that
+  the opening gameweeks will confirm or kill.</p>
+  <div class="row"><div class="pc">
+  <div class="pc-h"><b>Szoboszlai</b></div>
+  <div class="pc-m mono">LIV · £7.0m · MID</div>
+  <div class="pc-w"><b>primary penalty + direct FK taker</b></div>
+  <div class='pc-w'>steps up as Liverpool's primary penalty and direct free-kick taker following changes in their attacking structure.</div>
+  <div class='pc-w chk'><b>Check:</b> who takes Liverpool's first penalty and first direct free kick? Also watch <span class="mono">penalties_order</span> in the API once populated.</div>
+</div><div class="pc">
+  <div class="pc-h"><b>Elliott Anderson</b></div>
+  <div class="pc-m mono">MCI · £6.5m · MID</div>
+  <div class="pc-w"><b>budget enabler, elevated creative role</b></div>
+  <div class='pc-w'>absorbs heavy minutes with an elevated creative role, out-projecting several £8.0m midfielders.</div>
+  <div class='pc-w chk'><b>Check:</b> does his xGI/90 rise above ~0.30 in the opening weeks?</div>
+</div><div class="pc">
+  <div class="pc-h"><b>Mosquera</b></div>
+  <div class="pc-m mono">ARS · £5.5m · DEF</div>
+  <div class="pc-w"><b>minutes opening through injury</b></div>
+  <div class='pc-w'>regular early-season minutes in the league's best defence while starters recover.</div>
+  <div class='pc-w chk'><b>Check:</b> does he start GW1 v Coventry? Timber's return date of 21 Aug is the deadline day itself — this could evaporate immediately.</div>
+</div><div class="pc">
+  <div class="pc-h"><b>Ndiaye</b></div>
+  <div class="pc-m mono">EVE · £6.0m · MID</div>
+  <div class="pc-w"><b>penalties + shot volume</b></div>
+  <div class='pc-w'>locked-in penalty duty plus underlying volume beats his £6.0m price.</div>
+  <div class='pc-w chk'><b>Check:</b> confirm he takes Everton's first penalty.</div>
+</div><div class="pc">
+  <div class="pc-h"><b>João Pedro</b> <span class="tag ok">in squad</span></div>
+  <div class="pc-m mono">CHE · £7.5m · FWD</div>
+  <div class="pc-w"><b>central catalyst — **ALREADY OWNED**</b></div>
+  <div class='pc-w'>operates as the focal point in Chelsea's setup.</div>
+  <div class='pc-w chk'><b>Check:</b> does the delta compress toward zero over the opening weeks as expected? If it stays high, he may be a genuine finisher rather than lucky.</div>
+</div></div>
+  <div class="find">An entry without a falsifiable check is folklore. Anything
+  still unproven after roughly five gameweeks gets deleted, not archived.</div>
+</div>
+<div class="panel">
+  <h2>Set-piece duty — claimed, not confirmed</h2>
+  <p class="tests">P = penalties, F = direct free kicks, C = corners; the number is
+  the order. A penalty is worth roughly 0.79 xG, so this is among the largest
+  single adjustments available.</p>
+  <table><thead><tr><th>Player</th><th>Codes</th><th>Added</th>
+  <th style="text-align:left">Source</th></tr></thead><tbody><tr><td><b>Szoboszlai</b></td><td class='mono'>P1 F1</td><td class='mono'>2026-08-07</td><td style='text-align:left'>community consensus; Salah departure vacates duty; UNCONFIRMED</td></tr><tr><td><b>Ndiaye</b></td><td class='mono'>P1</td><td class='mono'>2026-08-07</td><td style='text-align:left'>community consensus; "locked-in" penalty role claimed; UNCONFIRMED</td></tr></tbody></table>
+  <div class="find">These exist only to cover the pre-season gap before the FPL API
+  populates its own fields. Where both exist the <b>API always wins</b>, and a line
+  is deleted the moment the API confirms or contradicts it.</div>
+</div>
+<div class="panel">
+  <h2>Booking tendency — <i>not</i> a live suspension risk</h2>
+  <p class="tests">Yellow cards from 2025/26, for every player in the squad.</p>
+  <div class="find bad"><b>These do not carry over.</b> Premier League yellow-card
+  counts reset each season, so at the GW1 2026/27 deadline every player below is on
+  <b>zero</b>. Treat this as a tendency to be booked, which is a mild prior on
+  future suspension risk — never as a current one. The thresholds that matter
+  (5 by GW19, 10 by GW32, 15 by GW38) apply to <i>this</i> season's count, which
+  the repository does not yet hold.</div>
+  <table><thead><tr><th>Player</th><th>Club</th><th>YC 25/26</th><th>RC</th><th></th></tr></thead>
+  <tbody><tr><td><b>Shaw</b></td><td class='mono'>MUN</td><td class='mono'>9</td><td class='mono'></td><td><span class="tag bad">books often</span></td></tr><tr><td><b>Kayode</b></td><td class='mono'>BRE</td><td class='mono'>8</td><td class='mono'></td><td><span class="tag bad">books often</span></td></tr><tr><td><b>Thiago</b></td><td class='mono'>BRE</td><td class='mono'>7</td><td class='mono'></td><td><span class="tag bad">books often</span></td></tr><tr><td><b>Schade</b></td><td class='mono'>BRE</td><td class='mono'>6</td><td class='mono'>1</td><td><span class="tag bad">books often</span></td></tr><tr><td><b>Tavernier</b></td><td class='mono'>BOU</td><td class='mono'>6</td><td class='mono'></td><td><span class="tag bad">books often</span></td></tr><tr><td><b>João Pedro</b></td><td class='mono'>CHE</td><td class='mono'>5</td><td class='mono'></td><td></td></tr><tr><td><b>B.Fernandes</b></td><td class='mono'>MUN</td><td class='mono'>5</td><td class='mono'></td><td></td></tr><tr><td><b>Mbeumo</b></td><td class='mono'>MUN</td><td class='mono'>4</td><td class='mono'></td><td></td></tr><tr><td><b>Lacroix</b></td><td class='mono'>CHE</td><td class='mono'>4</td><td class='mono'>1</td><td></td></tr><tr><td><b>Virgil</b></td><td class='mono'>LIV</td><td class='mono'>4</td><td class='mono'></td><td></td></tr><tr><td><b>Gabriel</b></td><td class='mono'>ARS</td><td class='mono'>4</td><td class='mono'></td><td></td></tr><tr><td><b>Calvert-Lewin</b></td><td class='mono'>LEE</td><td class='mono'>3</td><td class='mono'></td><td></td></tr><tr><td><b>Sarr</b></td><td class='mono'>CRY</td><td class='mono'>2</td><td class='mono'></td><td></td></tr><tr><td><b>Dubravka</b></td><td class='mono'>TOT</td><td class='mono'>1</td><td class='mono'></td><td></td></tr><tr><td><b>Raya</b></td><td class='mono'>ARS</td><td class='mono'>1</td><td class='mono'></td><td></td></tr></tbody></table>
+</div>
+<div class="panel">
+  <h2>What this page cannot tell you</h2>
+  <p class="tests">Stated plainly, because a page that looks live and is not is
+  worse than no page at all.</p>
+  <ul style="margin:6px 0 0 18px;padding:0;font-size:13px">
+    <li><b>No live injury or availability feed.</b> Everything here is built from
+    the repository at build time. Current status, doubtful flags and this season's
+    card counts come from the FPL API and are not in this page.</li>
+    <li><b>Absence is not evidence.</b> The contaminated and contested lists are
+    maintained by hand. A player missing from them has not been cleared — he may
+    simply not have been checked.</li>
+    <li><b>Set-piece claims are community consensus</b>, explicitly unconfirmed,
+    and are superseded by the API the moment it populates.</li>
+  </ul>
+</div>
+<footer>Built by <span class='mono'>build_intel_page.py</span>, which reads <span class='mono'>ROLE_INTEL.md</span> rather than copying it. Every entry there carries a date, a source and a falsifiable check.</footer>
+</body></html>

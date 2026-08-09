@@ -27,6 +27,7 @@ echo "==> Building"
 python3 build_dashboard.py
 python3 build_workflow.py
 python3 build_squad_page.py
+python3 build_intel_page.py
 
 echo
 echo "==> Deep verify: diagnostics page"
@@ -56,4 +57,5 @@ Commit and push, then live at:
   https://sylvan-s.github.io/fpl-river-leaf/               squad — the landing page
   https://sylvan-s.github.io/fpl-river-leaf/analysis.html  methodology diagnostics
   https://sylvan-s.github.io/fpl-river-leaf/workflow.html  the weekly loop
+  https://sylvan-s.github.io/fpl-river-leaf/news.html      availability & intel
 EOF

@@ -25,6 +25,7 @@ const PAGES = [
   { file: 'index.html',    minKB: 10 },   // squad page — the landing page
   { file: 'analysis.html', minKB: 100, deep: 'diagnostics' },
   { file: 'workflow.html', minKB: 8 },
+  { file: 'news.html',     minKB: 8 },
 ];
 
 let failures = 0;

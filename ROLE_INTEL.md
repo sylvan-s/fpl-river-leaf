@@ -182,6 +182,24 @@ joined Leeds in summer **2025**, so 2025/26 is genuinely a Leeds season.
 are where to start. Until that is done, treat any TOT, CHE, MCI or MUN player
 surfacing from a screen as unverified.
 
+## Machine-readable internal competition
+
+Players whose **place in the XI is contested**, where the history says one thing
+and the current pecking order says another. Distinct from `contaminated`: there
+the numbers belong to another club, here they belong to another *role*.
+
+A start rate is the single most load-bearing number in the model — it gates
+selection and, under roadmap item A0.5, will weight the objective. A player who
+was first choice and is now second is the case the data cannot see at all,
+because last season he did start.
+
+Format: `player | status | date | detail`.
+Status: `backup` · `contested` · `promoted`.
+
+```competition
+Dubravka | backup | 2026-08-09 | First-choice at Burnley (35 apps, 81% starts); reported behind Antonin Kinsky at Spurs. True P(start) near zero, not 81%
+```
+
 ### Dubravka is a role change, not just a contaminated prior
 
 He was **Burnley's first-choice** keeper in 2025/26 (35 PL appearances, hence
