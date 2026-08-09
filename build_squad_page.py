@@ -257,6 +257,14 @@ def build():
   <h2>The eleven</h2>
   <p class="tests">{esc(state.formation)} · captain {esc(state.captain)} ·
   vice {esc(state.vice)}. Each card says why the player is here.</p>
+  <div class="find"><b>Reading a card.</b> <span class="mono">xP/90</span> is
+  expected points per full match, already adjusted for who the player faces over
+  GW1–4. <span class="mono">xP/GW</span> multiplies that by how often he actually
+  starts — the number you accumulate. <span class="mono">ATT</span> and
+  <span class="mono">DEF</span> are fixture multipliers on different scales:
+  higher is easier for attackers, <b>lower</b> is easier for defenders and
+  keepers. Where the reasoning quotes a <i>flat</i> xP it means before fixtures,
+  so it will not match the adjusted figure above it.</div>
   <div class="pitch">{rows}</div>
   <h2 style="margin-top:18px">The bench, in substitution order</h2>
   <p class="tests">Chosen on price and availability, not merit — except the first
