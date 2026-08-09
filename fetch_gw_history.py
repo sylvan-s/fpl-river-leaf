@@ -35,7 +35,12 @@ OUTDIR = os.path.join(HERE, "docs", "data")
 CACHE = os.path.join(HERE, ".cache_merged_gw.csv")      # gitignored
 
 # Columns worth keeping if present. Absent ones are reported, never faked.
-WANT = ["round", "minutes", "starts", "total_points", "goals_scored", "assists",
+# defensive_contribution and xP were not asked for but are present and matter:
+# the first IS the DC metric the defender/midfielder screens threshold on, the
+# second is FPL's own expected points — a free external benchmark for our model.
+WANT = ["round", "position", "team", "kickoff_time", "opponent_team",
+        "defensive_contribution", "xP",
+        "minutes", "starts", "total_points", "goals_scored", "assists",
         "expected_goals", "expected_assists", "expected_goal_involvements",
         "expected_goals_conceded", "clean_sheets", "goals_conceded", "saves",
         "bonus", "bps", "yellow_cards", "red_cards", "value", "was_home",
@@ -66,11 +71,19 @@ def fetch(url, use_cache=True):
 
 
 def norm(s):
-    """Lowercase, strip accents and punctuation — for name matching only."""
+    """Lowercase, strip accents and punctuation, return tokens."""
     import unicodedata
     s = unicodedata.normalize("NFKD", s)
     s = "".join(c for c in s if not unicodedata.combining(c))
-    return re.sub(r"[^a-z ]", "", s.lower()).strip()
+    return [t for t in re.sub(r"[^a-z ]", " ", s.lower()).split() if t]
+
+
+# The archive names clubs in full; our pool uses FPL short codes.
+FULL2CODE = {'Arsenal':'ARS','Aston Villa':'AVL','Bournemouth':'BOU','Brentford':'BRE',
+ 'Brighton':'BHA','Burnley':'BUR','Chelsea':'CHE','Crystal Palace':'CRY','Everton':'EVE',
+ 'Fulham':'FUL','Leeds':'LEE','Liverpool':'LIV','Man City':'MCI','Man Utd':'MUN',
+ 'Newcastle':'NEW',"Nott'm Forest":'NFO','Spurs':'TOT','Sunderland':'SUN',
+ 'West Ham':'WHU','Wolves':'WOL'}
 
 
 def main():
@@ -114,19 +127,39 @@ def main():
     bs = importlib.util.module_from_spec(spec); spec.loader.exec_module(bs)
     pool = bs.load()
 
-    by_norm = {}
+    from collections import Counter, defaultdict
+    agg = defaultdict(lambda: {"mins": Counter(), "pos": set()})
     for r in rows:
-        by_norm.setdefault(norm(r[namecol]), []).append(r)
+        m = int(r.get("minutes") or 0)
+        agg[r[namecol]]["pos"].add(r.get("position", ""))
+        if m:
+            agg[r[namecol]]["mins"][r.get("team", "")] += m
+    arch = [{"name": n, "tok": set(norm(n)), "pos": v["pos"], "mins": v["mins"]}
+            for n, v in agg.items()]
+    club_of = lambda a: FULL2CODE.get(a["mins"].most_common(1)[0][0]) if a["mins"] else None
 
-    matched, unmatched = {}, []
+    # web_name is often a nickname ("Virgil", "Raya"), so an exact name match
+    # fails constantly. Token-SUBSET matching handles it: every token of the
+    # short name must appear in the archive's full name. Ties are broken by
+    # position first and club only as a last resort — club is precisely what is
+    # unreliable here, so leaning on it would defeat the purpose.
+    matched, unmatched, moved = {}, [], []
     for p in pool:
-        key = norm(p["name"])
-        hit = by_norm.get(key)
-        if not hit:                       # surname-token fallback
-            cands = [k for k in by_norm if key and key.split()[-1] == k.split()[-1]]
-            hit = by_norm[cands[0]] if len(cands) == 1 else None
-        if hit:
-            matched[p["name"]] = hit
+        want = {t for t in norm(p["name"]) if len(t) > 1}
+        cands = [a for a in arch if want and want <= a["tok"]]
+        if len(cands) > 1:
+            cands = [a for a in cands if p["pos"] in a["pos"]] or cands
+        if len(cands) > 1:
+            byteam = [a for a in cands if club_of(a) == p["team"]]
+            played = [a for a in cands if a["mins"]]
+            cands = byteam if len(byteam) == 1 else (played if len(played) == 1 else cands)
+        if len(cands) == 1:
+            a = cands[0]
+            matched[p["name"] + "|" + p["team"]] = [r for r in rows if r[namecol] == a["name"]]
+            was = club_of(a)
+            if was and was != p["team"]:
+                moved.append({"player": p["name"], "was": was, "now": p["team"],
+                              "archive_name": a["name"]})
         else:
             unmatched.append(f"{p['name']}|{p['team']}")
 
@@ -141,13 +174,13 @@ def main():
     os.makedirs(pdir, exist_ok=True)
     index = []
     for p in pool:
-        recs = matched.get(p["name"])
+        recs = matched.get(p["name"] + "|" + p["team"])
         if not recs:
             continue
         series = []
         for r in sorted(recs, key=lambda r: int(r["round"])):
             series.append({c: r[c] for c in have if r.get(c) not in (None, "")})
-        slug = re.sub(r"[^a-z0-9]+", "-", norm(p["name"])).strip("-")
+        slug = "-".join(norm(p["name"])) + "-" + p["team"].lower()
         json.dump({"name": p["name"], "team": p["team"], "pos": p["pos"],
                    "season": SEASON, "gw": series},
                   open(os.path.join(pdir, f"{slug}.json"), "w", encoding="utf-8"),
@@ -169,7 +202,11 @@ def main():
         "pool_size": len(pool),
         "matched": len(matched),
         "unmatched": sorted(unmatched),
+        "club_changes": len(moved),
     }
+    json.dump(sorted(moved, key=lambda m: (m["now"], m["player"])),
+              open(os.path.join(OUTDIR, "club_changes.json"), "w", encoding="utf-8"),
+              indent=2, ensure_ascii=False)
     json.dump(prov, open(os.path.join(OUTDIR, "provenance.json"), "w",
                          encoding="utf-8"), indent=2, ensure_ascii=False)
     json.dump(index, open(os.path.join(OUTDIR, "index.json"), "w",
@@ -177,7 +214,10 @@ def main():
 
     size = sum(os.path.getsize(os.path.join(pdir, f)) for f in os.listdir(pdir))
     print(f"\n  wrote {len(index)} player files ({size/1e6:.1f} MB) to docs/data/players/")
-    print(f"  wrote index.json and provenance.json")
+    print(f"  wrote index.json, provenance.json and club_changes.json")
+    print(f"\n  CLUB CHANGES DETECTED: {len(moved)} — these priors describe another club")
+    for m in sorted(moved, key=lambda m: (m["now"], m["player"])):
+        print(f"     {m['player']:<16} {m['was']:<4} -> {m['now']}")
     print(f"\n  provenance stamped: fetched {prov['fetched_utc']}, "
           f"{prov['matched']}/{prov['pool_size']} matched")
 

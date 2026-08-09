@@ -143,12 +143,40 @@ through to team × position at the new club.
 
 Format: `player | reason`.
 
+
+**DERIVED, NOT HAND-MAINTAINED — regenerated 9 Aug 2026.** This block used to
+be kept by hand and listed 5 players. `fetch_gw_history.py` compares each
+player's **current** club against the club the archive says he actually played
+for in 2025/26, and found **19**. The hand-kept list was missing 14, including
+**Robertson, Senesi, Tonali and Van Hecke** — four of Tottenham's five arrivals.
+
+Regenerate with `python3 fetch_gw_history.py`; the machine-readable output is
+`docs/data/club_changes.json`. **Do not edit the block below by hand.**
+
+The earlier caveat that "absence is not evidence" no longer applies to anyone
+the archive covers — 261 of 267 pool players are matched. It still applies to
+the 6 unmatched, listed in `docs/data/provenance.json`.
+
 ```contaminated
-Guéhi         | Crystal Palace -> Man City, Jan 2026; 2025/26 stats blend both clubs
-Semenyo       | Bournemouth -> Man City, Jan 2026; 2025/26 stats blend both clubs
-Anderson      | Nottingham Forest -> Man City, Jul 2026 (£116m); 37 starts / 94% stp / 13.9 CBIRT are ALL Forest figures
-Lacroix       | Crystal Palace -> Chelsea, 29 Jul 2026 (£51m); 81% stp is a Palace figure
-Dubravka      | Burnley -> Tottenham, free, Jul 2026; 35 apps / 81% stp are Burnley figures — and see role note below
+Garnacho      | CHE -> AVL; 2025/26 record is a CHE record
+Struijk       | LEE -> BHA; 2025/26 record is a LEE record
+Henderson     | BRE -> CHE; 2025/26 record is a BRE record
+Lacroix       | CRY -> CHE; 2025/26 record is a CRY record [IN SQUAD]
+Rogers        | AVL -> CHE; 2025/26 record is a AVL record
+Welbeck       | BHA -> CHE; 2025/26 record is a BHA record
+Strand Larsen | WOL -> CRY; 2025/26 record is a WOL record
+Anderson      | NFO -> MCI; 2025/26 record is a NFO record
+Grealish      | EVE -> MCI; 2025/26 record is a EVE record
+Guéhi         | CRY -> MCI; 2025/26 record is a CRY record
+Semenyo       | BOU -> MCI; 2025/26 record is a BOU record
+Andrey Santos | CHE -> MUN; 2025/26 record is a CHE record
+Darlow        | LEE -> MUN; 2025/26 record is a LEE record
+Tielemans     | AVL -> MUN; 2025/26 record is a AVL record
+Dubravka      | BUR -> TOT; 2025/26 record is a BUR record [IN SQUAD]
+Robertson     | LIV -> TOT; 2025/26 record is a LIV record
+Senesi        | BOU -> TOT; 2025/26 record is a BOU record
+Tonali        | NEW -> TOT; 2025/26 record is a NEW record
+Van Hecke     | BHA -> TOT; 2025/26 record is a BHA record
 ```
 
 ### Summer-2026 sweep — done 9 Aug 2026

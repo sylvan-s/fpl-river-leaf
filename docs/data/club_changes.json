@@ -1,0 +1,116 @@
+[
+  {
+    "player": "Garnacho",
+    "was": "CHE",
+    "now": "AVL",
+    "archive_name": "Alejandro Garnacho Ferreyra"
+  },
+  {
+    "player": "Struijk",
+    "was": "LEE",
+    "now": "BHA",
+    "archive_name": "Pascal Struijk"
+  },
+  {
+    "player": "Henderson",
+    "was": "BRE",
+    "now": "CHE",
+    "archive_name": "Jordan Henderson"
+  },
+  {
+    "player": "Lacroix",
+    "was": "CRY",
+    "now": "CHE",
+    "archive_name": "Maxence Lacroix"
+  },
+  {
+    "player": "Rogers",
+    "was": "AVL",
+    "now": "CHE",
+    "archive_name": "Morgan Rogers"
+  },
+  {
+    "player": "Welbeck",
+    "was": "BHA",
+    "now": "CHE",
+    "archive_name": "Danny Welbeck"
+  },
+  {
+    "player": "Strand Larsen",
+    "was": "WOL",
+    "now": "CRY",
+    "archive_name": "Jørgen Strand Larsen"
+  },
+  {
+    "player": "Anderson",
+    "was": "NFO",
+    "now": "MCI",
+    "archive_name": "Elliot Anderson"
+  },
+  {
+    "player": "Grealish",
+    "was": "EVE",
+    "now": "MCI",
+    "archive_name": "Jack Grealish"
+  },
+  {
+    "player": "Guéhi",
+    "was": "CRY",
+    "now": "MCI",
+    "archive_name": "Marc Guéhi"
+  },
+  {
+    "player": "Semenyo",
+    "was": "BOU",
+    "now": "MCI",
+    "archive_name": "Antoine Semenyo"
+  },
+  {
+    "player": "Andrey Santos",
+    "was": "CHE",
+    "now": "MUN",
+    "archive_name": "Andrey Nascimento dos Santos"
+  },
+  {
+    "player": "Darlow",
+    "was": "LEE",
+    "now": "MUN",
+    "archive_name": "Karl Darlow"
+  },
+  {
+    "player": "Tielemans",
+    "was": "AVL",
+    "now": "MUN",
+    "archive_name": "Youri Tielemans"
+  },
+  {
+    "player": "Dubravka",
+    "was": "BUR",
+    "now": "TOT",
+    "archive_name": "Martin Dúbravka"
+  },
+  {
+    "player": "Robertson",
+    "was": "LIV",
+    "now": "TOT",
+    "archive_name": "Andrew Robertson"
+  },
+  {
+    "player": "Senesi",
+    "was": "BOU",
+    "now": "TOT",
+    "archive_name": "Marcos Senesi Barón"
+  },
+  {
+    "player": "Tonali",
+    "was": "NEW",
+    "now": "TOT",
+    "archive_name": "Sandro Tonali"
+  },
+  {
+    "player": "Van Hecke",
+    "was": "BHA",
+    "now": "TOT",
+    "archive_name": "Jan Paul van Hecke"
+  }
+]

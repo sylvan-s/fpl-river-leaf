@@ -26,6 +26,7 @@ const PAGES = [
   { file: 'analysis.html', minKB: 100, deep: 'diagnostics' },
   { file: 'workflow.html', minKB: 8 },
   { file: 'news.html',     minKB: 8 },
+  { file: 'player.html',   minKB: 20 },
 ];
 
 let failures = 0;
