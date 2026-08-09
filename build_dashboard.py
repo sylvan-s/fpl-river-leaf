@@ -9,8 +9,14 @@ Regenerate:  python3 build_dashboard.py
 
 VERIFY AFTER EVERY CHANGE:
     python3 -c "h=open('FPL_DIAGNOSTICS.html').read(); \
-open('/tmp/dash.js','w').write('const DATA'+h.split(chr(60)+'script'+chr(62)+chr(10)+'const DATA',1)[1].split(chr(60)+'/script'+chr(62))[0])"
-    node --check /tmp/dash.js && node verify_dashboard.js
+open('dash.js','w').write('const DATA'+h.split(chr(60)+'script'+chr(62)+chr(10)+'const DATA',1)[1].split(chr(60)+'/script'+chr(62))[0])"
+    node --check dash.js && node verify_dashboard.js
+
+The extract MUST go to ./dash.js, not /tmp — verify_dashboard.js does
+`require('./dash.js')`. Writing the fresh extract to /tmp meant `node --check`
+validated the new build while verify_dashboard.js silently re-verified whatever
+stale ./dash.js was left over from an earlier run. Fixed 9 Aug 2026; the bug
+was invisible until a clean clone had no stale dash.js to fall back on.
 
 A syntax error anywhere in the inline script kills the WHOLE page silently -
 the HTML still looks complete, the file size looks right, and nothing renders.

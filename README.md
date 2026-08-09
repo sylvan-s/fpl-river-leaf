@@ -51,11 +51,20 @@ pip3 install mcp httpx
 python3 build_squad.py            # reproduce the live squad
 python3 build_squad.py --season-starts   # pre-9-Aug-2026 gate, for comparison
 python3 optimise_squad.py         # test transfers
-python3 build_dashboard.py && node verify_dashboard.js   # rebuild + verify the dashboard
+python3 build_dashboard.py        # rebuild the dashboard
 ```
 
-Always run `verify_dashboard.js` after touching the dashboard. The HTML will
-look complete and the file size will look right even when nothing renders.
+Then verify it — the extract must go to `./dash.js`, which is what
+`verify_dashboard.js` requires:
+
+```bash
+python3 -c "h=open('FPL_DIAGNOSTICS.html').read(); \
+open('dash.js','w').write('const DATA'+h.split(chr(60)+'script'+chr(62)+chr(10)+'const DATA',1)[1].split(chr(60)+'/script'+chr(62))[0])"
+node --check dash.js && node verify_dashboard.js
+```
+
+Always verify after touching the dashboard. The HTML will look complete and the
+file size will look right even when nothing renders.
 
 ## Not committed
 
