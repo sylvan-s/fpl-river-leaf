@@ -98,6 +98,34 @@ does not protect the finishing.
 **Falsifiable check:** does the delta compress toward zero over the opening weeks
 as expected? If it stays high, he may be a genuine finisher rather than lucky.
 
+### 6. Botman (NEW, £5.0m, DEF) — recurring fitness fragility — **ALREADY OWNED**
+
+**Thesis (risk flag, not a buy/sell thesis):** repeated fitness interruptions
+across the last two seasons are a plausible, non-hype explanation for his low
+ownership (0.4%) at this price — separate from any pecking-order or role
+concern. Logged 10 Aug 2026, web-confirmed.
+
+**History:** ACL surgery in 2023/24 (~9 months out). Facial fracture surgery
+in **March 2026** after a collision with Sunderland's Brian Brobbey — missed
+part of the run-in and played the rest of last season in a protective mask.
+Another facial knock in **pre-season training, late July 2026**, ruling him
+out of a friendly (Eddie Howe sounded unconcerned about him being ready for
+the season).
+
+**Why this matters for the model.** It's the likely reason his season-long
+start rate (55%) sat well below his last-16 rate (75%) — he was recovering
+from the March facial fracture for part of last season's run-in, not out of
+favour. The gap the last-16 methodology change was designed to catch has a
+real, findable cause here, not just noise.
+
+**Not yet re-verified live.** Web search and `injury_report` both hit
+temporary limits when this was checked — his CURRENT fitness status has not
+been confirmed since. Re-check before trusting the pick, and before the 21 Aug
+deadline in particular.
+
+**Falsifiable check:** does he complete pre-season and start GW1 without a new
+knock? A clean run through August would meaningfully undercut this flag.
+
 ---
 
 ## Machine-readable set-piece overrides

@@ -177,6 +177,91 @@ for pid, p in (snap.get("players") or {}).items():
         squad=name in SQUAD,
     ))
 
+CBIT_HIT_THRESH = 10          # fixed across ALL positions, deliberately - see loader docstring
+CACHE_CSV = os.path.join(HERE, ".cache_merged_gw.csv")
+MIN_APPS_FOR_HIT = 5          # thinner samples are left unmatched, not misleadingly shown
+
+
+def load_cbit_hitrates(pool):
+    """Per-player 2025/26 per-match CBIT (clearances_blocks_interceptions +
+    tackles) hit-rate against a FIXED 10+ line, for EVERY position - not the
+    position-specific `defensive_contribution` rule dc_hit_rates.json uses
+    (10 for DEF, 12 for MID/FWD, and recoveries included for the latter).
+    Panel 2 is asking a narrower question - "if held to the DEFENDER'S own
+    bar, who actually clears it reliably" - so the threshold does not move
+    with position here.
+
+    Kept as a SEPARATE loader rather than sharing build_dc_rates.py's, for the
+    same reason load_last16() above is separate: this file must still run if
+    that script's matching internals change. The name+team matching ladder
+    (token-subset, then position, then club, then minutes) mirrors it exactly
+    so the two never quietly disagree about who is who.
+
+    Returns {(web_name, team_short): {"rate": pct, "apps": N, "hits": H}}.
+    Tolerant of a missing archive (returns {}) - the panel just shows fewer
+    points rather than failing the whole build.
+    """
+    import csv, io, re, unicodedata
+    from collections import defaultdict
+    try:
+        csv_rows = list(csv.DictReader(io.StringIO(
+            open(CACHE_CSV, encoding="utf-8", errors="replace").read())))
+    except FileNotFoundError:
+        return {}
+
+    apps, pos_of, mins_by_team = defaultdict(list), {}, defaultdict(lambda: defaultdict(int))
+    for r in csv_rows:
+        m = int(r.get("minutes") or 0)
+        if m < 60:
+            continue                        # a cameo is a different population
+        cbi = int(r.get("clearances_blocks_interceptions") or 0)
+        tk = int(r.get("tackles") or 0)
+        name = r["name"]
+        apps[name].append(cbi + tk)
+        pos_of[name] = {"GK": "GKP"}.get(r.get("position"), r.get("position"))
+        mins_by_team[name][r.get("team")] += m
+
+    def norm(s):
+        s = unicodedata.normalize("NFKD", s)
+        s = "".join(c for c in s if not unicodedata.combining(c))
+        return [t for t in re.sub(r"[^a-z ]", " ", s.lower()).split() if t]
+
+    FULL2CODE = {'Arsenal': 'ARS', 'Aston Villa': 'AVL', 'Bournemouth': 'BOU', 'Brentford': 'BRE',
+     'Brighton': 'BHA', 'Burnley': 'BUR', 'Chelsea': 'CHE', 'Crystal Palace': 'CRY', 'Everton': 'EVE',
+     'Fulham': 'FUL', 'Leeds': 'LEE', 'Liverpool': 'LIV', 'Man City': 'MCI', 'Man Utd': 'MUN',
+     'Newcastle': 'NEW', "Nott'm Forest": 'NFO', 'Spurs': 'TOT', 'Sunderland': 'SUN',
+     'West Ham': 'WHU', 'Wolves': 'WOL'}
+    arch = [{"n": n, "tok": set(norm(n)), "pos": pos_of[n], "v": v,
+             "club": FULL2CODE.get(max(mins_by_team[n], key=mins_by_team[n].get)) if mins_by_team[n] else None,
+             "mins": sum(mins_by_team[n].values())}
+            for n, v in apps.items()]
+
+    out = {}
+    for pl in pool:
+        want = {t for t in norm(pl["name"]) if len(t) > 1}
+        cands = [a for a in arch if want and want <= a["tok"]]
+        if len(cands) > 1:
+            cands = [a for a in cands if a["pos"] == pl["pos"]] or cands
+        if len(cands) > 1:
+            byteam = [a for a in cands if a["club"] == pl["team"]]
+            cands = byteam if len(byteam) == 1 else sorted(cands, key=lambda a: -a["mins"])[:1]
+        if len(cands) != 1:
+            continue
+        a = cands[0]
+        v, N = a["v"], len(a["v"])
+        if N < MIN_APPS_FOR_HIT:
+            continue
+        hits = sum(1 for x in v if x >= CBIT_HIT_THRESH)
+        out[(pl["name"], pl["team"])] = {"rate": round(100.0 * hits / N, 1), "apps": N, "hits": hits}
+    return out
+
+
+_CBIT_HITS = load_cbit_hitrates(rows)
+for r in rows:
+    hit = _CBIT_HITS.get((r["name"], r["team"]))
+    r["cbit_hit10"] = hit["rate"] if hit else None
+    r["cbit_hit10_apps"] = hit["apps"] if hit else 0
+
 D = [r for r in rows if r["pos"] == "DEF"]
 M = [r for r in rows if r["pos"] == "MID"]
 F_ = [r for r in rows if r["pos"] == "FWD"]
@@ -357,33 +442,30 @@ fixture_info = dict(
     source="fixture_window.json" if FIXTURE_STAMP else "built-in fallback (stale if this shows)",
 )
 
+# ------------------------------------------------------- CBIT avg vs hit-rate
+# Panel 2, replaced 10 Aug 2026. Used to histogram the POINTS a season average
+# converts to (via p_threshold); now plots the average directly against the
+# REAL per-match 10+ CBIT hit-rate (roadmap A4 data), by position, so the gap
+# between "averages above the line" and "reliably earns the line" is the shape
+# of the scatter itself rather than a bucketed summary of it.
+for _pos in ("DEF", "MID", "FWD"):
+    _matched = [r for r in rows if r["pos"] == _pos and r["cbit_hit10"] is not None]
+    stats[f"cbit_hit_n_{_pos.lower()}"] = len(_matched)
+    stats[f"cbit_hit_corr_{_pos.lower()}"] = round(
+        corr([r["cbit90"] for r in _matched], [r["cbit_hit10"] for r in _matched]), 3)
+    # A correlation coefficient is undefined once one side has ~zero variance
+    # (corr() returns 0.0 in that case, indistinguishable from "no relationship"
+    # unless the max is checked too) - true for FWD, who essentially never
+    # clear a DEFENDER'S 10+ CBIT line at all.
+    stats[f"cbit_hit_max_{_pos.lower()}"] = round(
+        max((r["cbit_hit10"] for r in _matched), default=0.0), 1)
+
 payload = dict(rows=rows, med_xgi_m=round(med_xgi_m,4), fixtures=FIXTURES, stats=stats, kpanel=kpanel,
                med_xgc=med_xgc, med_xgi_mid=med_xgi_mid,
                captured=snap.get("captured_utc", "")[:19],
                season=snap.get("season_described", "?"),
                generated=dt.datetime.now().strftime("%Y-%m-%d %H:%M"),
                last16=last16_info, fixture_info=fixture_info)
-
-# ------------------------------------------------------- DC threshold buckets
-# Panel 2 used to histogram raw CBIT/CBIRT per-90 averages. That mixes up two
-# different questions: how BUSY is a player, and how much is that busyness
-# actually WORTH. p_threshold() is the real conversion FPL scoring uses (a
-# per-match probability of clearing the line, not a continuous reward), so
-# bucket players by the POINTS that probability is worth instead.
-# A4: the rate is now CONTINUOUS, so the old lookup on four exact values
-# (0.05/0.20/0.55/0.75) would raise a KeyError. Bucket by the points earned.
-PTS_LABELS = ["under 0.5 pts (rarely clears)", "0.5-1.0 pts (near miss)",
-              "1.0-1.4 pts (clears)", "1.4+ pts (clears comfortably)"]
-
-def pts_bins(rows, metric, thresh):
-    counts = [0, 0, 0, 0]
-    for r in rows:
-        pts = DC_PTS * p_threshold(r[metric], thresh, key=f'{r["name"]}|{r["team"]}')
-        counts[0 if pts < 0.5 else 1 if pts < 1.0 else 2 if pts < 1.4 else 3] += 1
-    return PTS_LABELS, counts
-
-payload["hist_def_pts"] = pts_bins(D, "cbit90", CBIT_THRESH)
-payload["hist_mid_pts"] = pts_bins(M, "cbirt90", CBIRT_THRESH)
 
 HTML = open(os.path.join(HERE, "template.html"), encoding="utf-8").read()
 # Shared chrome, inlined so the output stays a single self-contained file.

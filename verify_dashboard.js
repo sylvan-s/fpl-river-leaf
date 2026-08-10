@@ -124,6 +124,18 @@ const s1 = drive('p1s', 80, 'c1', 'start% slider (DEF)');
 const s3 = drive('p3s', 80, 'c3m', 'start% slider (MID)');
 const s4 = drive('p4s', 80, 'c3', 'start% slider (P4) ');
 
+// Panel 2 position buttons: clicking MID should change the point count from
+// the DEF default, and the corr() text alongside it should update too.
+let p2ok = false;
+const p2btns = byId['p2pos'];
+if (p2btns) {
+  const before = charts.find(c => c.canvas === 'c2').points;
+  p2btns.fire('click', null, { dataset: { p: 'MID' } });
+  const after = charts.find(c => c.canvas === 'c2').points;
+  console.log(`p2 position filter  : DEF ${before} pts -> MID ${after}`);
+  p2ok = after !== before;
+}
+
 // Panel 4 position buttons: clicking DEF should also change the point count.
 let p4ok = false;
 const p4btns = byId['p4pos'];
@@ -147,8 +159,8 @@ if (byId['p7s']) {
   p7ok = after < before;
 }
 
-const ok = app.children.length === 7 && charts.length === 7
+const ok = app.children.length === 7 && charts.length === 6
   && charts.every(c => c.points > 0) && s1 && s3 && s4 && triOk && xpOk
-  && p4ok && xpHeadOk && p7ok;
+  && p2ok && p4ok && xpHeadOk && p7ok;
 console.log('\nRESULT:', ok ? 'ALL PANELS RENDER, ALL FILTERS WORK' : 'INCOMPLETE');
 process.exit(ok ? 0 : 1);
