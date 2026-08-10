@@ -21,6 +21,10 @@ disagree about how hard a fixture is.
 
     python3 fixture_adjust.py            # show the adjustment per player
     python3 fixture_adjust.py --squad    # only the current squad
+    python3 fixture_adjust.py --intel    # ROLE_INTEL.md adjustments applied first
+
+--intel is read by build_squad.load() (same sys.argv, one process) - nothing
+here duplicates that logic. See intel_adjust.py.
 
     # WEEKLY REFRESH - paste the raw fixture_difficulty output and stamp the GW:
     python3 fixture_adjust.py --update --gw 3 < window.txt
@@ -198,6 +202,8 @@ def main():
 
     _fx, prov, _stamp = active_window()
     print(f"window source: {prov}\n")
+    if bs.USE_INTEL:
+        print("INTEL: ROLE_INTEL.md `adjustments` fence is ACTIVE (--intel)\n")
     pool = adjust(bs.load())
     only_squad = "--squad" in sys.argv
     # From squad.json via squad_state.py. This copy was the one that went stale

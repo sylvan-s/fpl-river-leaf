@@ -241,6 +241,61 @@ who actually deputises would be worth roughly £4.0m better spent.
 
 **Falsifiable check:** who starts Spurs' GW1 fixture in goal.
 
+## Machine-readable adjustments — narrative intel to model inputs
+
+**Why this exists.** Every entry above states a thesis. None of them, until
+10 Aug 2026, changed a single number `build_squad.py` actually scores on — a
+penalty-duty claim sat next to the model without ever touching `xg90`. This
+fence closes that gap. It is parsed by `intel_adjust.py` and applied only when
+`--intel` is passed to `build_squad.py` / `optimise_squad.py` /
+`fixture_adjust.py` — **off by default**, so nothing here changes existing
+output unless asked for.
+
+    python3 build_squad.py --intel              # squad WITH intel applied
+    python3 optimise_squad.py --compare-intel    # WITH vs WITHOUT, one run
+    python3 intel_adjust.py --report             # per-player xP with vs without
+
+**Two shapes, not one — agreed with Sylvan 10 Aug 2026.**
+
+- `op=mult` on `xg90` / `xa90` / `xgi90` / `cbit90` / `cbirt90` — a bounded
+  multiplier, **guardrailed to 0.5x–1.5x**. A thesis is a probability-weighted
+  guess, not a measurement, and should never be able to outweigh a season of
+  observed data. `xgi90` is a convenience alias for xG **and** xA together,
+  scaled by the same factor.
+- `op=set` on `stp` **only** — an override, not a multiplier, **not** subject
+  to the 0.5x-1.5x cap. Unavailability is closer to binary than continuous:
+  "out for four weeks" is P(start) = 0, and a 0.5x floor would leave a
+  nailed-on absentee at 37%. Works in both directions — Mosquera's minutes
+  opening through injury is `stp` being set UP, not just less down.
+
+Format: `player | team | field | op | value | gws | confidence | date | why`.
+`player` and `team` must match the pool exactly (web_name + FPL short code) —
+a typo matches nothing, and `build_squad.load()` warns loudly on any entry
+that never fires rather than staying silent about it. `gws` is a window like
+`1-4`, a single GW, or `ALL`; it is provenance plus a staleness nudge, not an
+auto-expiry — still prune by hand per rule 6 below.
+
+The five seeded below translate the theses already logged above. Delete or
+re-date a line the moment reality confirms or contradicts the thesis it rests
+on — same discipline as the `setpieces` block.
+
+```adjustments
+Szoboszlai | LIV | xg90  | mult | 1.35 | 1-8 | medium | 2026-08-07 | Penalty + direct FK duty per community consensus, Salah departure vacates it; see entry 1 above
+Ndiaye     | EVE | xg90  | mult | 1.25 | 1-8 | medium | 2026-08-07 | Penalty duty claimed plus -2.09 delta already underperforming his chances; see entry 4 above
+Anderson   | MCI | xgi90 | mult | 1.15 | 1-8 | medium | 2026-08-07 | Elevated box-to-box creative role per community read; screen already confirms the CBIRT floor, this prices the ceiling; see entry 2 above
+Mosquera   | ARS | stp   | set  | 0.85 | 1-3 | medium | 2026-08-07 | Saliba injured no return date, Timber out till 21 Aug; minutes opening in the league's best defence; see entry 3 above
+Dubravka   | TOT | stp   | set  | 0.05 | ALL | high   | 2026-08-09 | Reported backup to Antonin Kinsky at Spurs; 81% last16 rate is a Burnley-era number wearing a Spurs badge; see the competition fence above
+```
+
+**Also wired into the live weekly tools, not just the offline squad scripts.**
+`fpl_research_mcp.py`'s `captaincy_odds` (and the shared `_cap_rows` it feeds
+`log_predictions` from) reads this same fence via `intel_adjust.py`'s
+`entries_for()` — no second parser, same `gws` window check, same 0.5x-1.5x
+cap on `mult`, same uncapped `set` on `stp`. Pass `with_intel=True` (off by
+default) to layer it on; any player it touched is tagged in the row.
+`log_predictions` never sets it — calibration must score the model, not
+model+intel, or a good intel call would get credited as if the model made it.
+
 ## Reconciliation rules
 
 1. **Forward-looking intel about a ROLE beats backward-looking stats about

@@ -33,10 +33,20 @@ before leaning on it for a single close gate decision. 5 of 267 players in the
 full-season rate — `--season-starts` reproduces the pre-9-Aug gate exactly.
 """
 import json, math, os, sys
+import importlib.util as _il
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SNAP = os.path.join(HERE, "fpl_priors_2025_26_v2.json")
 LAST16_PATH = os.path.join(HERE, "last16_starts.json")
+
+# Roadmap "adjustments layer", 10 Aug 2026. Loaded via file path (not `import
+# intel_adjust`) for the same reason every other cross-file import in this repo
+# is - build_squad.py is itself loaded via spec_from_file_location by
+# fixture_adjust.py, optimise_squad.py and fetch_gw_history.py, so a plain
+# import cannot be relied on to resolve relative to this file's directory.
+_ia_spec = _il.spec_from_file_location("intel_adjust", os.path.join(HERE, "intel_adjust.py"))
+ia = _il.module_from_spec(_ia_spec)
+_ia_spec.loader.exec_module(ia)
 
 # ---- GATES (see SELECTION_FRAMEWORK.md "The gates") -------------------------
 MIN_MINUTES = 900       # gate 1 - below this a per-90 rate is noise
@@ -105,6 +115,13 @@ def f(x):
 # Roadmap A4. Set False (or pass --legacy-dc) to score on the superseded
 # step function, for the GW10 comparison.
 USE_EMPIRICAL_DC = "--legacy-dc" not in sys.argv
+
+# Adjustments layer, 10 Aug 2026. OFF by default - pass --intel to apply the
+# `adjustments` fence in ROLE_INTEL.md. load() also accepts an explicit
+# `intel=True/False` override so a single process can build both pools for a
+# with-vs-without comparison (see intel_adjust.py --report and
+# optimise_squad.py --compare-intel) without relying on sys.argv twice.
+USE_INTEL = "--intel" in sys.argv
 
 GOAL   = {"GKP": 10, "DEF": 6, "MID": 5, "FWD": 4}
 ASSIST = 3
@@ -219,10 +236,12 @@ def expected_points(r):
 # players, not a component of expected points. Kept separate on purpose.
 
 
-def load(season_starts=False):
+def load(season_starts=False, intel=None):
+    use_intel = USE_INTEL if intel is None else intel
     snap = json.load(open(SNAP, encoding="utf-8"))
     teams = {int(k): v for k, v in snap["teams"].items()}
     last16 = {} if season_starts else _load_last16()
+    matched = set()
     out = []
     for pid, p in snap["players"].items():
         m = p.get("minutes", 0) or 0
@@ -251,10 +270,24 @@ def load(season_starts=False):
                  cs=p.get("clean_sheets", 0) or 0, bps90=(p.get("bps") or 0)/n90,
                  sv90=(p.get("saves") or 0)/n90, own=f(p.get("selected_by_percent")),
                  xg90=f(p.get("expected_goals"))/n90, xa90=f(p.get("expected_assists"))/n90)
+        if use_intel:
+            for e in ia.apply(r):
+                matched.add((e["player"], e["team"]))
         r["p_cs"] = math.exp(-max(r["xgc90"], 0.05)) if CS[r["pos"]] else 0.0
         r["ok"] = r["name"] not in UNAVAILABLE
         r["score"] = expected_points(r)
         out.append(r)
+    if use_intel:
+        # UNMATCHED IS A BUG, NOT A NO-OP. A typo'd name/team in the fence
+        # would otherwise adjust nothing and say nothing - the exact silent
+        # failure this project has been bitten by before (see module docstring
+        # of intel_adjust.py).
+        for e in ia.load_adjustments():
+            if (e["player"], e["team"]) not in matched:
+                print(f"  INTEL WARNING: {e['player']}|{e['team']} "
+                      f"({e['field']}) matched no player in the pool - check "
+                      f"spelling/team code, or he may be below the {MIN_MINUTES}"
+                      f"-minute gate", file=sys.stderr)
     return out
 
 
@@ -316,7 +349,8 @@ def main():
     basis = "last-16-GW (2025/26 GW23-38)" if not season_starts else "full-season (38 GW)"
     print(f"gates: {MIN_MINUTES}+ mins · starts% basis: {basis} · "
           f">={gate:.0%} (XI) / {GATE_BENCH:.0%} (bench) "
-          f"· £{BUDGET}m · max {MAX_PER_CLUB}/club" + ("" if allow_haaland else " · no Haaland"))
+          f"· £{BUDGET}m · max {MAX_PER_CLUB}/club" + ("" if allow_haaland else " · no Haaland")
+          + (" · INTEL ADJUSTMENTS APPLIED (--intel)" if USE_INTEL else ""))
     print(f"formation {form[0]}-{form[1]}-{form[2]}   XI £{xs:.1f}m   "
           f"squad £{tot:.1f}m   bank £{BUDGET-tot:.1f}m\n")
     for r in sorted(xi, key=lambda x: (list(POS.values()).index(x["pos"]), -x["score"])):

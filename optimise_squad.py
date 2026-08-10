@@ -14,6 +14,10 @@ one. This solves the same problem exactly.
     python3 optimise_squad.py --haaland --gate 0.70
     python3 optimise_squad.py --fixtures               # score on xP_adj (GW1-4)
     python3 optimise_squad.py --fixtures --transfers 1
+    python3 optimise_squad.py --intel                  # ROLE_INTEL.md adjustments applied
+    python3 optimise_squad.py --intel --transfers 1
+    python3 optimise_squad.py --compare-intel           # WITH vs WITHOUT, one run
+    python3 optimise_squad.py --compare-intel --transfers 1
 
 TWO MODES, AND THE WEEKLY ONE IS THE SECOND.
 
@@ -277,12 +281,75 @@ def transfer_mode(pool, n, allow_haaland):
         print(f"      over a 5-GW hold: {gain*5 - hits:+.1f} pts net")
 
 
+def _fixture_scale(pool):
+    """Apply fixture_adjust and swap the objective to xP_adj. Mutates pool."""
+    import importlib.util as _il
+    _sp = _il.spec_from_file_location("fa", os.path.join(HERE, "fixture_adjust.py"))
+    fa = _il.module_from_spec(_sp); _sp.loader.exec_module(fa)
+    fa.adjust(pool)
+    for r in pool:
+        r["score"] = r["xp_adj"]
+    return fa
+
+
+def compare_intel(allow_haaland, season_starts, use_fixtures, n_transfers):
+    """WITH vs WITHOUT ROLE_INTEL.md adjustments, in one run.
+
+    Mirrors the "PRICE OF THE PREFERENCE" pattern already used for the
+    no-Haaland preference below - report the cost/gain of a choice rather than
+    silently baking it in. Two independent pools are built (bs.load(intel=...)
+    takes an explicit override for exactly this) so nothing here duplicates
+    the adjustment logic itself - that stays in intel_adjust.py, single source.
+    """
+    print("=== INTEL COMPARISON — WITH vs WITHOUT ROLE_INTEL.md adjustments ===\n")
+    pool_off = bs.load(season_starts=season_starts, intel=False)
+    pool_on = bs.load(season_starts=season_starts, intel=True)
+    if use_fixtures:
+        _fixture_scale(pool_off)
+        _fixture_scale(pool_on)
+        print(f"objective: xP_adj (opponent-adjusted, GW1-4)\n")
+
+    if n_transfers is not None:
+        print("--- WITHOUT intel ---")
+        transfer_mode(pool_off, n_transfers, allow_haaland)
+        print("\n--- WITH intel ---")
+        transfer_mode(pool_on, n_transfers, allow_haaland)
+        return
+
+    xi_off, bench_off, _ = optimise(pool_off, allow_haaland)
+    xi_on, bench_on, _ = optimise(pool_on, allow_haaland)
+    xp_off = sum(r["score"] for r in xi_off)
+    xp_on = sum(r["score"] for r in xi_on)
+    out = sorted({r["name"] for r in xi_off + bench_off}
+                 - {r["name"] for r in xi_on + bench_on})
+    inn = sorted({r["name"] for r in xi_on + bench_on}
+                 - {r["name"] for r in xi_off + bench_off})
+    print(f"XI xP/90 WITHOUT intel: {xp_off:.2f}")
+    print(f"XI xP/90 WITH intel:    {xp_on:.2f}   ({xp_on - xp_off:+.2f})")
+    if out or inn:
+        print(f"  OUT (without -> with): {out}")
+        print(f"  IN  (without -> with): {inn}")
+    else:
+        print("  Same 15 players either way — intel moved rates but not who "
+              "gets picked at this budget.")
+
+
 def main():
     global BUDGET
     allow_haaland = "--haaland" in sys.argv
     if "--gate" in sys.argv:
         bs.GATE_XI = float(sys.argv[sys.argv.index("--gate") + 1])
+
+    if "--compare-intel" in sys.argv:
+        n_transfers = (int(sys.argv[sys.argv.index("--transfers") + 1])
+                       if "--transfers" in sys.argv else None)
+        compare_intel(allow_haaland, "--season-starts" in sys.argv,
+                      "--fixtures" in sys.argv, n_transfers)
+        return
+
     pool = bs.load(season_starts="--season-starts" in sys.argv)
+    if bs.USE_INTEL:
+        print("INTEL: ROLE_INTEL.md `adjustments` fence is ACTIVE (--intel)\n")
     if "--fixtures" in sys.argv:
         # Swap the objective from flat xP to opponent-adjusted xP over the
         # window. Everything else - gates, constraints, bench rule - is
