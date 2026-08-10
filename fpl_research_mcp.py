@@ -134,6 +134,83 @@ def _intel_block(tag: str) -> dict[str, str]:
     return out
 
 
+# =============================================================================
+# EXTERNAL-RESEARCH ADJUSTMENT LAYER — behind with_intel=True, OFF by default
+#
+# Delegates to intel_adjust.py, the single source of truth for the
+# ROLE_INTEL.md `adjustments` fence (also used by build_squad.py) - see that
+# file's docstring for the schema and "agreed with Sylvan 10 Aug 2026"
+# reasoning. Do not fork a second parser here.
+#
+# LOADED LAZILY AND DEFENSIVELY, not at import time. This whole layer is
+# optional and off by default; this module's long-standing rule for every
+# other ROLE_INTEL.md block (_role_intel, _contaminated) is "missing or
+# malformed data must never break a screen" - a live MCP server has a much
+# higher cost for a hard import failure than a standalone script does, so a
+# missing/broken sibling file degrades with_intel to a no-op (with a stderr
+# note) rather than taking every tool in this server down with it.
+#
+# Two shapes, per intel_adjust.py:
+#   op=mult on xg90/xa90/xgi90/cbit90/cbirt90 - CAPPED to 0.5x-1.5x. A thesis
+#     should move a score, never dominate a season of observed data.
+#   op=set on stp ONLY - UNCAPPED. Non-availability is a binary fact ("out for
+#     four weeks" is P(start)=0), not a graded belief, so it gets no guardrail.
+#
+# Kept off log_predictions on purpose - calibration needs to score the MODEL,
+# not model+intel.
+# =============================================================================
+MULT_LO, MULT_HI = 0.5, 1.5  # mirrors intel_adjust.py's own - keep in sync
+
+_ia_mod = None
+_ia_load_failed = False
+
+
+def _ia():
+    """Lazy-load intel_adjust.py. Cached after the first attempt either way."""
+    global _ia_mod, _ia_load_failed
+    if _ia_mod is not None or _ia_load_failed:
+        return _ia_mod
+    try:
+        import importlib.util as _il
+        spec = _il.spec_from_file_location(
+            "intel_adjust",
+            _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "intel_adjust.py"))
+        mod = _il.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        _ia_mod = mod
+    except Exception as exc:
+        _ia_load_failed = True
+        print(f"  INTEL WARNING: intel_adjust.py unavailable ({exc!r}) - "
+              f"with_intel=True is a no-op until it's restored", file=sys.stderr)
+    return _ia_mod
+
+
+def _intel_entries(el: dict, teams: dict, current_gw: int | None) -> list[dict]:
+    """ROLE_INTEL.md `adjustments` fence entries matching this player (by
+    web_name + team short code), filtered to those whose gws window covers
+    current_gw (None/ALL entries always match). Returns [] if intel_adjust.py
+    is unavailable or the fence is malformed - see the module note above."""
+    mod = _ia()
+    if mod is None:
+        return []
+    team = teams.get(el.get("team"), {}).get("short_name", "")
+    try:
+        entries = mod.entries_for(el.get("web_name", ""), team)
+    except SystemExit as exc:
+        # intel_adjust.py deliberately raises on a malformed fence row (loud
+        # by its own design) - must not take this server down for it.
+        print(f"  INTEL WARNING: {exc}", file=sys.stderr)
+        return []
+    out = []
+    for e in entries:
+        if e["gws"] is not None and current_gw is not None:
+            lo, hi = e["gws"]
+            if not (lo <= current_gw <= hi):
+                continue
+        out.append(e)
+    return out
+
+
 def _contaminated() -> dict[str, str]:
     """Players whose prior-season stats blend two clubs - personal prior unusable."""
     global _contam_cache
@@ -1979,9 +2056,15 @@ def _pois_pmf(lam: float, kmax: int = 6) -> list[float]:
     return out
 
 
-def _cap_rows(names: str, shrunk: bool = True):
+def _cap_rows(names: str, shrunk: bool = True, with_intel: bool = False):
     """Shared by captaincy_odds and log_predictions so the two can never
-    disagree about what was predicted."""
+    disagree about what was predicted.
+
+    with_intel=True applies the ROLE_INTEL.md `adjustments` fence (see the
+    module note above _load_adjustments()): a CAPPED 0.5x-1.5x multiplier on
+    xg90/xa90/xgi90, and an UNCAPPED op=set override on stp/P(start). OFF by
+    default so callers can compare with/without. log_predictions deliberately
+    never sets this - calibration must score the model, not model+intel."""
     teams, _ = _maps()
     b = _boot()
     wanted = [n.strip().lower() for n in names.split(",") if n.strip()]
@@ -2036,6 +2119,30 @@ def _cap_rows(names: str, shrunk: bool = True):
         # injured RIGHT NOW. Apply the published status before anything else.
         avail, avail_lbl = _availability(el)
         p_start *= avail
+
+        # External-research overlay (ROLE_INTEL.md `adjustments` fence) - OFF
+        # unless with_intel=True, so this whole block is a no-op by default and
+        # callers get identical output with/without it until explicitly asked
+        # for the comparison.
+        intel_note = ""
+        if with_intel:
+            for e in _intel_entries(el, teams, _screen_gw()):
+                if e["op"] == "set" and e["field"] == "stp":
+                    # UNCAPPED - non-availability is a binary fact, not a
+                    # graded belief; overrides the status flag outright.
+                    clamped = min(max(e["value"], 0.0), 1.0)
+                    avail, avail_lbl, p_start = clamped, f"INTEL: {e['why'][:50]}", clamped
+                    tag = f"stp->{clamped:.2f} (intel)"
+                elif e["op"] == "mult" and e["field"] in ("xg90", "xa90", "xgi90"):
+                    factor = min(max(e["value"], MULT_LO), MULT_HI)
+                    if e["field"] in ("xg90", "xgi90"):
+                        xg90 *= factor
+                    if e["field"] in ("xa90", "xgi90"):
+                        xa90 *= factor
+                    tag = f"{e['field']} x{factor:.2f}"
+                else:
+                    continue
+                intel_note = f"{intel_note}; {tag}" if intel_note else tag
 
         # --- D7: adjust for the ACTUAL opponent, per fixture -----------------
         ev = _next_event()
@@ -2093,7 +2200,7 @@ def _cap_rows(names: str, shrunk: bool = True):
             "diff": haul * 100 * (1 - own / 100),      # ownership-adjusted upside
             "risk": blank * 100 * (1 - own / 100),
             "status": el.get("status", "a"),
-            "avail": avail, "avail_lbl": avail_lbl,
+            "avail": avail, "avail_lbl": avail_lbl, "intel": intel_note,
             "susp": _suspension(el, ev["id"] if ev else 1, p_start),
         })
 
@@ -2109,11 +2216,15 @@ def _cap_rows(names: str, shrunk: bool = True):
         "it. Also reports an ownership-adjusted differential score, because "
         "captaining a heavily-owned player is largely rank-neutral whatever "
         "happens. Use for both the weekly armband and Triple Captain timing "
-        "(TC is purely a P(haul) maximisation)."
+        "(TC is purely a P(haul) maximisation). Pass with_intel=True to layer "
+        "the ROLE_INTEL.md `adjustments` fence on top (capped 0.5x-1.5x xG/xA "
+        "multipliers, uncapped P(start) overrides) - OFF by default so you "
+        "can run it both ways and compare."
     )
 )
-def captaincy_odds(names: str, mode: str = "neutral", shrunk: bool = True) -> str:
-    rows, _meta = _cap_rows(names, shrunk)
+def captaincy_odds(names: str, mode: str = "neutral", shrunk: bool = True,
+                    with_intel: bool = False) -> str:
+    rows, _meta = _cap_rows(names, shrunk, with_intel)
     if not rows:
         return f"No players matched: {names}"
 
@@ -2124,7 +2235,9 @@ def captaincy_odds(names: str, mode: str = "neutral", shrunk: bool = True) -> st
             f"{'P(haul)':>9}{'P(blank)':>10}{'SD':>7}{'Own%':>7}{'DiffUp':>8}"
             f"{'SUSP':>11}")
     out = [f"CAPTAINCY ODDS (mode: {mode}, "
-           f"{'SHRUNK rates' if shrunk else 'RAW rates'})", "", head, "-" * len(head)]
+           f"{'SHRUNK rates' if shrunk else 'RAW rates'}"
+           f"{', WITH INTEL ADJUSTMENTS' if with_intel else ''})",
+           "", head, "-" * len(head)]
     for r in rows:
         flag = "" if r["status"] == "a" else " " + STATUS.get(r["status"], "")
         out.append(
@@ -2134,6 +2247,7 @@ def captaincy_odds(names: str, mode: str = "neutral", shrunk: bool = True) -> st
             f"{r['sd']:>7.2f}{r['own']:>7.1f}{r['diff']:>8.1f}"
             f"{r['susp']['label']:>11}"
             f"{'  DGW' if r['dgw'] else ''}{flag}"
+            f"{'  [' + r['intel'] + ']' if r.get('intel') else ''}"
         )
     at_risk = [r for r in rows if r["susp"]["to_go"] == 1 and r["susp"]["p_ban"] > 0]
     if at_risk:
@@ -2177,6 +2291,12 @@ def captaincy_odds(names: str, mode: str = "neutral", shrunk: bool = True) -> st
         "RATES ARE SHRUNK by default (base column names the prior used). Early season",
         "a raw two-game rate would make the distribution wildly over-confident.",
         "Pass shrunk=False to see the unsmoothed version.",
+        "",
+        "with_intel=True (OFF by default) layers ROLE_INTEL.md's `adjustments` fence",
+        "on top: a CAPPED 0.5x-1.5x multiplier on xg90/xa90/xgi90, and an UNCAPPED",
+        "op=set override on stp/P(start) - a binary non-availability claim, not a",
+        "graded one. Any player it touched is tagged '[...]' in the row. Run both",
+        "ways and diff to see what the external research is actually worth.",
         "",
         "CAVEATS: Poisson assumes a constant rate and independence - real matches",
         "have game-state effects. Bonus is a flat per-90 average, not modelled from",

@@ -1,11 +1,11 @@
 {
   "_comment": "SINGLE SOURCE OF TRUTH for live squad state. Read by squad_state.py. TEAM_CHANGE_LOG.md is the human narrative. Update BOTH after every actioned transfer.",
-  "updated_utc": "2026-08-09T21:37:24Z",
-  "as_at_note": "GW1 pre-deadline, REBUILT under roadmap A4 (empirical DC hit rates). Deadline Fri 21 Aug 2026 17:30 UTC.",
+  "updated_utc": "2026-08-10T00:00:00Z",
+  "as_at_note": "GW1 pre-deadline. 3 free transfers actioned (unlimited pre-deadline, no hit cost): O'Reilly/Virgil/O.Dango -> Botman/Mosquera/Palmer, per the ROLE_INTEL.md intel-adjusted optimiser (Welbeck excluded - contaminated BHA prior). Deadline Fri 21 Aug 2026 17:30 UTC.",
   "gameweek": 1,
   "formation": "3-5-2",
-  "bank": 0.5,
-  "squad_value": 99.5,
+  "bank": 0.0,
+  "squad_value": 100.0,
   "captain": "B.Fernandes",
   "vice": "Thiago",
   "squad": [
@@ -30,24 +30,24 @@
       "selected_on": "xGC 0.72, 18 clean sheets, 23.7 bps/90 — and a 37% DC hit rate the old model scored at 0.20"
     },
     {
-      "name": "O'Reilly",
+      "name": "Mosquera",
       "pos": "DEF",
-      "team": "MCI",
-      "price": 6.5,
-      "bought_for": 6.5,
+      "team": "ARS",
+      "price": 5.5,
+      "bought_for": 5.5,
       "role": "XI",
       "bench_order": null,
-      "selected_on": "Attacking defender: 5 goals, 4 assists, 14 clean sheets in 2025/26. Low DC (4%) — he is here for returns and clean sheets, not the defensive floor"
+      "selected_on": "ROLE_INTEL intel (op=set stp->0.85, GW1-3): Saliba injured no return date, Timber out till 21 Aug — minutes opening in the league's best defence. 8.7 CBIT/90"
     },
     {
-      "name": "Virgil",
+      "name": "Botman",
       "pos": "DEF",
-      "team": "LIV",
-      "price": 6.5,
-      "bought_for": 6.5,
+      "team": "NEW",
+      "price": 5.0,
+      "bought_for": 5.0,
       "role": "XI",
       "bench_order": null,
-      "selected_on": "42% DC hit rate, 100% starts, and the best defensive fixture run in GW1-4 (DEF x 0.69)"
+      "selected_on": "Part of the free (pre-deadline, no-hit) 3-transfer intel-adjusted optimum, +0.49 xP/90 over the prior squad"
     },
     {
       "name": "B.Fernandes",
@@ -80,14 +80,14 @@
       "selected_on": "flat xP 4.78 (before fixtures), xGI/90 0.50, delta -1.1 — only visible once gate 2 moved to a last-16 window"
     },
     {
-      "name": "O.Dango",
+      "name": "Palmer",
       "pos": "MID",
-      "team": "BRE",
-      "price": 6.5,
-      "bought_for": 6.5,
+      "team": "CHE",
+      "price": 9.5,
+      "bought_for": 9.5,
       "role": "XI",
       "bench_order": null,
-      "selected_on": "Ouattara: 7 goals, 8 assists, 162 ICT. Attacking midfield value at £6.5m"
+      "selected_on": "Part of the free (pre-deadline, no-hit) 3-transfer intel-adjusted optimum, +0.49 xP/90 over the prior squad"
     },
     {
       "name": "Schade",

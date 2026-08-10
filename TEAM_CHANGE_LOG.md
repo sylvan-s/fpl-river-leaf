@@ -15,11 +15,11 @@ one-line record. What remains is what actually governs a decision today.
 
 ---
 
-## CURRENT STATE — as at Sun 9 Aug 2026, 22:40 BST (GW1 pre-deadline)
+## CURRENT STATE — as at Mon 10 Aug 2026 (GW1 pre-deadline)
 
 **Deadline:** Fri 21 Aug 2026, 18:30 BST · **Formation:** 3-5-2
-**Last change:** **REBUILT 9 Aug** under roadmap A4 — 5 transfers, 0 pts (all free pre-season)
-**Squad value** £99.5m · **Bank** £0.5m · **Captain** B.Fernandes · **Vice** Thiago
+**Last change:** **3 transfers, 10 Aug** — O'Reilly/Virgil/O.Dango → Mosquera/Botman/Palmer, 0 pts (unlimited free pre-deadline)
+**Squad value** £100.0m · **Bank** £0.0m · **Captain** B.Fernandes · **Vice** Thiago
 
 **Why the rebuild.** `p_threshold` converted an average CBIT/CBIRT into expected
 DC points through a four-band step function on the season mean. Measured against
@@ -34,12 +34,12 @@ pts/season)** over holding.
 |---|---|---|---|---|---|---|
 | GK | Raya | ARS | £6.0m | 94% | — | 19 CS, best xGC (0.74) |
 | DEF | Gabriel | ARS | £8.0m | 94% | 37% | xGC 0.72, 18 CS, bps/90 23.7 |
-| DEF | O'Reilly | MCI | £6.5m | 81% | 4% | **5 goals, 4 assists, 14 CS** — returns, not a defensive floor |
-| DEF | Virgil | LIV | £6.5m | **100%** | 42% | best DEF x 0.69 in GW1–4 |
+| DEF | Mosquera | ARS | £5.5m | 85%\* | — | ROLE_INTEL intel: Saliba/Timber both out, minutes opening at Arsenal (\*stp SET by intel, GW1-3) |
+| DEF | Botman | NEW | £5.0m | 75% | — | free 3-transfer intel-adjusted optimum, +0.49 xP/90 |
 | MID | B.Fernandes | MUN | £12.0m | **100%** | 15% | xGI/90 0.68, highest in game · **CAPTAIN** |
 | MID | Mbeumo | MUN | £8.0m | 88% | 0% | xGI/90 0.58, delta −3.0 |
 | MID | Sarr | CRY | £6.5m | 75% | 0% | flat xP 4.78, delta −1.1 |
-| MID | O.Dango | BRE | £6.5m | 81% | 8% | 7 goals, 8 assists at £6.5m |
+| MID | Palmer | CHE | £9.5m | 88% | — | free 3-transfer intel-adjusted optimum, +0.49 xP/90 |
 | MID | Schade | BRE | £6.0m | 75% | 0% | flat xP 4.55, delta −1.1 |
 | FWD | Thiago | BRE | £8.0m | **100%** | 3% | 22 goals, best availability · **VICE** |
 | FWD | Calvert-Lewin | LEE | £6.0m | 94% | 0% | 14 goals, delta −0.6 |
@@ -48,7 +48,7 @@ pts/season)** over holding.
 | BEN | Justin | LEE | £4.5m | **100%** | 20% | bench 2 |
 | BEN | Shaw | MUN | £4.5m | **100%** | 14% | bench 3 |
 
-**Club counts:** MUN 3 and BRE 3 — **both at the cap.**
+**Club counts:** MUN 3 (at the cap) · ARS 2 (Gabriel, Mosquera) · BRE 2 (Schade, Thiago) — no club at risk of the 3-per-club cap besides MUN.
 
 ### The 5 transfers, and why
 
@@ -267,6 +267,40 @@ share rises; the differential case depends entirely on him playing.
 ---
 
 ## CHANGE HISTORY (newest first)
+
+### Mon 10 Aug 2026 — GW1 — O'Reilly/Virgil/O.Dango → Mosquera/Botman/Palmer (3 transfers, 0 pts)
+
+**Trigger.** Sylvan: "please implement my optimal squad as transfers are
+currently free." Ran `optimise_squad.py`'s transfer optimiser with
+`free_transfers` set equal to the transfer count each time (correcting an
+earlier answer that had wrongly priced a -4 hit pre-deadline — **transfers are
+unlimited and free before the GW1 deadline**, so there is no hit to weigh).
+
+**Method.** Compared WITH and WITHOUT the ROLE_INTEL.md `adjustments` fence
+(`intel_adjust.py`, capped 0.5x-1.5x multipliers / uncapped stp overrides).
+Both converge on the same 4-transfer ceiling (+0.55 xP/90), but the *cheapest
+path* there differs — intel prefers Mosquera (minutes opening at Arsenal on
+Saliba/Timber injuries) over Muñoz at 2+ transfers.
+
+**Welbeck excluded.** The 4-transfer version would have added Welbeck (CHE),
+but he's on ROLE_INTEL.md's `contaminated` list (BHA→CHE — his 2025/26 record
+is a Brighton season, not a Chelsea one) and `build_squad.py` does not correct
+for it. Flagged to Sylvan before acting; he chose the 3-transfer version
+instead (O'Reilly, O.Dango, Virgil → Botman, Mosquera, Palmer), which gets
++0.49 xP/90 — nearly identical to the 4-transfer total — without relying on
+the questionable number. **This is a real gap**: build_squad.py's `load()`
+never applies the `contaminated` fence correction that fpl_research_mcp.py's
+`_baseline()` does; worth closing before it costs a real transfer next time.
+
+**OUT** (3): O'Reilly (MCI, £6.5m) · Virgil (LIV, £6.5m) · O.Dango (BRE, £6.5m)
+**IN** (3): Botman (NEW, £5.0m) · Mosquera (ARS, £5.5m) · Palmer (CHE, £9.5m)
+Bank £0.5m → £0.0m. Squad value £99.5m → £100.0m. Formation unchanged, 3-5-2.
+Captain (B.Fernandes) and vice (Thiago) unchanged.
+
+**Actioned live** via Claude in Chrome on fantasy.premierleague.com (entry
+1041614) after confirming the 15/15 squad and £0.0m bank matched the computed
+plan exactly. Verified post-submit on Pick Team: squad value £100.0m, bank
+£0.0m, XI/bench match. `squad.json` and this log updated same session.
 
 ### Sun 9 Aug 2026 — GW1 — Enzo → Sarr (1 transfer, 0 pts)
 
