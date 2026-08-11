@@ -18,7 +18,7 @@ one-line record. What remains is what actually governs a decision today.
 ## CURRENT STATE — as at Tue 11 Aug 2026 (GW1 pre-deadline)
 
 **Deadline:** Fri 21 Aug 2026, 18:30 BST · **Formation:** 3-5-2
-**Last change:** **1 transfer, 11 Aug** — Botman → Van den Berg, 0 pts (unlimited free pre-deadline). **Awaiting action on the live FPL site** — logged here first per the usual order, Sylvan actions it manually.
+**Last change:** **1 transfer, 11 Aug** — Botman → Van den Berg, 0 pts (unlimited free pre-deadline). **Actioned live on the FPL site**, confirmed by Sylvan.
 **Previous change:** 3 transfers, 10 Aug — O'Reilly/Virgil/O.Dango → Mosquera/Botman/Palmer
 **Squad value** £100.0m · **Bank** £0.0m · **Captain** B.Fernandes · **Vice** Thiago
 
@@ -321,9 +321,8 @@ squad continuity) isn't fully priced into the model.
 Bank unchanged £0.0m. Squad value unchanged £100.0m. Formation unchanged, 3-5-2.
 Club counts: BRE now at the 3-per-club cap (Schade, Thiago, Van den Berg).
 
-**Not yet actioned live** — logged here and in `squad.json` first; Sylvan is
-actioning it manually on fantasy.premierleague.com. Update this line to
-"actioned" once confirmed.
+**Actioned live** on fantasy.premierleague.com (entry 1041614), confirmed by
+Sylvan 11 Aug 2026. `squad.json` and this log updated same session.
 
 ### Mon 10 Aug 2026 — GW1 — O'Reilly/Virgil/O.Dango → Mosquera/Botman/Palmer (3 transfers, 0 pts)
 

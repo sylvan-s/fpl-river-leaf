@@ -1,7 +1,7 @@
 {
   "_comment": "SINGLE SOURCE OF TRUTH for live squad state. Read by squad_state.py. TEAM_CHANGE_LOG.md is the human narrative. Update BOTH after every actioned transfer.",
   "updated_utc": "2026-08-11T00:00:00Z",
-  "as_at_note": "GW1 pre-deadline. 3 free transfers actioned 10 Aug (unlimited pre-deadline, no hit cost): O'Reilly/Virgil/O.Dango -> Botman/Mosquera/Palmer, per the ROLE_INTEL.md intel-adjusted optimiser (Welbeck excluded - contaminated BHA prior). Plus 1 free transfer 11 Aug: Botman -> Van den Berg (BRE) - same price, near-identical xGC/90 (1.353 vs 1.356) but higher starts (75% vs 81%, +0.19 xP/GW) and no fitness-fragility flag; see TEAM_CHANGE_LOG.md and ROLE_INTEL.md entry 6. Deadline Fri 21 Aug 2026 17:30 UTC. Confirmed as awaiting action on the live FPL site by Sylvan.",
+  "as_at_note": "GW1 pre-deadline. 3 free transfers actioned 10 Aug (unlimited pre-deadline, no hit cost): O'Reilly/Virgil/O.Dango -> Botman/Mosquera/Palmer, per the ROLE_INTEL.md intel-adjusted optimiser (Welbeck excluded - contaminated BHA prior). Plus 1 free transfer 11 Aug: Botman -> Van den Berg (BRE) - same price, near-identical xGC/90 (1.353 vs 1.356) but higher starts (75% vs 81%, +0.19 xP/GW) and no fitness-fragility flag; see TEAM_CHANGE_LOG.md and ROLE_INTEL.md entry 6. Deadline Fri 21 Aug 2026 17:30 UTC. Actioned live on the FPL site by Sylvan, confirmed 11 Aug 2026.",
   "gameweek": 1,
   "formation": "3-5-2",
   "bank": 0.0,
