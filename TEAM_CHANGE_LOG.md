@@ -15,10 +15,11 @@ one-line record. What remains is what actually governs a decision today.
 
 ---
 
-## CURRENT STATE — as at Mon 10 Aug 2026 (GW1 pre-deadline)
+## CURRENT STATE — as at Tue 11 Aug 2026 (GW1 pre-deadline)
 
 **Deadline:** Fri 21 Aug 2026, 18:30 BST · **Formation:** 3-5-2
-**Last change:** **3 transfers, 10 Aug** — O'Reilly/Virgil/O.Dango → Mosquera/Botman/Palmer, 0 pts (unlimited free pre-deadline)
+**Last change:** **1 transfer, 11 Aug** — Botman → Van den Berg, 0 pts (unlimited free pre-deadline). **Awaiting action on the live FPL site** — logged here first per the usual order, Sylvan actions it manually.
+**Previous change:** 3 transfers, 10 Aug — O'Reilly/Virgil/O.Dango → Mosquera/Botman/Palmer
 **Squad value** £100.0m · **Bank** £0.0m · **Captain** B.Fernandes · **Vice** Thiago
 
 **Why the rebuild.** `p_threshold` converted an average CBIT/CBIRT into expected
@@ -35,7 +36,7 @@ pts/season)** over holding.
 | GK | Raya | ARS | £6.0m | 94% | — | 19 CS, best xGC (0.74) |
 | DEF | Gabriel | ARS | £8.0m | 94% | 37% | xGC 0.72, 18 CS, bps/90 23.7 |
 | DEF | Mosquera | ARS | £5.5m | 85%\* | — | ROLE_INTEL intel: Saliba/Timber both out, minutes opening at Arsenal (\*stp SET by intel, GW1-3) |
-| DEF | Botman | NEW | £5.0m | 75% | — | free 3-transfer intel-adjusted optimum, +0.49 xP/90 |
+| DEF | Van den Berg | BRE | £5.0m | 81% | near | 11 Aug swap for Botman: same price, xGC/90 near-identical (1.356 v 1.353), +0.19 xP/GW from reliability, no fitness-fragility flag |
 | MID | B.Fernandes | MUN | £12.0m | **100%** | 15% | xGI/90 0.68, highest in game · **CAPTAIN** |
 | MID | Mbeumo | MUN | £8.0m | 88% | 0% | xGI/90 0.58, delta −3.0 |
 | MID | Sarr | CRY | £6.5m | 75% | 0% | flat xP 4.78, delta −1.1 |
@@ -48,7 +49,7 @@ pts/season)** over holding.
 | BEN | Justin | LEE | £4.5m | **100%** | 20% | bench 2 |
 | BEN | Shaw | MUN | £4.5m | **100%** | 14% | bench 3 |
 
-**Club counts:** MUN 3 (at the cap) · ARS 2 (Gabriel, Mosquera) · BRE 2 (Schade, Thiago) — no club at risk of the 3-per-club cap besides MUN.
+**Club counts:** MUN 3 (at the cap) · ARS 2 (Gabriel, Mosquera) · BRE 3 (Schade, Thiago, Van den Berg — at the cap since the 11 Aug swap) — no further BRE or ARS signings possible without an offsetting sale.
 
 ### Squad shape — the archetype each position is bought for
 
@@ -281,6 +282,48 @@ share rises; the differential case depends entirely on him playing.
 ---
 
 ## CHANGE HISTORY (newest first)
+
+### Tue 11 Aug 2026 — GW1 — Botman → Van den Berg (1 transfer, 0 pts)
+
+**Trigger.** Sylvan asked which defence looked stronger this season, Brentford
+or Newcastle, then whether Van den Berg would be a better pick than Botman
+given that research, then actioned it — pre-deadline transfers are still free.
+
+**Research.** 2025/26: both sides kept exactly **8 clean sheets**; Brentford
+conceded fewer actual goals (1.36/match vs Newcastle's 14-game clean-sheet
+drought through the back half of last season) and finished 8th vs Newcastle
+lower. Summer continuity favours Brentford too — Pinnock signed a new
+contract rather than leaving, Schuster (£12m CB) added as reinforcement, no
+defensive departures found. Newcastle lost Trippier, Krafth, Targett and,
+more relevantly, **Guimarães** (defensive-midfield shield) to Arsenal, adding
+Thiaw as the one clear reinforcement — more personnel change to absorb.
+
+**Model comparison, same £5.0m price:** xGC/90 is within noise of each other
+(Botman 1.353, Van den Berg 1.356 — matches the team-level finding almost
+exactly). The gap is starts: Botman 75%, Van den Berg 81%, worth **+0.19
+xP/GW** (3.19 vs 3.00). Van den Berg also carries none of Botman's logged
+fitness-fragility flag (ROLE_INTEL.md entry 6 — ACL surgery 2023/24, two
+facial-fracture incidents in the last 18 months).
+
+**Trade-off, stated rather than hidden.** Botman clears the 10+ CBIT
+threshold (archetype `BOTH` — both routes to points); Van den Berg sits just
+under it (8.9 CBIT/90, archetype `cleansheet` — reliant on clean sheets only,
+no DC floor). This transfer trades the rarer two-routes profile for higher
+reliability at an identical defensive quality — a real trade, not a free
+upgrade, though the model reads it as net positive.
+
+**Squad-level effect (from the dashboard's Alternative 2 panel, fixture-adjusted):
++0.12 xP/GW** — inside the project's own noise floor (~4 pts/season). Actioned
+anyway because the transfer is free and the qualitative case (fitness risk,
+squad continuity) isn't fully priced into the model.
+
+**OUT** (1): Botman (NEW, £5.0m) **IN** (1): Van den Berg (BRE, £5.0m)
+Bank unchanged £0.0m. Squad value unchanged £100.0m. Formation unchanged, 3-5-2.
+Club counts: BRE now at the 3-per-club cap (Schade, Thiago, Van den Berg).
+
+**Not yet actioned live** — logged here and in `squad.json` first; Sylvan is
+actioning it manually on fantasy.premierleague.com. Update this line to
+"actioned" once confirmed.
 
 ### Mon 10 Aug 2026 — GW1 — O'Reilly/Virgil/O.Dango → Mosquera/Botman/Palmer (3 transfers, 0 pts)
 

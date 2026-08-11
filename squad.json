@@ -1,7 +1,7 @@
 {
   "_comment": "SINGLE SOURCE OF TRUTH for live squad state. Read by squad_state.py. TEAM_CHANGE_LOG.md is the human narrative. Update BOTH after every actioned transfer.",
-  "updated_utc": "2026-08-10T00:00:00Z",
-  "as_at_note": "GW1 pre-deadline. 3 free transfers actioned (unlimited pre-deadline, no hit cost): O'Reilly/Virgil/O.Dango -> Botman/Mosquera/Palmer, per the ROLE_INTEL.md intel-adjusted optimiser (Welbeck excluded - contaminated BHA prior). Deadline Fri 21 Aug 2026 17:30 UTC.",
+  "updated_utc": "2026-08-11T00:00:00Z",
+  "as_at_note": "GW1 pre-deadline. 3 free transfers actioned 10 Aug (unlimited pre-deadline, no hit cost): O'Reilly/Virgil/O.Dango -> Botman/Mosquera/Palmer, per the ROLE_INTEL.md intel-adjusted optimiser (Welbeck excluded - contaminated BHA prior). Plus 1 free transfer 11 Aug: Botman -> Van den Berg (BRE) - same price, near-identical xGC/90 (1.353 vs 1.356) but higher starts (75% vs 81%, +0.19 xP/GW) and no fitness-fragility flag; see TEAM_CHANGE_LOG.md and ROLE_INTEL.md entry 6. Deadline Fri 21 Aug 2026 17:30 UTC. Confirmed as awaiting action on the live FPL site by Sylvan.",
   "gameweek": 1,
   "formation": "3-5-2",
   "bank": 0.0,
@@ -40,14 +40,14 @@
       "selected_on": "ROLE_INTEL intel (op=set stp->0.85, GW1-3): Saliba injured no return date, Timber out till 21 Aug — minutes opening in the league's best defence. 8.7 CBIT/90"
     },
     {
-      "name": "Botman",
+      "name": "Van den Berg",
       "pos": "DEF",
-      "team": "NEW",
+      "team": "BRE",
       "price": 5.0,
       "bought_for": 5.0,
       "role": "XI",
       "bench_order": null,
-      "selected_on": "Part of the free (pre-deadline, no-hit) 3-transfer intel-adjusted optimum, +0.49 xP/90 over the prior squad"
+      "selected_on": "11 Aug swap for Botman, same £5.0m price. xGC/90 near-identical (1.356 vs 1.353) but starts 81% vs 75% (+0.19 xP/GW), and no fitness-fragility flag. Trade-off: gives up Botman's DC route (archetype BOTH, clears 10+ CBIT) for a cleansheet-only profile — reliability over the defensive-contribution floor"
     },
     {
       "name": "B.Fernandes",
