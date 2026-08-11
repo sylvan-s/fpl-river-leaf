@@ -58,6 +58,8 @@ nav.top span.soon::after{content:" · planned";font-weight:400;font-size:11px}
 .diagram svg{display:block;max-width:100%;height:auto;margin:0 auto}
 </style>
 <style>
+.archetype td,.archetype th{text-align:left;vertical-align:top;padding:8px 10px;border-bottom:1px solid var(--line)}
+.archetype td:first-child,.archetype th:first-child{white-space:nowrap;width:48px}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
 .kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
 .kv{font-size:22px;font-weight:700} .kl{font-size:12px;color:var(--dim);margin-top:2px}
@@ -82,9 +84,9 @@ border-radius:9px;padding:9px 11px}
 </nav>
 
 <h1>River Leaf FC — squad</h1>
-<p class="sub">GW1 · 3-5-2 · £100.0m + £0.0m bank · squad.json updated 2026-08-10T00:00:00Z · page generated 2026-08-10 23:59</p>
+<p class="sub">GW1 · 3-5-2 · £100.0m + £0.0m bank · squad.json updated 2026-08-10T00:00:00Z · page generated 2026-08-11 10:48</p>
 
-<div class="kpis"><div class="kpi"><div class="kv mono">£100.0m</div><div class="kl">Squad value</div><div class="kn">bank £0.0m</div></div><div class="kpi"><div class="kv mono">50.7</div><div class="kl">XI xP per 90</div><div class="kn">what the optimiser maximises</div></div><div class="kpi"><div class="kv mono">42.5</div><div class="kl">XI xP per gameweek</div><div class="kn">16% never played</div></div><div class="kpi"><div class="kv mono">6.0</div><div class="kl">Bench value</div><div class="kn">1.81 expected blanks</div></div><div class="kpi"><div class="kv mono">4/4</div><div class="kl">Chips left</div><div class="kn">set 1 expires GW19</div></div><div class="kpi"><div class="kv mono">11d</div><div class="kl">Deadline</div><div class="kn">GW1 · Fri 21 Aug 17:30 UTC</div></div></div>
+<div class="kpis"><div class="kpi"><div class="kv mono">£100.0m</div><div class="kl">Squad value</div><div class="kn">bank £0.0m</div></div><div class="kpi"><div class="kv mono">50.7</div><div class="kl">XI xP per 90</div><div class="kn">what the optimiser maximises</div></div><div class="kpi"><div class="kv mono">42.5</div><div class="kl">XI xP per gameweek</div><div class="kn">16% never played</div></div><div class="kpi"><div class="kv mono">6.0</div><div class="kl">Bench value</div><div class="kn">1.81 expected blanks</div></div><div class="kpi"><div class="kv mono">4/4</div><div class="kl">Chips left</div><div class="kn">set 1 expires GW19</div></div><div class="kpi"><div class="kv mono">10d</div><div class="kl">Deadline</div><div class="kn">GW1 · Fri 21 Aug 17:30 UTC</div></div></div>
 
 <div class="panel">
   <h2>The eleven</h2>
@@ -178,6 +180,44 @@ border-radius:9px;padding:9px 11px}
   <div class="pc-n mono">xP/90 3.10 · xP/GW 3.10 · <span title="defensive fixtures over GW1-4; LOWER is easier">DEF 1.00</span></div>
   <div class="pc-w">Bench fodder — price and availability only. Merit plays no part in bench picks</div>
 </div></div>
+</div>
+
+<div class="panel">
+  <h2>Squad shape — the archetype each position is bought for</h2>
+  <p class="tests">The qualitative read behind the xP formula: what a good pick
+  looks like at each position, and the trap that number alone can hide.</p>
+  <table class="archetype">
+    <thead><tr><th>Pos</th><th>Buy for</th><th>The trap</th></tr></thead>
+    <tbody>
+      <tr><td><b>GK</b></td>
+        <td>Undisputed #1 first — everything else is void if he's benched.
+        Then low season xGC and save volume, a distant second.</td>
+        <td>Strong save stats on a keeper one bad week from losing the
+        gloves. Starts is the gate for a reason.</td></tr>
+      <tr><td><b>DEF</b></td>
+        <td><b>Both</b> legs at once — a side with genuinely low xGC / a real
+        clean sheet record, <b>and</b> the player's own CBIT clearing the
+        10+ per-match threshold reliably (his real hit-rate, not a season
+        average sitting near the line).</td>
+        <td>Either leg alone. A great individual defender on a leaky side
+        rarely banks the clean sheet. High CBIT on a leaky side is often a
+        player under siege, not a good defender.</td></tr>
+      <tr><td><b>MID</b></td>
+        <td>Attacking output first (xGI/90 — a goal pays 5, an assist 3,
+        near forward money) <b>plus</b> the clean sheet sitting on top for
+        free if his side is tight at the back too.</td>
+        <td>A rarer, lower-reliability route exists — a genuinely defensive
+        midfielder clearing 12+ CBIRT — but it's not worth building a pick
+        around.</td></tr>
+      <tr><td><b>FWD</b></td>
+        <td>Pure goals + assists + minutes. No clean sheet credit, and no
+        real defensive-contribution route either.</td>
+        <td>Reading a forward's CBIT/90 as if it predicts anything — 2025/26
+        data shows forwards essentially never clear 10+ CBIT in a match
+        (0% hit-rate across every matched forward in the pool), so there's
+        no variance left to explain.</td></tr>
+    </tbody>
+  </table>
 </div>
 
 <div class="panel">

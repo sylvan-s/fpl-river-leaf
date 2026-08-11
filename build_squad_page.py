@@ -273,6 +273,44 @@ def build():
 </div>
 
 <div class="panel">
+  <h2>Squad shape — the archetype each position is bought for</h2>
+  <p class="tests">The qualitative read behind the xP formula: what a good pick
+  looks like at each position, and the trap that number alone can hide.</p>
+  <table class="archetype">
+    <thead><tr><th>Pos</th><th>Buy for</th><th>The trap</th></tr></thead>
+    <tbody>
+      <tr><td><b>GK</b></td>
+        <td>Undisputed #1 first — everything else is void if he's benched.
+        Then low season xGC and save volume, a distant second.</td>
+        <td>Strong save stats on a keeper one bad week from losing the
+        gloves. Starts is the gate for a reason.</td></tr>
+      <tr><td><b>DEF</b></td>
+        <td><b>Both</b> legs at once — a side with genuinely low xGC / a real
+        clean sheet record, <b>and</b> the player's own CBIT clearing the
+        10+ per-match threshold reliably (his real hit-rate, not a season
+        average sitting near the line).</td>
+        <td>Either leg alone. A great individual defender on a leaky side
+        rarely banks the clean sheet. High CBIT on a leaky side is often a
+        player under siege, not a good defender.</td></tr>
+      <tr><td><b>MID</b></td>
+        <td>Attacking output first (xGI/90 — a goal pays 5, an assist 3,
+        near forward money) <b>plus</b> the clean sheet sitting on top for
+        free if his side is tight at the back too.</td>
+        <td>A rarer, lower-reliability route exists — a genuinely defensive
+        midfielder clearing 12+ CBIRT — but it's not worth building a pick
+        around.</td></tr>
+      <tr><td><b>FWD</b></td>
+        <td>Pure goals + assists + minutes. No clean sheet credit, and no
+        real defensive-contribution route either.</td>
+        <td>Reading a forward's CBIT/90 as if it predicts anything — 2025/26
+        data shows forwards essentially never clear 10+ CBIT in a match
+        (0% hit-rate across every matched forward in the pool), so there's
+        no variance left to explain.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="panel">
   <h2>How fifteen players were chosen from {n_all}</h2>
   <p class="tests">Each gate is applied in order. A player failing any of them is
   out — no scoring, no argument.</p>
@@ -284,6 +322,8 @@ def build():
 
     extra_css = """
 <style>
+.archetype td,.archetype th{text-align:left;vertical-align:top;padding:8px 10px;border-bottom:1px solid var(--line)}
+.archetype td:first-child,.archetype th:first-child{white-space:nowrap;width:48px}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
 .kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
 .kv{font-size:22px;font-weight:700} .kl{font-size:12px;color:var(--dim);margin-top:2px}

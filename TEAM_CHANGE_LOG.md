@@ -50,6 +50,20 @@ pts/season)** over holding.
 
 **Club counts:** MUN 3 (at the cap) · ARS 2 (Gabriel, Mosquera) · BRE 2 (Schade, Thiago) — no club at risk of the 3-per-club cap besides MUN.
 
+### Squad shape — the archetype each position is bought for
+
+*Added 11 Aug 2026.* This is the qualitative read behind the xP formula in
+`SELECTION_FRAMEWORK.md` — what a good pick actually looks like at each
+position, and the trap to avoid. Restated whenever a transfer is argued, so
+"why does this player fit" has a fixed answer rather than a fresh one each week.
+
+| Pos | Buy for | The trap |
+|---|---|---|
+| **GK** | Undisputed #1 at his club first — everything else is void if he's benched. Then low season xGC (his side doesn't concede good chances) and save volume as a distant second. | A keeper with strong save stats who is one bad week from losing the gloves. Starts is gate 2 for a reason. |
+| **DEF** | **Both** legs at once: a side with a genuinely low xGC/team CS rate, **and** the player's own CBIT volume clearing the 10+ per-match threshold reliably (his real hit-rate, not a season average sitting near the line — see the `KNOWN FRAGILITY` note on band edges). | Either leg alone. A great individual defender on a leaky side rarely banks the 4pt clean sheet. A defender racking up CBIT on a leaky side is often busy *because* his side is under siege, not because he's a good defender — high CBIT is not automatically good news. |
+| **MID** | Attacking output first (xGI/90 — a goal pays 5, an assist 3, nearly forward money), **plus** the 1pt clean sheet sitting on top for free if his side is also tight at the back. Best case is both at once, not a trade between them. | Rarer, lower-reliability route: a genuinely defensive midfielder clearing 12+ CBIRT — worth knowing exists, not worth building a pick around. |
+| **FWD** | Pure goals + assists + minutes. No clean sheet credit at all, and the DC threshold is not a real route — 2025/26 data shows forwards essentially never clear 10+ CBIT in a match (0% hit-rate across every matched forward in the pool). | Treating a forward's CBIT/90 average as if it predicts anything — there's no variance to explain, so a defensive-work argument for a forward is not a real argument. Availability matters more here precisely because there's no defensive floor under a blank. |
+
 ### The 5 transfers, and why
 
 | Out | In | Reason |
