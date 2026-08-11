@@ -84,9 +84,9 @@ border-radius:9px;padding:9px 11px}
 </nav>
 
 <h1>River Leaf FC — squad</h1>
-<p class="sub">GW1 · 3-5-2 · £100.0m + £0.0m bank · squad.json updated 2026-08-10T00:00:00Z · page generated 2026-08-11 11:22</p>
+<p class="sub">GW1 · 3-5-2 · £100.0m + £0.0m bank · squad.json updated 2026-08-10T00:00:00Z · page generated 2026-08-11 11:37</p>
 
-<div class="kpis"><div class="kpi"><div class="kv mono">£100.0m</div><div class="kl">Squad value</div><div class="kn">bank £0.0m</div></div><div class="kpi"><div class="kv mono">50.7</div><div class="kl">XI xP per 90</div><div class="kn">what the optimiser maximises</div></div><div class="kpi"><div class="kv mono">42.5</div><div class="kl">XI xP per gameweek</div><div class="kn">16% never played</div></div><div class="kpi"><div class="kv mono">6.0</div><div class="kl">Bench value</div><div class="kn">1.81 expected blanks</div></div><div class="kpi"><div class="kv mono">4/4</div><div class="kl">Chips left</div><div class="kn">set 1 expires GW19</div></div><div class="kpi"><div class="kv mono">10d</div><div class="kl">Deadline</div><div class="kn">GW1 · Fri 21 Aug 17:30 UTC</div></div></div>
+<div class="kpis"><div class="kpi"><div class="kv mono">£100.0m</div><div class="kl">Squad value</div><div class="kn">bank £0.0m</div></div><div class="kpi"><div class="kv mono">50.7</div><div class="kl">XI xP per 90</div><div class="kn">what the optimiser maximises</div></div><div class="kpi"><div class="kv mono">44.7</div><div class="kl">XI xP per gameweek</div><div class="kn">12% never played</div></div><div class="kpi"><div class="kv mono">4.4</div><div class="kl">Bench value</div><div class="kn">1.28 expected blanks</div></div><div class="kpi"><div class="kv mono">4/4</div><div class="kl">Chips left</div><div class="kn">set 1 expires GW19</div></div><div class="kpi"><div class="kv mono">10d</div><div class="kl">Deadline</div><div class="kn">GW1 · Fri 21 Aug 17:30 UTC</div></div></div>
 
 <div class="panel">
   <h2>The eleven</h2>
@@ -111,9 +111,9 @@ border-radius:9px;padding:9px 11px}
   <div class="pc-n mono">xP/90 5.03 · xP/GW 4.72 · <span title="defensive fixtures over GW1-4; LOWER is easier">DEF 1.03</span></div>
   <div class="pc-w">xGC 0.72, 18 clean sheets, 23.7 bps/90 — and a 37% DC hit rate the old model scored at 0.20</div>
 </div><div class="pc">
-  <div class="pc-h"><b>Mosquera</b> <span class="tag">below 75%</span></div>
-  <div class="pc-m mono">ARS · £5.5m · 31% starts</div>
-  <div class="pc-n mono">xP/90 4.05 · xP/GW 1.27 · <span title="defensive fixtures over GW1-4; LOWER is easier">DEF 1.03</span></div>
+  <div class="pc-h"><b>Mosquera</b> </div>
+  <div class="pc-m mono">ARS · £5.5m · 85% starts</div>
+  <div class="pc-n mono">xP/90 4.05 · xP/GW 3.44 · <span title="defensive fixtures over GW1-4; LOWER is easier">DEF 1.03</span></div>
   <div class="pc-w">ROLE_INTEL intel (op=set stp-&gt;0.85, GW1-3): Saliba injured no return date, Timber out till 21 Aug — minutes opening in the league's best defence. 8.7 CBIT/90</div>
 </div><div class="pc">
   <div class="pc-h"><b>Botman</b> </div>
@@ -226,8 +226,8 @@ border-radius:9px;padding:9px 11px}
   <p class="tests">Free. Costs nothing, needs no transfer, and is the decision most
   often left unexamined.</p>
   <table><tbody>
-    <tr><td>Best XI by xP/90 — 49.96</td><td class='mono' style='text-align:left'>B.Fernandes · Botman · Calvert-Lewin · Gabriel · Justin · Mbeumo · Palmer · Raya · Sarr · Schade · Thiago</td></tr>
-    <tr><td>Best XI by xP/GW — 44.70</td><td class='mono' style='text-align:left'>B.Fernandes · Calvert-Lewin · Gabriel · Justin · Mbeumo · Palmer · Raya · Sarr · Schade · Shaw · Thiago</td></tr>
+    <tr><td>Best XI by xP/90 — 50.72</td><td class='mono' style='text-align:left'>B.Fernandes · Botman · Calvert-Lewin · Gabriel · Mbeumo · Mosquera · Palmer · Raya · Sarr · Schade · Thiago</td></tr>
+    <tr><td>Best XI by xP/GW — 45.04</td><td class='mono' style='text-align:left'>B.Fernandes · Calvert-Lewin · Gabriel · Justin · Mbeumo · Mosquera · Palmer · Raya · Sarr · Schade · Thiago</td></tr>
   </tbody></table>
   <div class="find bad">
     The two objectives choose <b>different elevens from the same fifteen</b>. Ranking on xP/90 ignores how often a player actually starts, so it can field a stronger-looking XI that plays less. This is roadmap item <b>A0.5</b>.
@@ -236,19 +236,28 @@ border-radius:9px;padding:9px 11px}
 
 <div class="panel">
   <h2>Alternative 2 — one transfer</h2>
-  <p class="tests">The optimiser's best single move, priced on both objectives and
-  with its knock-on effect on the bench.</p>
+  <p class="tests">The current fifteen against the single best transfer away from
+  it for the next gameweek — exactly one swap, everything else held fixed —
+  priced on both objectives and with its knock-on effect on the bench.</p>
+  <div class="find">Every score on this page, including this table, runs through
+  the ROLE_INTEL.md adjustment layer — set-piece duty, availability overrides
+  like an injury opening up minutes, and the guardrailed 0.5x&ndash;1.5x role
+  multipliers — and through shrinkage on each player's observed rate stats,
+  which blends a small early-season sample toward a positional baseline rather
+  than trusting a handful of matches at face value. Both exist so this table
+  can't recommend selling a player for a reason the model already has better
+  information about, like an injury to the man ahead of him.</div>
   <table>
     <thead><tr><th>&nbsp;</th><th>XI xP/90</th><th>XI xP/GW</th><th>Bench</th><th>Total /GW</th></tr></thead>
     <tbody>
-      <tr><td>Current</td><td class="mono">50.72</td><td class="mono">42.51</td>
-          <td class="mono">5.98</td><td class="mono">48.49</td></tr>
-      <tr><td>Mosquera → Van den Berg</td>
-          <td class="mono">50.67</td><td class="mono">44.49</td>
-          <td class="mono">4.48</td><td class="mono">48.97</td></tr>
-      <tr><td><b>Change</b></td><td class="mono">-0.05</td>
-          <td class="mono">+1.98</td><td class="mono">-1.50</td>
-          <td class="mono"><b>+0.48</b></td></tr>
+      <tr><td>Current</td><td class="mono">50.72</td><td class="mono">44.69</td>
+          <td class="mono">4.36</td><td class="mono">49.05</td></tr>
+      <tr><td>Botman → Van den Berg</td>
+          <td class="mono">50.81</td><td class="mono">45.00</td>
+          <td class="mono">4.17</td><td class="mono">49.17</td></tr>
+      <tr><td><b>Change</b></td><td class="mono">+0.08</td>
+          <td class="mono">+0.31</td><td class="mono">-0.19</td>
+          <td class="mono"><b>+0.12</b></td></tr>
     </tbody></table>
   <div class="find">Read the last column, not the first. Mixing an XI measured per 90
   with a bench measured per gameweek produced a confident, entirely false answer once

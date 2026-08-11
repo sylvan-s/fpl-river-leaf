@@ -115,7 +115,15 @@ def build():
     contam = contaminated()
     sel = {p["name"]: p.get("selected_on", "") for p in state.players}
 
-    pool = bs.load()
+    # intel=True explicitly, regardless of how this script is invoked - the
+    # live squad was built with ROLE_INTEL.md's adjustments applied (Mosquera's
+    # start probability set to 85% on the Saliba/Timber injury news being the
+    # live case), and this page must reason about the same squad the same way
+    # or its own "best transfer" table silently contradicts the squad it is
+    # describing. Bug found 11 Aug 2026: bs.load() with no args left this page
+    # reading Mosquera's UN-adjusted 31% start rate and recommending selling
+    # him for it, while his intel-adjusted 85% clearly beats the alternative.
+    pool = bs.load(intel=True)
     fa.adjust(pool)
     for r in pool:
         r["score"] = r["xp_adj"]
@@ -219,8 +227,17 @@ def build():
 
 <div class="panel">
   <h2>Alternative 2 — one transfer</h2>
-  <p class="tests">The optimiser's best single move, priced on both objectives and
-  with its knock-on effect on the bench.</p>
+  <p class="tests">The current fifteen against the single best transfer away from
+  it for the next gameweek — exactly one swap, everything else held fixed —
+  priced on both objectives and with its knock-on effect on the bench.</p>
+  <div class="find">Every score on this page, including this table, runs through
+  the ROLE_INTEL.md adjustment layer — set-piece duty, availability overrides
+  like an injury opening up minutes, and the guardrailed 0.5x&ndash;1.5x role
+  multipliers — and through shrinkage on each player's observed rate stats,
+  which blends a small early-season sample toward a positional baseline rather
+  than trusting a handful of matches at face value. Both exist so this table
+  can't recommend selling a player for a reason the model already has better
+  information about, like an injury to the man ahead of him.</div>
   <table>
     <thead><tr><th>&nbsp;</th><th>XI xP/90</th><th>XI xP/GW</th><th>Bench</th><th>Total /GW</th></tr></thead>
     <tbody>
