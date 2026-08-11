@@ -126,6 +126,43 @@ deadline in particular.
 **Falsifiable check:** does he complete pre-season and start GW1 without a new
 knock? A clean run through August would meaningfully undercut this flag.
 
+### 7. Rice (ARS, £7.5m, MID) — Guimarães signing shares his workload — **NOT OWNED**
+
+**Thesis:** Sylvan heard on a podcast that Arsenal brought in support for Rice
+specifically to let his role be rotated more. Checked 11 Aug 2026, web-confirmed
+from multiple independent sources.
+
+**Corroboration — direction, strongly supported.** Arsenal completed the
+signing of Bruno Guimarães from Newcastle (~£75m) in August 2026. Coverage
+converges independently on the same read: Arsenal's own **FPL Focus** column
+is titled *"New heights for Rice, managing rotation"*; ReadArsenal reports
+Guimarães "could give Mikel Arteta something he badly needed last season: the
+freedom to manage Declan Rice's workload without weakening his midfield,"
+after Rice "carried a huge workload last season"; multiple outlets describe a
+likely shift to a box midfield (Zubimendi anchoring, Rice and Guimarães as
+the two 8s) across a squad now genuinely competing for 3 midfield slots among
+6 senior options (Rice, Zubimendi, Odegaard, Merino, Eze, Guimarães). This is
+not one podcast's read — it is the consistent framing across Arsenal's own
+site and independent transfer press.
+
+**Corroboration — magnitude, NOT sourced.** No source puts a number on it.
+Rice was essentially nailed last season (35/38 starts, 92%) even carrying the
+extra load Guimarães is meant to relieve. **The 25% reduction applied below is
+an estimate supplied on instruction, not a reported figure** — 0.92 × 0.75 ≈
+0.69, so `stp` is set to **0.69**, not derived from any rotation plan Arteta
+has actually stated.
+
+**Why it matters:** at 0.69 this would drop Rice below the 75% starts gate,
+i.e. from an auto-include to a live risk if he were ever priced in. He is not
+currently owned, so this has no effect on the live squad — logged as intel
+for if/when he's evaluated.
+
+**Falsifiable check:** does Rice's start share over GW1-6 come in materially
+below ~90%? If he's still starting nearly every match once the season begins,
+the magnitude here was wrong even if the underlying signing/intent was real.
+Review at GW6, not GW8 — a shorter window than usual given the magnitude is
+unsourced guesswork rather than a specific injury/suspension window.
+
 ---
 
 ## Machine-readable set-piece overrides
@@ -313,6 +350,7 @@ Ndiaye     | EVE | xg90  | mult | 1.25 | 1-8 | medium | 2026-08-07 | Penalty dut
 Anderson   | MCI | xgi90 | mult | 1.15 | 1-8 | medium | 2026-08-07 | Elevated box-to-box creative role per community read; screen already confirms the CBIRT floor, this prices the ceiling; see entry 2 above
 Mosquera   | ARS | stp   | set  | 0.85 | 1-3 | medium | 2026-08-07 | Saliba injured no return date, Timber out till 21 Aug; minutes opening in the league's best defence; see entry 3 above
 Dubravka   | TOT | stp   | set  | 0.05 | ALL | high   | 2026-08-09 | Reported backup to Antonin Kinsky at Spurs; 81% last16 rate is a Burnley-era number wearing a Spurs badge; see the competition fence above
+Rice       | ARS | stp   | set  | 0.69 | 1-6 | medium | 2026-08-11 | Guimaraes signed to share his DM/CM workload per Arsenal.com + independent press (rotation intent well corroborated); 25% reduction off his 92% 2025/26 start rate is an UNSOURCED estimate applied on instruction, not a reported figure; see entry 7 above
 ```
 
 **Also wired into the live weekly tools, not just the offline squad scripts.**

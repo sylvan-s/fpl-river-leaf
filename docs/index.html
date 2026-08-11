@@ -84,7 +84,7 @@ border-radius:9px;padding:9px 11px}
 </nav>
 
 <h1>River Leaf FC — squad</h1>
-<p class="sub">GW1 · 3-5-2 · £100.0m + £0.0m bank · squad.json updated 2026-08-10T00:00:00Z · page generated 2026-08-11 10:48</p>
+<p class="sub">GW1 · 3-5-2 · £100.0m + £0.0m bank · squad.json updated 2026-08-10T00:00:00Z · page generated 2026-08-11 11:22</p>
 
 <div class="kpis"><div class="kpi"><div class="kv mono">£100.0m</div><div class="kl">Squad value</div><div class="kn">bank £0.0m</div></div><div class="kpi"><div class="kv mono">50.7</div><div class="kl">XI xP per 90</div><div class="kn">what the optimiser maximises</div></div><div class="kpi"><div class="kv mono">42.5</div><div class="kl">XI xP per gameweek</div><div class="kn">16% never played</div></div><div class="kpi"><div class="kv mono">6.0</div><div class="kl">Bench value</div><div class="kn">1.81 expected blanks</div></div><div class="kpi"><div class="kv mono">4/4</div><div class="kl">Chips left</div><div class="kn">set 1 expires GW19</div></div><div class="kpi"><div class="kv mono">10d</div><div class="kl">Deadline</div><div class="kn">GW1 · Fri 21 Aug 17:30 UTC</div></div></div>
 
@@ -220,13 +220,6 @@ border-radius:9px;padding:9px 11px}
   </table>
 </div>
 
-<div class="panel">
-  <h2>How fifteen players were chosen from 400</h2>
-  <p class="tests">Each gate is applied in order. A player failing any of them is
-  out — no scoring, no argument.</p>
-  <div class="wrap short"><canvas id="funnel"></canvas></div>
-</div>
-
 
 <div class="panel">
   <h2>Alternative 1 — same fifteen, different eleven</h2>
@@ -263,18 +256,4 @@ border-radius:9px;padding:9px 11px}
 </div>
 
 <footer>Built by <span class='mono'>build_squad_page.py</span> from <span class='mono'>squad.json</span>. Expected points come from FPL's own scoring table — nothing invented. Where a number is unreliable, the page says so.</footer>
-
-<script>
-const F = [["Every priced player", 400], ["900+ minutes last season", 267], ["Available \u2014 not injured or banned", 254], ["Starts 75%+ of games", 108], ["Affordable within \u00a3100m, 2-5-5-3, max 3 per club", 15]];
-new Chart(document.getElementById('funnel'), {
-  type: 'bar',
-  data: { labels: F.map(f => f[0]), datasets: [{
-      data: F.map(f => f[1]), backgroundColor: '#4ea3ff', borderRadius: 4 }] },
-  options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: false },
-      tooltip: { callbacks: { label: c => c.raw + ' players remain' } } },
-    scales: { x: { beginAtZero: true, grid: { color: '#232b34' } },
-               y: { grid: { display: false } } } }
-});
-</script>
 </body></html>

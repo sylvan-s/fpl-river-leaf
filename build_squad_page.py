@@ -135,18 +135,6 @@ def build():
     exp_blanks = sum(j * q for j, q in enumerate(blank_dist))
     days = (DEADLINE - dt.datetime.now(dt.timezone.utc)).total_seconds() / 86400
 
-    # --- the funnel -------------------------------------------------------
-    snap = json.load(open(os.path.join(HERE, "fpl_priors_2025_26_v2.json"), encoding="utf-8"))
-    n_all = len(snap["players"])
-    n_mins = len(pool)
-    n_ok = sum(1 for r in pool if r["ok"])
-    n_gate = sum(1 for r in pool if r["ok"] and r["stp"] >= bs.GATE_XI)
-    funnel = [("Every priced player", n_all),
-              (f"{bs.MIN_MINUTES}+ minutes last season", n_mins),
-              ("Available — not injured or banned", n_ok),
-              (f"Starts {bs.GATE_XI:.0%}+ of games", n_gate),
-              ("Affordable within £100m, 2-5-5-3, max 3 per club", 15)]
-
     # --- alternatives -----------------------------------------------------
     alt90 = best_xi(mine, weight_by_start=False)
     altgw = best_xi(mine, weight_by_start=True)
@@ -310,13 +298,6 @@ def build():
   </table>
 </div>
 
-<div class="panel">
-  <h2>How fifteen players were chosen from {n_all}</h2>
-  <p class="tests">Each gate is applied in order. A player failing any of them is
-  out — no scoring, no argument.</p>
-  <div class="wrap short"><canvas id="funnel"></canvas></div>
-</div>
-
 {alt_html}
 """
 
@@ -339,21 +320,6 @@ border-radius:9px;padding:9px 11px}
 @media(max-width:700px){.pc{flex:1 1 100%;max-width:none}}
 </style>"""
 
-    script = f"""
-<script>
-const F = {json.dumps(funnel)};
-new Chart(document.getElementById('funnel'), {{
-  type: 'bar',
-  data: {{ labels: F.map(f => f[0]), datasets: [{{
-      data: F.map(f => f[1]), backgroundColor: '#4ea3ff', borderRadius: 4 }}] }},
-  options: {{ indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-    plugins: {{ legend: {{ display: false }},
-      tooltip: {{ callbacks: {{ label: c => c.raw + ' players remain' }} }} }},
-    scales: {{ x: {{ beginAtZero: true, grid: {{ color: '#232b34' }} }},
-               y: {{ grid: {{ display: false }} }} }} }}
-}});
-</script>"""
-
     html = page_shell.shell(
         title="River Leaf FC — squad",
         active="squad",
@@ -364,7 +330,7 @@ new Chart(document.getElementById('funnel'), {{
         footer="Built by <span class='mono'>build_squad_page.py</span> from "
                "<span class='mono'>squad.json</span>. Expected points come from FPL's own "
                "scoring table — nothing invented. Where a number is unreliable, the page says so.")
-    html = html.replace("</head>", extra_css + "\n</head>").replace("</body>", script + "\n</body>")
+    html = html.replace("</head>", extra_css + "\n</head>")
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     open(OUT, "w", encoding="utf-8").write(html)
