@@ -55,6 +55,12 @@ def esc(s):
     return (str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
 
 
+def md_bold(s):
+    """`**text**` -> `<b>text</b>` for the short prose snippets pulled out of
+    TEAM_CHANGE_LOG.md - that file is markdown, this page is not."""
+    return re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", esc(s))
+
+
 def contaminated():
     """Players whose prior belongs to a different club. Parsed from the
     machine-readable block in ROLE_INTEL.md so there is one list, not two."""
@@ -67,6 +73,31 @@ def contaminated():
                 who, why = line.split("|", 1)
                 out[who.strip()] = why.strip()
     return out
+
+
+def chip_plan():
+    """The set-1 chip plan, parsed from TEAM_CHANGE_LOG.md's CHIP STRATEGY
+    section rather than hand-copied — that file is the human narrative and
+    the place the plan actually gets edited each week; this just surfaces it
+    on the page a reader is already looking at, so the two can't drift the
+    way a second hand-typed copy inevitably would."""
+    txt = open(os.path.join(HERE, "TEAM_CHANGE_LOG.md"), encoding="utf-8").read()
+    m = re.search(r"## CHIP STRATEGY — (.+?)\n(.*?)\n## ", txt, re.S)
+    if not m:
+        return None
+    title, section = m.group(1).strip(), m.group(2)
+
+    def grab(pattern, default=""):
+        g = re.search(pattern, section, re.S)
+        return re.sub(r"\s+", " ", g.group(1)).strip() if g else default
+
+    status = grab(r"\*\*Status:\*\*\s*(.+?)\n")
+    constraint = grab(r"### The governing constraint\n\n(.+?)\n\n")
+    rows = [r for r in re.findall(r"\|\s*\*\*(.+?)\*\*\s*\|\s*(.+?)\s*\|\s*(.+?)\s*\|\s*(.+?)\s*\|", section)
+            if r[0] in ("Wildcard 1", "Bench Boost 1", "Triple Captain 1", "Free Hit 1")]
+    checklist_txt = grab(r"### Review checklist \(run weekly\)\n\n(.*?)\n\n###")
+    checklist = re.findall(r"\d+\.\s*(.+?)(?=\s+\d+\.|$)", checklist_txt)
+    return dict(title=title, status=status, constraint=constraint, rows=rows, checklist=checklist)
 
 
 def best_xi(players, weight_by_start):
@@ -184,6 +215,14 @@ def build():
     h_cost = h_H_90 - h_noH_90
     h_picked = "Haaland" in {p["name"] for p in h_H_xi + h_H_bench}
 
+    # --- chip strategy, plan from TEAM_CHANGE_LOG.md + live status from squad.json
+    cp = chip_plan()
+    chip_status = {"wildcard": "Wildcard 1", "benchboost": "Bench Boost 1",
+                   "triplecaptain": "Triple Captain 1", "freehit": "Free Hit 1"}
+    set1_available = set(state.chips_remaining("set1"))
+    chip_used = {label: (key not in set1_available)
+                 for key, label in chip_status.items()} if cp else {}
+
     # --- pitch ------------------------------------------------------------
     rows = ""
     for pos in POS_ORDER:
@@ -292,6 +331,36 @@ def build():
   <div class="find">Read the last column, not the first. Mixing an XI measured per 90
   with a bench measured per gameweek produced a confident, entirely false answer once
   already — the two must share a unit before they are added.</div>
+</div>"""
+
+    chip_html = ""
+    if cp:
+        def chip_row(label, window, trigger, backstop):
+            used = chip_used.get(label, False)
+            status = ('<span class="tag">used</span>' if used
+                       else '<span class="tag ok">available</span>')
+            return (f"<tr><td><b>{esc(label)}</b> {status}</td>"
+                    f"<td class='mono'>{esc(window)}</td>"
+                    f"<td style='text-align:left'>{esc(trigger)}</td>"
+                    f"<td class='mono'>{esc(backstop)}</td></tr>")
+        chip_rows = "".join(chip_row(*r) for r in cp["rows"])
+        checklist_html = "".join(f"<li>{esc(item)}</li>" for item in cp["checklist"])
+        n_avail = len(set1_available)
+        chip_title = re.sub(r"^SET 1", "Set 1", cp["title"])
+        chip_html = f"""
+<div class="panel">
+  <h2>Chip strategy — {esc(chip_title)}</h2>
+  <p class="tests">{n_avail} of 4 chips still available. {md_bold(cp['status'])} Full
+  reasoning and the weekly review log live in
+  <span class="mono">TEAM_CHANGE_LOG.md</span> — this table is generated from that
+  file, not a second hand-kept copy of it.</p>
+  <div class="find bad">{md_bold(cp['constraint'])}</div>
+  <table>
+    <thead><tr><th>Chip</th><th>Target window</th>
+    <th style="text-align:left">Trigger</th><th>Hard backstop</th></tr></thead>
+    <tbody>{chip_rows}</tbody></table>
+  <div class="find"><b>Reviewed every week, not set once.</b>
+  <ul style="margin:8px 0 0 18px;padding:0">{checklist_html}</ul></div>
 </div>"""
 
     body = f"""
@@ -404,6 +473,7 @@ def build():
 </div>
 
 {alt_html}
+{chip_html}
 """
 
     extra_css = """

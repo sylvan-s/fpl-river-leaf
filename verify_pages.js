@@ -25,7 +25,6 @@ const PAGES = [
   { file: 'index.html',         minKB: 10 },   // squad page — the landing page
   { file: 'analysis.html',      minKB: 100, deep: 'diagnostics' },
   { file: 'relationships.html', minKB: 80 },   // shares analysis.html's payload
-  { file: 'workflow.html',      minKB: 8 },
   { file: 'news.html',          minKB: 8 },
   { file: 'player.html',        minKB: 20 },
   { file: 'priors.html',        minKB: 8 },   // sits in a "waiting for GW1" empty state pre-season

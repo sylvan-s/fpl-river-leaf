@@ -80,13 +80,12 @@ border-radius:9px;padding:9px 11px}
 <a href="analysis.html" data-page="analysis">Player analysis</a>
 <a href="relationships.html" data-page="relationships">Statistical relationships</a>
 <a href="player.html" data-page="player">Player timeseries</a>
-<a href="workflow.html" data-page="workflow">Weekly workflow</a>
 <a href="news.html" data-page="news">Availability &amp; intel</a>
 <a href="priors.html" data-page="priors">Prior vs reality</a>
 </nav>
 
 <h1>River Leaf FC — squad</h1>
-<p class="sub">GW1 · 3-5-2 · £100.0m + £0.0m bank · squad.json updated 2026-08-11T00:00:00Z · page generated 2026-08-12 11:49</p>
+<p class="sub">GW1 · 3-5-2 · £100.0m + £0.0m bank · squad.json updated 2026-08-11T00:00:00Z · page generated 2026-08-12 12:01</p>
 
 <div class="kpis"><div class="kpi"><div class="kv mono">£100.0m</div><div class="kl">Squad value</div><div class="kn">bank £0.0m</div></div><div class="kpi"><div class="kv mono">50.8</div><div class="kl">XI xP per 90</div><div class="kn">what the optimiser maximises</div></div><div class="kpi"><div class="kv mono">45.0</div><div class="kl">XI xP per gameweek</div><div class="kn">11% never played</div></div><div class="kpi"><div class="kv mono">4.2</div><div class="kl">Bench value</div><div class="kn">1.21 expected blanks</div></div><div class="kpi"><div class="kv mono">4/4</div><div class="kl">Chips left</div><div class="kn">set 1 expires GW19</div></div><div class="kpi"><div class="kv mono">9d</div><div class="kl">Deadline</div><div class="kn">GW1 · Fri 21 Aug 17:30 UTC</div></div></div>
 
@@ -315,6 +314,21 @@ border-radius:9px;padding:9px 11px}
   <div class="find">Read the last column, not the first. Mixing an XI measured per 90
   with a bench measured per gameweek produced a confident, entirely false answer once
   already — the two must share a unit before they are added.</div>
+</div>
+
+<div class="panel">
+  <h2>Chip strategy — Set 1 (expires GW19 deadline, Sat 2 Jan 2027 13:30 GMT)</h2>
+  <p class="tests">4 of 4 chips still available. all four unused. 18 gameweeks (GW1–18) to place four chips. Full
+  reasoning and the weekly review log live in
+  <span class="mono">TEAM_CHANGE_LOG.md</span> — this table is generated from that
+  file, not a second hand-kept copy of it.</p>
+  <div class="find bad">Doubles and blanks are created by cup rescheduling and land overwhelmingly in the <b>second half</b>. Confirmed from live fixture data: <b>GW1–6 contain no doubles and no blanks — all 20 teams play exactly six times.</b></div>
+  <table>
+    <thead><tr><th>Chip</th><th>Target window</th>
+    <th style="text-align:left">Trigger</th><th>Hard backstop</th></tr></thead>
+    <tbody><tr><td><b>Wildcard 1</b> <span class="tag ok">available</span></td><td class='mono'>GW6–9</td><td style='text-align:left'>Once ~6 GWs of 2026/27 xGI exist and the delta rule has real signal</td><td class='mono'>GW12</td></tr><tr><td><b>Bench Boost 1</b> <span class="tag ok">available</span></td><td class='mono'>1–2 GWs after WC1</td><td style='text-align:left'>Only after a bench has been deliberately built on the wildcard</td><td class='mono'>GW17</td></tr><tr><td><b>Triple Captain 1</b> <span class="tag ok">available</span></td><td class='mono'>GW10–16</td><td style='text-align:left'>Best available Thiago/Bruno home fixture vs bottom-six, or any confirmed DGW</td><td class='mono'>GW16</td></tr><tr><td><b>Free Hit 1</b> <span class="tag ok">available</span></td><td class='mono'>Held as insurance</td><td style='text-align:left'>Injury crisis, or a blank/fixture swing if one emerges</td><td class='mono'>GW18</td></tr></tbody></table>
+  <div class="find"><b>Reviewed every week, not set once.</b>
+  <ul style="margin:8px 0 0 18px;padding:0"><li>Has a double or blank gameweek appeared in the lookahead? → re-plan immediately</li><li>Is any chip inside 4 gameweeks of its backstop? → escalate to a decision</li><li>Has the squad changed enough to alter the WC1 case?</li><li>Is the bench now worth boosting?</li><li>`escalation_check` flags chip pressure from 6 gameweeks out — treat that as the alarm</li></ul></div>
 </div>
 
 <footer>Built by <span class='mono'>build_squad_page.py</span> from <span class='mono'>squad.json</span>. Expected points come from FPL's own scoring table — nothing invented. Where a number is unreliable, the page says so.</footer>

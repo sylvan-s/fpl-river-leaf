@@ -26,7 +26,6 @@ echo
 echo "==> Building"
 python3 build_dashboard.py
 python3 build_relationships_page.py
-python3 build_workflow.py
 python3 build_squad_page.py
 python3 build_intel_page.py
 python3 build_player_page.py
@@ -60,7 +59,6 @@ Commit and push, then live at:
   https://sylvan-s.github.io/fpl-river-leaf/                    squad — the landing page
   https://sylvan-s.github.io/fpl-river-leaf/analysis.html       methodology diagnostics
   https://sylvan-s.github.io/fpl-river-leaf/relationships.html  statistical relationships
-  https://sylvan-s.github.io/fpl-river-leaf/workflow.html       the weekly loop
   https://sylvan-s.github.io/fpl-river-leaf/news.html           availability & intel
   https://sylvan-s.github.io/fpl-river-leaf/player.html         player timeseries
   https://sylvan-s.github.io/fpl-river-leaf/priors.html         prior vs reality (live weekly tracker)
