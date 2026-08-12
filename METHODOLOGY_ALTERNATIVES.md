@@ -1030,6 +1030,38 @@ This is the Rice error in reverse: the same blind spot, now with numbers.
 **Risk:** BPS is dominated by whether the team wins, so it will correlate heavily
 with team strength. Check it adds information beyond team quality before trusting.
 
+**BUILT EARLY — 12 Aug 2026, ahead of the GW6 gate.** Moved up because the
+2026/27 BPS rule change (below) meant waiting to GW6 would mean playing the
+whole first quarter of the season on a known, quantifiable blind spot. Unlike
+xG or CBIT, bonus doesn't need first-principles modelling — FPL already
+resolves the top-3-BPS-per-match competition and reports the outcome directly
+(`bonus`), so `xbonus90` is a rate-shrinkage problem, not a simulation
+problem. Full method in `build_squad.py`'s `_bonus_shrinkage()` docstring;
+formula in `SELECTION_FRAMEWORK.md`.
+
+**Sizing, measured on the pool (`bonus_swing.py`, kept as a one-off diagnostic
+script):** mean pool swing **+0.325 xP/90**, always positive (it's a pure
+addition, not a reallocation) — ranging from **+1.23** (Haaland) down to
+**+0.04** (bench fodder). On the live squad: XI xP/90 **50.81 → 56.24**
+(+5.43, once the `fixture_adjust.py` integration bug below was fixed).
+Rice vs Sarr, the comparison that motivated this build: **+0.66 vs +0.33** —
+a **0.33 xP/90 gap from bonus alone**, above the 0.10 noise floor.
+
+**A real integration bug was caught and fixed while building this.**
+`fixture_adjust.py`'s `adjust()` — which is what `--fixtures` mode actually
+runs, i.e. every real weekly-brief call — rebuilds `xp` from scratch rather
+than calling `build_squad.expected_points()`, so it silently dropped
+`xbonus90` entirely on first build. The symptom was concrete: "current squad
+XI xP/90" printed the identical 50.81 with and without `--no-bonus`, which is
+how it was caught rather than assumed correct. Fixed by adding the same
+`xp += r.get("xbonus90", 0.0)` line there — carried through **unscaled**, on
+the honest grounds that there's no sourced way yet to say how a fixture
+should scale bonus.
+
+**Not yet validated against live 2026/27 data** — none exists. Re-derive and
+re-check the direction of the rule-change adjustment against real BPS as soon
+as GW1-5 are played; delete the block in `build_squad.py` if it disagrees.
+
 ### A2. Goalkeeper methodology — currently undefined
 
 Explicitly deferred when the defender screen was built. He owns **Raya and

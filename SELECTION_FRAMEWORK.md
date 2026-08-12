@@ -83,7 +83,21 @@ xP/90 = 2                                    appearance (60+ mins)
       + 2         × P(clearing DC threshold) 10+ CBIT DEF · 12+ CBIRT MID/FWD
       − xGC/90 ÷ 2                           GKP and DEF only
       + saves/90 ÷ 3                         GKP only
+      + xbonus90                            no coefficient — already point-valued
 ```
+
+**xbonus90 — added 12 Aug 2026 (roadmap A1).** Bonus is not modelled from
+first principles; FPL already resolves the top-3-BPS-per-match competition
+and reports the result directly (`bonus`), so it is shrunk the same
+empirical-Bayes way as every other rate (own team×position baseline, `k`
+derived from variance — came out to **8.3 90s**, not a fallback/clamp value).
+A bounded, direction-sourced-but-magnitude-unsourced adjustment is layered on
+top for the 2026/27 BPS rule change (CBI now feeds bonus at 1-per-3 not
+1-per-2 — worse for CBI-heavy defenders; the tackled-penalty is removed —
+better for dribble-exposed MID/FWD). See `build_squad.py`'s `_bonus_shrinkage()`
+docstring for the exact method and the caveats. **Not yet validated against
+live 2026/27 data** — there isn't any yet. Re-derive once GW1–5 exist and
+delete the rule-change block if real data disagrees with its direction.
 
 `P(clean sheet) = exp(−xGC/90)`. **Goals and assists are scored separately** —
 lumping them into xGI was itself an error, since a defender's goal pays 6 and his

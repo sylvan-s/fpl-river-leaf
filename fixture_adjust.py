@@ -167,6 +167,14 @@ def adjust(pool, fixtures=None, scale_workload=SCALE_WORKLOAD):
             xp -= xgc / bs.GC_PER_MINUS
         if pos == "GKP":
             xp += saves / bs.SAVES_PER_POINT
+        # xbonus90 (roadmap A1, added 12 Aug 2026) — carried through UNSCALED.
+        # Bonus plausibly does have a fixture channel (an easier match likely
+        # means more bonus-worthy performances, same logic as att_x for
+        # goals), but there is no established, sourced way to scale it yet —
+        # inventing one here would be exactly the kind of silent, untested
+        # coefficient this project has already had to correct twice. Flat
+        # pass-through is the honest choice until that channel is designed.
+        xp += r.get("xbonus90", 0.0)
 
         r["att_x"], r["def_x"], r["games"] = att_x, def_x, games
         r["xp_flat"] = r["score"]

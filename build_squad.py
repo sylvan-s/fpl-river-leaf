@@ -31,6 +31,20 @@ FPL API; treat it as a well-sourced but externally-derived input, and re-verify
 before leaning on it for a single close gate decision. 5 of 267 players in the
 900+-minute pool couldn't be matched with confidence and fall back to the
 full-season rate — `--season-starts` reproduces the pre-9-Aug gate exactly.
+
+ADDED 12 Aug 2026 — xbonus90 (roadmap A1). Bonus was the highest-priority known
+gap: the Rice case showed real value hiding in clean sheets and bonus that the
+xGI screen cannot see. Unlike xG or CBIT, bonus does not need modelling from
+first principles — FPL already resolves the top-3-BPS-per-match competition
+and reports the outcome directly (`bonus`, points actually awarded), so it is
+shrunk the same way every other rate in the model is shrunk, not simulated.
+Bonus points are already in point units, so xbonus90 is added to xP with no
+coefficient — see `_bonus_shrinkage()` and `expected_points()`. A bounded,
+DIRECTION-sourced-but-MAGNITUDE-unsourced adjustment is layered on top for the
+2026/27 Bonus Points System change (CBI reweighted 1-per-3, not 1-per-2; the
+tackled-penalty removed) — same evidentiary standard as the Rice `stp`
+override in ROLE_INTEL.md. Pass `--no-bonus` to rebuild without it, for
+comparison. Re-derive from real 2026/27 BPS data as soon as GW1-5 exist.
 """
 import json, math, os, sys
 import importlib.util as _il
@@ -216,6 +230,102 @@ def p_threshold(mean, thresh, key=None):
     return p_threshold_legacy(mean, thresh)
 
 
+# ---- xbonus90 (roadmap A1, added 12 Aug 2026) -------------------------------
+#
+# Bonus points are already resolved by FPL into a per-player, per-match award
+# (`bonus`), so this is a rate-shrinkage problem like xG90/CBIT90/etc., not a
+# from-scratch simulation of the BPS ranking. Mirrors
+# fpl_research_mcp._estimate_k (design D3) as a LOCAL COPY rather than an
+# import — same pattern build_dashboard.py already uses for the same reason:
+# this file has no other dependency on the MCP module, and importing it would
+# pull in its whole server/tool surface for ~15 lines of arithmetic.
+USE_BONUS = "--no-bonus" not in sys.argv
+
+BONUS_DISPERSION = 1.0        # ASSUMED count-like (bonus is bounded 0-3/match).
+                               # NOT derived from measured match-to-match
+                               # variance — flagged, not trusted, exactly the
+                               # kind of unverified assumption that caused the
+                               # xGI dispersion bug (see METHODOLOGY_ALTERNATIVES.md).
+
+# 2026/27 Bonus Points System change, PL's own "What's new" article (20 Jul
+# 2026): CBI now feeds BPS at 1-per-3 (was 1-per-2) — worse for CBI-heavy
+# defenders. The -1 BPS tackled-penalty is removed — better for dribble-exposed
+# MID/FWD, who took that penalty most. DIRECTION is sourced. MAGNITUDE IS NOT —
+# there is no published number, and this file lacks the full BPS component
+# breakdown needed to recompute it exactly. Same standard as the Rice `stp`
+# override in ROLE_INTEL.md: a small, capped, clearly-labelled nudge, not a
+# fabricated precise coefficient. RE-DERIVE FROM REAL 2026/27 BPS DATA (GW1-5)
+# AND DELETE THIS BLOCK once it can be measured directly.
+CBI_HAIRCUT = 0.95             # UNSOURCED magnitude, bounded
+TACKLE_BUMP = 1.05             # UNSOURCED magnitude, bounded
+CBI_HEAVY_THRESH = 6.0         # CBI(not CBIT)/90 above which a defender counts
+                               # as "CBI-heavy" for the haircut
+
+
+def _estimate_k_bonus(samples):
+    """Poisson-Gamma method of moments, mirrors fpl_research_mcp._estimate_k."""
+    pts = [(r, n) for r, n in samples if n >= 3 and r >= 0]
+    if len(pts) < 20:
+        return 10.0
+    rates = [r for r, _ in pts]
+    m = sum(rates) / len(rates)
+    if m <= 0:
+        return 10.0
+    total_var = sum((r - m) ** 2 for r in rates) / (len(rates) - 1)
+    sampling_var = BONUS_DISPERSION * (sum(r / n for r, n in pts) / len(pts))
+    between_var = total_var - sampling_var
+    if between_var <= 1e-9:
+        return 40.0
+    return max(1.0, min(m / between_var, 60.0))
+
+
+def _bonus_shrinkage(players, teams):
+    """{pid: xbonus90} for every 900+-minute player.
+
+    shrunk = (n90*raw + k*baseline) / (n90+k), baseline = team x position
+    mean bonus90, falling back to position mean where the team+pos group is
+    thin (<3 players). This is the D2 ladder's TAIL only, without the "own
+    prior season" head — for this file the prior season IS the only season
+    on record (it reads nothing but the frozen snapshot), so there is no
+    separate prior to fall back FROM.
+    """
+    rows = []
+    for pid, p in players.items():
+        m = p.get("minutes", 0) or 0
+        if m < MIN_MINUTES:
+            continue
+        n90 = m / 90.0
+        cbi = p.get("clearances_blocks_interceptions", 0) or 0
+        rows.append(dict(
+            pid=pid, pos=POS[p["element_type"]], team=teams.get(p.get("team"), "?"),
+            n90=n90, raw=(p.get("bonus", 0) or 0) / n90, cbi90=cbi / n90))
+
+    k = _estimate_k_bonus([(r["raw"], r["n90"]) for r in rows])
+    if k in (10.0, 40.0, 60.0):
+        print(f"  NOTE: xbonus90 shrinkage k={k:.1f} is a fallback/clamp, not "
+              f"derived from variance — treat xbonus90 as unvalidated until "
+              f"this is investigated.", file=sys.stderr)
+
+    def _mean(sel):
+        vals = [x["raw"] for x in sel]
+        return sum(vals) / len(vals) if vals else None
+
+    out = {}
+    for r in rows:
+        same_team_pos = [x for x in rows if x["pos"] == r["pos"] and x["team"] == r["team"]]
+        base = _mean(same_team_pos) if len(same_team_pos) >= 3 else None
+        if base is None:
+            base = _mean([x for x in rows if x["pos"] == r["pos"]]) or 0.0
+        shrunk = (r["n90"] * r["raw"] + k * base) / (r["n90"] + k)
+        mult = 1.0
+        if r["pos"] == "DEF" and r["cbi90"] >= CBI_HEAVY_THRESH:
+            mult = CBI_HAIRCUT
+        elif r["pos"] in ("MID", "FWD"):
+            mult = TACKLE_BUMP
+        out[r["pid"]] = shrunk * mult
+    return out, k
+
+
 def expected_points(r):
     """Expected FPL points per 90. Every coefficient is a rule, not a choice."""
     pos = r["pos"]
@@ -229,6 +339,8 @@ def expected_points(r):
         xp -= r["xgc90"] / GC_PER_MINUS
     if pos == "GKP":
         xp += r["sv90"] / SAVES_PER_POINT
+    # Bonus is already in point units — no coefficient, unlike goals/saves.
+    xp += r.get("xbonus90", 0.0)
     return xp
 
 
@@ -236,11 +348,13 @@ def expected_points(r):
 # players, not a component of expected points. Kept separate on purpose.
 
 
-def load(season_starts=False, intel=None):
+def load(season_starts=False, intel=None, bonus=None):
     use_intel = USE_INTEL if intel is None else intel
+    use_bonus = USE_BONUS if bonus is None else bonus
     snap = json.load(open(SNAP, encoding="utf-8"))
     teams = {int(k): v for k, v in snap["teams"].items()}
     last16 = {} if season_starts else _load_last16()
+    xbonus_map, _bonus_k = _bonus_shrinkage(snap["players"], teams) if use_bonus else ({}, None)
     matched = set()
     out = []
     for pid, p in snap["players"].items():
@@ -269,7 +383,8 @@ def load(season_starts=False, intel=None):
                  cbirt90=(cbi+tk+rec)/n90, xgc90=f(p.get("expected_goals_conceded"))/n90,
                  cs=p.get("clean_sheets", 0) or 0, bps90=(p.get("bps") or 0)/n90,
                  sv90=(p.get("saves") or 0)/n90, own=f(p.get("selected_by_percent")),
-                 xg90=f(p.get("expected_goals"))/n90, xa90=f(p.get("expected_assists"))/n90)
+                 xg90=f(p.get("expected_goals"))/n90, xa90=f(p.get("expected_assists"))/n90,
+                 bonus90=(p.get("bonus") or 0)/n90, xbonus90=xbonus_map.get(pid, 0.0))
         if use_intel:
             for e in ia.apply(r):
                 matched.add((e["player"], e["team"]))
