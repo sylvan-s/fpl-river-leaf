@@ -35,6 +35,17 @@ penalties adds **~4–6 xG**, taking his xGI to roughly **16–18** and his xGI/
 **Corroboration:** Salah has left the Premier League, so the duty is genuinely
 vacant. Independently established earlier, not taken from the creator claim.
 
+**Upgraded 12 Aug 2026 — web-confirmed, not just community consensus.**
+Multiple independent sources (ESPN, OneFootball, TikTok clip of the actual
+penalty) now report Szoboszlai has taken and scored a penalty for Liverpool
+and holds first-choice penalties, corners **and** direct free kicks — one of
+only two Premier League players (alongside Bruno Fernandes) holding all three
+duties at his club. One nuance not previously logged: Szoboszlai has said he
+intends to hand the penalty duty back to Salah once Salah returns to the
+matchday squad — so this is not necessarily a season-long lock, only a
+season-opening one. Still **not** reflected in the FPL API's own
+`penalties_order` field pre-season, hence the `?` suffix stays.
+
 **Impact on decisions already taken:** he was **sold on 7 Aug**. This is the fifth
 and most serious mark against that transfer — and unlike the other four it is not
 a measurement error but a blind spot: *the screens cannot price a role change.*
@@ -76,6 +87,18 @@ Gabriel, Mosquera and Hincapie all landed `BOTH`. Mosquera at 8.7 CBIT/90 and
 **Falsifiable check:** does he start GW1 v Coventry? Timber's return date of
 21 Aug is the deadline day itself — this could evaporate immediately.
 
+**Strengthened 12 Aug 2026 — web-confirmed, and the window is longer than
+previously recorded.** Arteta (via Yahoo/Sports Mole/CaughtOffside, all
+reporting the same press conference) says Timber is "still a matter of weeks
+away" and will miss the Community Shield plus the first three PL fixtures —
+Cardiff, Villa and "most likely" Chelsea — not back by 21 Aug as the earlier
+entry assumed. Saliba separately is "in rest mode... two weeks" for an
+aggravated back injury with no firm return date. Both confirm the opportunity
+is real and now looks **longer than GW1-3**, not shorter — the `stp` window in
+the adjustments fence below may be under-crediting Mosquera's minutes rather
+than over-crediting them. Revisit the GW window (currently set 1-3) once GW1
+team news confirms he starts.
+
 ### 4. Ndiaye (EVE, £6.0m, MID) — penalties + shot volume
 
 **Thesis:** locked-in penalty duty plus underlying volume beats his £6.0m price.
@@ -85,6 +108,11 @@ Gabriel, Mosquera and Hincapie all landed `BOTH`. Mosquera at 8.7 CBIT/90 and
 the xGI materially and the negative delta says the output is due rather than lucky.
 
 **Falsifiable check:** confirm he takes Everton's first penalty.
+
+**Upgraded 12 Aug 2026 — web-confirmed.** Independent sources (RotoWire, Il
+Margine, Fantasy Football Scout's set-piece list) converge on Ndiaye as
+Everton's primary penalty taker, ahead of Garner. Same caveat as Szoboszlai:
+not yet in the FPL API's own field pre-season, `?` suffix stays.
 
 ### 5. João Pedro (CHE, £7.5m, FWD) — central catalyst — **ALREADY OWNED**
 
@@ -179,8 +207,8 @@ Delete a line the moment the API confirms or contradicts it — this block exist
 only to cover the pre-season gap before FPL populates its own fields.
 
 ```setpieces
-Szoboszlai | P1 F1 | 2026-08-07 | community consensus; Salah departure vacates duty; UNCONFIRMED
-Ndiaye     | P1    | 2026-08-07 | community consensus; "locked-in" penalty role claimed; UNCONFIRMED
+Szoboszlai | P1 F1 C1 | 2026-08-12 | web-confirmed (ESPN, OneFootball, penalty footage); reverts to Salah on his return; not yet in FPL API
+Ndiaye     | P1       | 2026-08-12 | web-confirmed (RotoWire, Il Margine, FF Scout set-piece list); not yet in FPL API
 ```
 
 ## Machine-readable contaminated priors
@@ -345,10 +373,10 @@ re-date a line the moment reality confirms or contradicts the thesis it rests
 on — same discipline as the `setpieces` block.
 
 ```adjustments
-Szoboszlai | LIV | xg90  | mult | 1.35 | 1-8 | medium | 2026-08-07 | Penalty + direct FK duty per community consensus, Salah departure vacates it; see entry 1 above
-Ndiaye     | EVE | xg90  | mult | 1.25 | 1-8 | medium | 2026-08-07 | Penalty duty claimed plus -2.09 delta already underperforming his chances; see entry 4 above
+Szoboszlai | LIV | xg90  | mult | 1.35 | 1-8 | high   | 2026-08-12 | Penalty + direct FK + corner duty, web-confirmed 12 Aug (reverts to Salah on his return); see entry 1 above
+Ndiaye     | EVE | xg90  | mult | 1.25 | 1-8 | high   | 2026-08-12 | Penalty duty web-confirmed 12 Aug plus -2.09 delta already underperforming his chances; see entry 4 above
 Anderson   | MCI | xgi90 | mult | 1.15 | 1-8 | medium | 2026-08-07 | Elevated box-to-box creative role per community read; screen already confirms the CBIRT floor, this prices the ceiling; see entry 2 above
-Mosquera   | ARS | stp   | set  | 0.85 | 1-3 | medium | 2026-08-07 | Saliba injured no return date, Timber out till 21 Aug; minutes opening in the league's best defence; see entry 3 above
+Mosquera   | ARS | stp   | set  | 0.85 | 1-3 | medium | 2026-08-12 | Saliba back-injury "rest mode", Timber "weeks away" - out for Cardiff/Villa/likely Chelsea, later than the 21 Aug date previously logged; minutes opening in the league's best defence; see entry 3 above
 Dubravka   | TOT | stp   | set  | 0.05 | ALL | high   | 2026-08-09 | Reported backup to Antonin Kinsky at Spurs; 81% last16 rate is a Burnley-era number wearing a Spurs badge; see the competition fence above
 Rice       | ARS | stp   | set  | 0.69 | 1-6 | medium | 2026-08-11 | Guimaraes signed to share his DM/CM workload per Arsenal.com + independent press (rotation intent well corroborated); 25% reduction off his 92% 2025/26 start rate is an UNSOURCED estimate applied on instruction, not a reported figure; see entry 7 above
 ```
