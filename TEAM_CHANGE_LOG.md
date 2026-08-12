@@ -158,6 +158,35 @@ losing it.
   with free pre-season transfers. Wildcard would be redundant while transfers
   are unlimited and free.
 
+### External validation — 11 Aug 2026
+
+Checked the set-1 plan above against official PL guidance and community
+consensus (Fantasy Football Scout, Fantasy Football Hub) for 2026/27. Our plan
+is more conservative and more sequenced than generic advice, deliberately so —
+recorded here so the divergence isn't mistaken for an oversight later.
+
+- **Bench Boost.** Consensus default is GW1 or GW2, on the logic that pre-season
+  predictability beats a deliberately-built bench. We explicitly rejected GW1
+  (nothing to boost, WC1 would be redundant) and chain BB1 to 1–2 GWs after WC1
+  instead. Correct call given the bench already runs 92.8% starts — no reason
+  to trade a good bench for an early one.
+- **Wildcard.** Consensus range GW4–8, sometimes GW6. Our GW6–9 window
+  (backstop GW12) overlaps but is trigger-driven — ~6 GWs of live 2026/27 xGI
+  before the delta rule has real signal — rather than a fixed calendar date.
+  No change indicated.
+- **Triple Captain — new concrete data.** Official PL fixture list gives exact
+  home dates vs promoted sides in the first half: **Bruno** hosts Ipswich GW2
+  and **Coventry GW14** (inside our GW10–16 window); **Haaland** hosts Coventry
+  GW3, Ipswich GW7, and **Hull GW16** (lines up with our TC1 backstop, relevant
+  only if Haaland re-enters the squad). Bruno/GW14 is now the concrete
+  candidate to check against `captaincy_odds` as it comes into range, rather
+  than a generic "best fixture by GW16" placeholder.
+- **Free Hit.** Full agreement — insurance chip, not scheduled, hold for an
+  injury cluster or fixture swing. No change.
+- **DGW/BGW timing.** Consensus confirms blanks/doubles won't firm up until FA
+  Cup rounds resolve, typically GW26+ — consistent with roadmap **B4**'s GW12
+  gate. Confirms the gate is well-placed, not arbitrary.
+
 ---
 
 ## STANDING PREFERENCES — confirmed, priced, do not re-litigate

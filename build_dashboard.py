@@ -460,7 +460,29 @@ for _pos in ("DEF", "MID", "FWD"):
     stats[f"cbit_hit_max_{_pos.lower()}"] = round(
         max((r["cbit_hit10"] for r in _matched), default=0.0), 1)
 
+# ------------------------------------------------ club-level xGC vs clean sheets
+# Panel 8 (Player analysis). Team-level, not player-level: xGC/90 averaged across
+# each club's GKP+DEF pool (the population that actually faces the shots),
+# clean sheets taken from the primary goalkeeper (most minutes) as the club's
+# season total — a keeper's clean sheet IS the team's, so this avoids double
+# counting across five defenders who share one result.
+club_xgc = {}
+club_cs = {}
+club_cs_mins = {}
+for r in rows:
+    if r["pos"] in ("GKP", "DEF"):
+        club_xgc.setdefault(r["team"], []).append(r["xgc90"])
+    if r["pos"] == "GKP":
+        if r["team"] not in club_cs_mins or r["mins"] > club_cs_mins[r["team"]]:
+            club_cs_mins[r["team"]] = r["mins"]
+            club_cs[r["team"]] = r["cs"]
+club_xgc_cs = sorted(
+    ([team, round(sum(vals) / len(vals), 3), club_cs[team]]
+     for team, vals in club_xgc.items() if team in club_cs),
+    key=lambda x: x[1])
+
 payload = dict(rows=rows, med_xgi_m=round(med_xgi_m,4), fixtures=FIXTURES, stats=stats, kpanel=kpanel,
+               club_xgc_cs=club_xgc_cs,
                med_xgc=med_xgc, med_xgi_mid=med_xgi_mid,
                captured=snap.get("captured_utc", "")[:19],
                season=snap.get("season_described", "?"),

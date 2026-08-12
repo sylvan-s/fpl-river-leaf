@@ -20,7 +20,7 @@ THE DISCIPLINE SECTION IS A TRAP, HANDLED. The snapshot's yellow-card counts are
 current suspension risk — at GW1 every player is on zero. They are shown as a
 booking TENDENCY, labelled as such, because that is the only honest reading.
 """
-import importlib.util, json, os, re, datetime as dt
+import importlib.util, os, re, datetime as dt
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -34,14 +34,10 @@ def _load(mod, fn):
 
 page_shell = _load("page_shell", "page_shell.py")
 squad_state = _load("squad_state", "squad_state.py")
+intel_adjust = _load("intel_adjust", "intel_adjust.py")
 
 OUT = os.environ.get("FPL_INTEL_OUT") or os.path.join(HERE, "docs", "news.html")
 INTEL = os.path.join(HERE, "ROLE_INTEL.md")
-SNAP = os.path.join(HERE, "fpl_priors_2025_26_v2.json")
-
-# A yellow-card count that would matter IF it were this season's. Shown only to
-# rank booking tendency, never as a live suspension risk.
-BOOKING_HEAVY = 6
 
 
 def esc(s):
@@ -80,16 +76,12 @@ def build():
     txt = open(INTEL, encoding="utf-8").read()
     state = squad_state.load()
     owned = state.name_set
-    snap = json.load(open(SNAP, encoding="utf-8"))
-    teams = snap["teams"]
-    cards = {p["web_name"]: (p.get("yellow_cards", 0) or 0, p.get("red_cards", 0) or 0,
-                             teams[str(p["team"])])
-             for p in snap["players"].values()}
 
     contam = fence(txt, "contaminated")
     setp = fence(txt, "setpieces")
     comp = fence(txt, "competition")
     intel = narrative(txt)
+    adjustments = intel_adjust.load_adjustments()
 
     def own_tag(n):
         return ' <span class="tag ok">in squad</span>' if n in owned else ""
@@ -102,54 +94,16 @@ def build():
 
     n_contam_owned = sum(1 for r in contam if r[0] in owned)
     n_comp_owned = sum(1 for r in comp if r[0] in owned)
+    n_adj_owned = sum(1 for e in adjustments if e["player"] in owned)
     kpis = "".join([
         kpi(len(contam), "Contaminated priors", f"{n_contam_owned} in your squad"),
         kpi(len(comp), "Contested places", f"{n_comp_owned} in your squad"),
         kpi(len(setp), "Set-piece claims", "all unconfirmed pre-season"),
         kpi(len(intel), "Active intel entries", "each with a check"),
+        kpi(len(adjustments), "Modelled-input adjustments", f"{n_adj_owned} in your squad"),
     ])
 
-    # --- contamination ----------------------------------------------------
-    rows = "".join(
-        f"<tr><td><b>{esc(r[0])}</b>{own_tag(r[0])}</td>"
-        f"<td style='text-align:left'>{esc(r[1])}</td></tr>" for r in contam)
-    contam_html = f"""
-<div class="panel">
-  <h2>Prior belongs to a different club</h2>
-  <p class="tests">The snapshot records each player's <b>current</b> club against
-  <b>last season's</b> statistics. A summer transfer therefore reads as new badge,
-  old numbers — and nothing in the data flags it.</p>
-  <table><thead><tr><th>Player</th><th style="text-align:left">Why the number misleads</th></tr></thead>
-  <tbody>{rows}</tbody></table>
-  <div class="find bad">The automatic club-change check <b>cannot fire</b> for
-  anyone who moved before the snapshot was captured on 8 Aug 2026 — which is the
-  whole summer window. This list is maintained by hand; a name missing from it is
-  not evidence of a clean prior.</div>
-</div>"""
-
-    # --- contested places -------------------------------------------------
-    comp_html = ""
-    if comp:
-        rows = "".join(
-            f"<tr><td><b>{esc(r[0])}</b>{own_tag(r[0])}</td>"
-            f"<td><span class='tag bad'>{esc(r[1])}</span></td>"
-            f"<td class='mono'>{esc(r[2])}</td>"
-            f"<td style='text-align:left'>{esc(r[3])}</td></tr>" for r in comp)
-        comp_html = f"""
-<div class="panel">
-  <h2>Place in the side contested</h2>
-  <p class="tests">Distinct from a contaminated prior: there the numbers belong to
-  another club, here they belong to another <b>role</b>. The history is right and
-  the conclusion is wrong.</p>
-  <table><thead><tr><th>Player</th><th>Status</th><th>Logged</th>
-  <th style="text-align:left">Detail</th></tr></thead><tbody>{rows}</tbody></table>
-  <div class="find">Start rate is the most load-bearing number in the model — it
-  gates selection today and will weight the objective under roadmap item A0.5. A
-  player who was first choice and is now second is invisible to the data, because
-  last season he did start.</div>
-</div>"""
-
-    # --- role intel -------------------------------------------------------
+    # --- role intel (narrative cards, folded into the summary panel below) -
     cards_html = ""
     for e in intel:
         cards_html += f"""<div class="pc">
@@ -159,73 +113,59 @@ def build():
   {f"<div class='pc-w'>{esc(e['thesis'])}</div>" if e['thesis'] else ""}
   {f"<div class='pc-w chk'><b>Check:</b> {esc(e['check'])}</div>" if e['check'] else ""}
 </div>"""
-    intel_html = f"""
+
+    # --- modelled-input adjustments -----------------------------------------
+    # The `adjustments` fence in ROLE_INTEL.md is the ONLY thing on this page
+    # that actually changes a number build_squad.py uses (via --intel); every
+    # other block here is descriptive. Rendering it is what turns "intel
+    # summary" into "intel summary AND its effect on the model", not just a
+    # second description of the same narrative.
+    def adj_value(e):
+        if e["op"] == "mult":
+            c = min(max(e["value"], intel_adjust.MULT_LO), intel_adjust.MULT_HI)
+            flag = ' <span class="tag bad">clamped</span>' if not (
+                intel_adjust.MULT_LO <= e["value"] <= intel_adjust.MULT_HI) else ""
+            return f"&times;{c:.2f}{flag}"
+        c = min(max(e["value"], 0.0), 1.0)
+        flag = ' <span class="tag bad">clamped</span>' if not (0.0 <= e["value"] <= 1.0) else ""
+        return f"&rarr; {c:.0%}{flag}"
+
+    adj_rows = "".join(
+        f"<tr><td><b>{esc(e['player'])}</b>{own_tag(e['player'])}</td>"
+        f"<td class='mono'>{esc(e['team'])}</td>"
+        f"<td class='mono'>{esc(e['field'])}</td>"
+        f"<td class='mono'>{adj_value(e)}</td>"
+        f"<td class='mono'>{esc(e['gws_raw'])}</td>"
+        f"<td class='mono'>{esc(e['confidence'])}</td>"
+        f"<td class='mono'>{esc(e['date'])}</td>"
+        f"<td style='text-align:left'>{esc(e['why'])}</td></tr>"
+        for e in adjustments)
+    adj_html = f"""
+  <h3 style="margin:22px 0 6px;font-size:14px">Adjustments to modelled inputs</h3>
+  <p class="tests">Every row here mutates a rate <span class="mono">expected_points()</span>
+  reads — but only when a squad or transfer run is built with <span class="mono">--intel</span>.
+  Default behaviour ignores this fence entirely. <span class="mono">mult</span> is guardrailed to
+  0.5&times;&ndash;1.5&times; so one line of narrative can never out-weigh a season of observed
+  data; <span class="mono">set</span> (start probability only) is an override, not a multiplier,
+  because unavailability is closer to binary than continuous.</p>
+  <table><thead><tr><th>Player</th><th>Team</th><th>Field</th><th>Effect</th>
+  <th>GWs</th><th>Confidence</th><th>Logged</th><th style="text-align:left">Why</th></tr></thead>
+  <tbody>{adj_rows if adj_rows else '<tr><td colspan="8" style="text-align:center;color:var(--dim)">none logged</td></tr>'}</tbody></table>
+  <div class="find">An adjustment without a falsifiable check above it is an unexplained number.
+  Every row here should trace back to a dated entry in the cards above — <span class="mono">see
+  entry N above</span> in its <i>why</i> column is deliberate, not filler.</div>"""
+
+    summary_html = f"""
 <div class="panel">
-  <h2>Role and minutes intel</h2>
+  <h2>Intel summary &amp; modelled-input adjustments</h2>
   <p class="tests">What the screens structurally cannot see: a new penalty taker, a
   tactical shift, a berth opening through injury. Every entry carries a check that
-  the opening gameweeks will confirm or kill.</p>
+  the opening gameweeks will confirm or kill — and, where an entry is confident enough
+  to move a number, exactly what it moved and by how much.</p>
   <div class="row">{cards_html}</div>
   <div class="find">An entry without a falsifiable check is folklore. Anything
   still unproven after roughly five gameweeks gets deleted, not archived.</div>
-</div>"""
-
-    # --- set pieces -------------------------------------------------------
-    rows = "".join(
-        f"<tr><td><b>{esc(r[0])}</b>{own_tag(r[0])}</td><td class='mono'>{esc(r[1])}</td>"
-        f"<td class='mono'>{esc(r[2])}</td>"
-        f"<td style='text-align:left'>{esc(r[3])}</td></tr>" for r in setp)
-    setp_html = f"""
-<div class="panel">
-  <h2>Set-piece duty — claimed, not confirmed</h2>
-  <p class="tests">P = penalties, F = direct free kicks, C = corners; the number is
-  the order. A penalty is worth roughly 0.79 xG, so this is among the largest
-  single adjustments available.</p>
-  <table><thead><tr><th>Player</th><th>Codes</th><th>Added</th>
-  <th style="text-align:left">Source</th></tr></thead><tbody>{rows}</tbody></table>
-  <div class="find">These exist only to cover the pre-season gap before the FPL API
-  populates its own fields. Where both exist the <b>API always wins</b>, and a line
-  is deleted the moment the API confirms or contradicts it.</div>
-</div>"""
-
-    # --- discipline -------------------------------------------------------
-    mine = sorted(((n,) + cards.get(n, (0, 0, "?")) for n in owned),
-                  key=lambda r: -r[1])
-    HEAVY_TAG = '<span class="tag bad">books often</span>'
-    rows = "".join(
-        f"<tr><td><b>{esc(n)}</b></td><td class='mono'>{tm}</td>"
-        f"<td class='mono'>{y}</td><td class='mono'>{r if r else ''}</td>"
-        f"<td>{HEAVY_TAG if y >= BOOKING_HEAVY else ''}</td></tr>"
-        for n, y, r, tm in mine)
-    disc_html = f"""
-<div class="panel">
-  <h2>Booking tendency — <i>not</i> a live suspension risk</h2>
-  <p class="tests">Yellow cards from 2025/26, for every player in the squad.</p>
-  <div class="find bad"><b>These do not carry over.</b> Premier League yellow-card
-  counts reset each season, so at the GW1 2026/27 deadline every player below is on
-  <b>zero</b>. Treat this as a tendency to be booked, which is a mild prior on
-  future suspension risk — never as a current one. The thresholds that matter
-  (5 by GW19, 10 by GW32, 15 by GW38) apply to <i>this</i> season's count, which
-  the repository does not yet hold.</div>
-  <table><thead><tr><th>Player</th><th>Club</th><th>YC 25/26</th><th>RC</th><th></th></tr></thead>
-  <tbody>{rows}</tbody></table>
-</div>"""
-
-    limits_html = """
-<div class="panel">
-  <h2>What this page cannot tell you</h2>
-  <p class="tests">Stated plainly, because a page that looks live and is not is
-  worse than no page at all.</p>
-  <ul style="margin:6px 0 0 18px;padding:0;font-size:13px">
-    <li><b>No live injury or availability feed.</b> Everything here is built from
-    the repository at build time. Current status, doubtful flags and this season's
-    card counts come from the FPL API and are not in this page.</li>
-    <li><b>Absence is not evidence.</b> The contaminated and contested lists are
-    maintained by hand. A player missing from them has not been cleared — he may
-    simply not have been checked.</li>
-    <li><b>Set-piece claims are community consensus</b>, explicitly unconfirmed,
-    and are superseded by the API the moment it populates.</li>
-  </ul>
+  {adj_html}
 </div>"""
 
     extra_css = """
@@ -243,8 +183,7 @@ border-radius:9px;padding:10px 12px}
 @media(max-width:700px){.pc{flex:1 1 100%}}
 </style>"""
 
-    body = (f'<div class="kpis">{kpis}</div>' + contam_html + comp_html +
-            intel_html + setp_html + disc_html + limits_html)
+    body = f'<div class="kpis">{kpis}</div>' + summary_html
 
     html = page_shell.shell(
         title="Availability & intel",
@@ -260,15 +199,16 @@ border-radius:9px;padding:10px 12px}
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     open(OUT, "w", encoding="utf-8").write(html)
     return html, dict(contaminated=len(contam), competition=len(comp),
-                      setpieces=len(setp), intel=len(intel))
+                      setpieces=len(setp), intel=len(intel),
+                      adjustments=len(adjustments))
 
 
 if __name__ == "__main__":
     h, counts = build()
     print(f"written: {OUT}  ({len(h)/1024:.0f} KB)")
     for k, v in counts.items():
-        if v == 0:
+        if v == 0 and k != "adjustments":   # a genuinely empty fence is a valid state
             raise SystemExit(f"nothing parsed for '{k}' — ROLE_INTEL.md format changed?")
         print(f"  {k}: {v}")
-    assert "reset each season" in h, "the yellow-card reset caveat is missing"
-    print("  yellow-card reset caveat present")
+    assert "Modelled-input adjustments" in h, "adjustments panel missing"
+    print("  adjustments panel present")

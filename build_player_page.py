@@ -182,7 +182,26 @@ document.getElementById('hits').addEventListener('click', e => {{
   const el = e.target.closest('.hit');
   if (el) show(el.dataset.slug);
 }});
-render(INDEX);
+
+// Deep-link from Player Analysis: a clicked chart point there sends
+// ?name=..&team=.. here. Team disambiguates duplicate surnames (e.g. two
+// "Martinez"es); without it a name-only match still degrades gracefully to
+// the first hit rather than failing silently.
+(function initFromQuery(){{
+  const params = new URLSearchParams(location.search);
+  const qName = params.get('name');
+  if (!qName) {{ render(INDEX); return; }}
+  document.getElementById('q').value = qName;
+  const qTeam = params.get('team');
+  let match = INDEX.find(p => p.name === qName && (!qTeam || p.team === qTeam));
+  if (!match) match = INDEX.find(p => p.name.toLowerCase() === qName.toLowerCase());
+  if (match) {{
+    render(INDEX.filter(p => p.name.toLowerCase().includes(qName.toLowerCase())));
+    show(match.slug);
+  }} else {{
+    search();
+  }}
+}})();
 </script>"""
 
     html = page_shell.shell(

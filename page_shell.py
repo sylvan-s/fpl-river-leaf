@@ -23,7 +23,7 @@ CHARTJS = ('<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.
            'integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" '
            'crossorigin="anonymous"></script>')
 
-PAGES = ["squad", "analysis", "player", "workflow", "news"]
+PAGES = ["squad", "analysis", "relationships", "player", "workflow", "news"]
 
 
 def css():

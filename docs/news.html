@@ -74,43 +74,21 @@ border-radius:9px;padding:10px 12px}
 <nav class="top">
 <a href="index.html" data-page="squad">Squad</a>
 <a href="analysis.html" data-page="analysis">Player analysis</a>
+<a href="relationships.html" data-page="relationships">Statistical relationships</a>
 <a href="player.html" data-page="player">Player timeseries</a>
 <a href="workflow.html" data-page="workflow">Weekly workflow</a>
 <a href="news.html" data-page="news" class="on">Availability &amp; intel</a>
 </nav>
 
 <h1>Availability & intel</h1>
-<p class="sub">Rendered from ROLE_INTEL.md · GW1 · page generated 2026-08-11 15:17</p>
-<div class="kpis"><div class="kpi"><div class="kv mono">19</div><div class="kl">Contaminated priors</div><div class="kn">0 in your squad</div></div><div class="kpi"><div class="kv mono">1</div><div class="kl">Contested places</div><div class="kn">0 in your squad</div></div><div class="kpi"><div class="kv mono">2</div><div class="kl">Set-piece claims</div><div class="kn">all unconfirmed pre-season</div></div><div class="kpi"><div class="kv mono">7</div><div class="kl">Active intel entries</div><div class="kn">each with a check</div></div></div>
+<p class="sub">Rendered from ROLE_INTEL.md · GW1 · page generated 2026-08-12 09:34</p>
+<div class="kpis"><div class="kpi"><div class="kv mono">19</div><div class="kl">Contaminated priors</div><div class="kn">0 in your squad</div></div><div class="kpi"><div class="kv mono">1</div><div class="kl">Contested places</div><div class="kn">0 in your squad</div></div><div class="kpi"><div class="kv mono">2</div><div class="kl">Set-piece claims</div><div class="kn">all unconfirmed pre-season</div></div><div class="kpi"><div class="kv mono">7</div><div class="kl">Active intel entries</div><div class="kn">each with a check</div></div><div class="kpi"><div class="kv mono">6</div><div class="kl">Modelled-input adjustments</div><div class="kn">1 in your squad</div></div></div>
 <div class="panel">
-  <h2>Prior belongs to a different club</h2>
-  <p class="tests">The snapshot records each player's <b>current</b> club against
-  <b>last season's</b> statistics. A summer transfer therefore reads as new badge,
-  old numbers — and nothing in the data flags it.</p>
-  <table><thead><tr><th>Player</th><th style="text-align:left">Why the number misleads</th></tr></thead>
-  <tbody><tr><td><b>Garnacho</b></td><td style='text-align:left'>CHE -&gt; AVL; 2025/26 record is a CHE record</td></tr><tr><td><b>Struijk</b></td><td style='text-align:left'>LEE -&gt; BHA; 2025/26 record is a LEE record</td></tr><tr><td><b>Henderson</b></td><td style='text-align:left'>BRE -&gt; CHE; 2025/26 record is a BRE record</td></tr><tr><td><b>Lacroix</b></td><td style='text-align:left'>CRY -&gt; CHE; 2025/26 record is a CRY record [IN SQUAD]</td></tr><tr><td><b>Rogers</b></td><td style='text-align:left'>AVL -&gt; CHE; 2025/26 record is a AVL record</td></tr><tr><td><b>Welbeck</b></td><td style='text-align:left'>BHA -&gt; CHE; 2025/26 record is a BHA record</td></tr><tr><td><b>Strand Larsen</b></td><td style='text-align:left'>WOL -&gt; CRY; 2025/26 record is a WOL record</td></tr><tr><td><b>Anderson</b></td><td style='text-align:left'>NFO -&gt; MCI; 2025/26 record is a NFO record</td></tr><tr><td><b>Grealish</b></td><td style='text-align:left'>EVE -&gt; MCI; 2025/26 record is a EVE record</td></tr><tr><td><b>Guéhi</b></td><td style='text-align:left'>CRY -&gt; MCI; 2025/26 record is a CRY record</td></tr><tr><td><b>Semenyo</b></td><td style='text-align:left'>BOU -&gt; MCI; 2025/26 record is a BOU record</td></tr><tr><td><b>Andrey Santos</b></td><td style='text-align:left'>CHE -&gt; MUN; 2025/26 record is a CHE record</td></tr><tr><td><b>Darlow</b></td><td style='text-align:left'>LEE -&gt; MUN; 2025/26 record is a LEE record</td></tr><tr><td><b>Tielemans</b></td><td style='text-align:left'>AVL -&gt; MUN; 2025/26 record is a AVL record</td></tr><tr><td><b>Dubravka</b></td><td style='text-align:left'>BUR -&gt; TOT; 2025/26 record is a BUR record [IN SQUAD]</td></tr><tr><td><b>Robertson</b></td><td style='text-align:left'>LIV -&gt; TOT; 2025/26 record is a LIV record</td></tr><tr><td><b>Senesi</b></td><td style='text-align:left'>BOU -&gt; TOT; 2025/26 record is a BOU record</td></tr><tr><td><b>Tonali</b></td><td style='text-align:left'>NEW -&gt; TOT; 2025/26 record is a NEW record</td></tr><tr><td><b>Van Hecke</b></td><td style='text-align:left'>BHA -&gt; TOT; 2025/26 record is a BHA record</td></tr></tbody></table>
-  <div class="find bad">The automatic club-change check <b>cannot fire</b> for
-  anyone who moved before the snapshot was captured on 8 Aug 2026 — which is the
-  whole summer window. This list is maintained by hand; a name missing from it is
-  not evidence of a clean prior.</div>
-</div>
-<div class="panel">
-  <h2>Place in the side contested</h2>
-  <p class="tests">Distinct from a contaminated prior: there the numbers belong to
-  another club, here they belong to another <b>role</b>. The history is right and
-  the conclusion is wrong.</p>
-  <table><thead><tr><th>Player</th><th>Status</th><th>Logged</th>
-  <th style="text-align:left">Detail</th></tr></thead><tbody><tr><td><b>Dubravka</b></td><td><span class='tag bad'>backup</span></td><td class='mono'>2026-08-09</td><td style='text-align:left'>First-choice at Burnley (35 apps, 81% starts); reported behind Antonin Kinsky at Spurs. True P(start) near zero, not 81%</td></tr></tbody></table>
-  <div class="find">Start rate is the most load-bearing number in the model — it
-  gates selection today and will weight the objective under roadmap item A0.5. A
-  player who was first choice and is now second is invisible to the data, because
-  last season he did start.</div>
-</div>
-<div class="panel">
-  <h2>Role and minutes intel</h2>
+  <h2>Intel summary &amp; modelled-input adjustments</h2>
   <p class="tests">What the screens structurally cannot see: a new penalty taker, a
   tactical shift, a berth opening through injury. Every entry carries a check that
-  the opening gameweeks will confirm or kill.</p>
+  the opening gameweeks will confirm or kill — and, where an entry is confident enough
+  to move a number, exactly what it moved and by how much.</p>
   <div class="row"><div class="pc">
   <div class="pc-h"><b>Szoboszlai</b></div>
   <div class="pc-m mono">LIV · £7.0m · MID</div>
@@ -156,44 +134,20 @@ border-radius:9px;padding:10px 12px}
 </div></div>
   <div class="find">An entry without a falsifiable check is folklore. Anything
   still unproven after roughly five gameweeks gets deleted, not archived.</div>
-</div>
-<div class="panel">
-  <h2>Set-piece duty — claimed, not confirmed</h2>
-  <p class="tests">P = penalties, F = direct free kicks, C = corners; the number is
-  the order. A penalty is worth roughly 0.79 xG, so this is among the largest
-  single adjustments available.</p>
-  <table><thead><tr><th>Player</th><th>Codes</th><th>Added</th>
-  <th style="text-align:left">Source</th></tr></thead><tbody><tr><td><b>Szoboszlai</b></td><td class='mono'>P1 F1</td><td class='mono'>2026-08-07</td><td style='text-align:left'>community consensus; Salah departure vacates duty; UNCONFIRMED</td></tr><tr><td><b>Ndiaye</b></td><td class='mono'>P1</td><td class='mono'>2026-08-07</td><td style='text-align:left'>community consensus; "locked-in" penalty role claimed; UNCONFIRMED</td></tr></tbody></table>
-  <div class="find">These exist only to cover the pre-season gap before the FPL API
-  populates its own fields. Where both exist the <b>API always wins</b>, and a line
-  is deleted the moment the API confirms or contradicts it.</div>
-</div>
-<div class="panel">
-  <h2>Booking tendency — <i>not</i> a live suspension risk</h2>
-  <p class="tests">Yellow cards from 2025/26, for every player in the squad.</p>
-  <div class="find bad"><b>These do not carry over.</b> Premier League yellow-card
-  counts reset each season, so at the GW1 2026/27 deadline every player below is on
-  <b>zero</b>. Treat this as a tendency to be booked, which is a mild prior on
-  future suspension risk — never as a current one. The thresholds that matter
-  (5 by GW19, 10 by GW32, 15 by GW38) apply to <i>this</i> season's count, which
-  the repository does not yet hold.</div>
-  <table><thead><tr><th>Player</th><th>Club</th><th>YC 25/26</th><th>RC</th><th></th></tr></thead>
-  <tbody><tr><td><b>Shaw</b></td><td class='mono'>MUN</td><td class='mono'>9</td><td class='mono'></td><td><span class="tag bad">books often</span></td></tr><tr><td><b>Thiago</b></td><td class='mono'>BRE</td><td class='mono'>7</td><td class='mono'></td><td><span class="tag bad">books often</span></td></tr><tr><td><b>Schade</b></td><td class='mono'>BRE</td><td class='mono'>6</td><td class='mono'>1</td><td><span class="tag bad">books often</span></td></tr><tr><td><b>Palmer</b></td><td class='mono'>CHE</td><td class='mono'>5</td><td class='mono'></td><td></td></tr><tr><td><b>B.Fernandes</b></td><td class='mono'>MUN</td><td class='mono'>5</td><td class='mono'></td><td></td></tr><tr><td><b>Justin</b></td><td class='mono'>LEE</td><td class='mono'>4</td><td class='mono'></td><td></td></tr><tr><td><b>Mbeumo</b></td><td class='mono'>MUN</td><td class='mono'>4</td><td class='mono'></td><td></td></tr><tr><td><b>Gabriel</b></td><td class='mono'>ARS</td><td class='mono'>4</td><td class='mono'></td><td></td></tr><tr><td><b>Mosquera</b></td><td class='mono'>ARS</td><td class='mono'>4</td><td class='mono'></td><td></td></tr><tr><td><b>Calvert-Lewin</b></td><td class='mono'>LEE</td><td class='mono'>3</td><td class='mono'></td><td></td></tr><tr><td><b>Verbruggen</b></td><td class='mono'>BHA</td><td class='mono'>3</td><td class='mono'></td><td></td></tr><tr><td><b>Sarr</b></td><td class='mono'>CRY</td><td class='mono'>2</td><td class='mono'></td><td></td></tr><tr><td><b>Van den Berg</b></td><td class='mono'>BRE</td><td class='mono'>2</td><td class='mono'></td><td></td></tr><tr><td><b>Evanilson</b></td><td class='mono'>BOU</td><td class='mono'>2</td><td class='mono'></td><td></td></tr><tr><td><b>Raya</b></td><td class='mono'>ARS</td><td class='mono'>1</td><td class='mono'></td><td></td></tr></tbody></table>
-</div>
-<div class="panel">
-  <h2>What this page cannot tell you</h2>
-  <p class="tests">Stated plainly, because a page that looks live and is not is
-  worse than no page at all.</p>
-  <ul style="margin:6px 0 0 18px;padding:0;font-size:13px">
-    <li><b>No live injury or availability feed.</b> Everything here is built from
-    the repository at build time. Current status, doubtful flags and this season's
-    card counts come from the FPL API and are not in this page.</li>
-    <li><b>Absence is not evidence.</b> The contaminated and contested lists are
-    maintained by hand. A player missing from them has not been cleared — he may
-    simply not have been checked.</li>
-    <li><b>Set-piece claims are community consensus</b>, explicitly unconfirmed,
-    and are superseded by the API the moment it populates.</li>
-  </ul>
+  
+  <h3 style="margin:22px 0 6px;font-size:14px">Adjustments to modelled inputs</h3>
+  <p class="tests">Every row here mutates a rate <span class="mono">expected_points()</span>
+  reads — but only when a squad or transfer run is built with <span class="mono">--intel</span>.
+  Default behaviour ignores this fence entirely. <span class="mono">mult</span> is guardrailed to
+  0.5&times;&ndash;1.5&times; so one line of narrative can never out-weigh a season of observed
+  data; <span class="mono">set</span> (start probability only) is an override, not a multiplier,
+  because unavailability is closer to binary than continuous.</p>
+  <table><thead><tr><th>Player</th><th>Team</th><th>Field</th><th>Effect</th>
+  <th>GWs</th><th>Confidence</th><th>Logged</th><th style="text-align:left">Why</th></tr></thead>
+  <tbody><tr><td><b>Szoboszlai</b></td><td class='mono'>LIV</td><td class='mono'>xg90</td><td class='mono'>&times;1.35</td><td class='mono'>1-8</td><td class='mono'>medium</td><td class='mono'>2026-08-07</td><td style='text-align:left'>Penalty + direct FK duty per community consensus, Salah departure vacates it; see entry 1 above</td></tr><tr><td><b>Ndiaye</b></td><td class='mono'>EVE</td><td class='mono'>xg90</td><td class='mono'>&times;1.25</td><td class='mono'>1-8</td><td class='mono'>medium</td><td class='mono'>2026-08-07</td><td style='text-align:left'>Penalty duty claimed plus -2.09 delta already underperforming his chances; see entry 4 above</td></tr><tr><td><b>Anderson</b></td><td class='mono'>MCI</td><td class='mono'>xgi90</td><td class='mono'>&times;1.15</td><td class='mono'>1-8</td><td class='mono'>medium</td><td class='mono'>2026-08-07</td><td style='text-align:left'>Elevated box-to-box creative role per community read; screen already confirms the CBIRT floor, this prices the ceiling; see entry 2 above</td></tr><tr><td><b>Mosquera</b> <span class="tag ok">in squad</span></td><td class='mono'>ARS</td><td class='mono'>stp</td><td class='mono'>&rarr; 85%</td><td class='mono'>1-3</td><td class='mono'>medium</td><td class='mono'>2026-08-07</td><td style='text-align:left'>Saliba injured no return date, Timber out till 21 Aug; minutes opening in the league's best defence; see entry 3 above</td></tr><tr><td><b>Dubravka</b></td><td class='mono'>TOT</td><td class='mono'>stp</td><td class='mono'>&rarr; 5%</td><td class='mono'>ALL</td><td class='mono'>high</td><td class='mono'>2026-08-09</td><td style='text-align:left'>Reported backup to Antonin Kinsky at Spurs; 81% last16 rate is a Burnley-era number wearing a Spurs badge; see the competition fence above</td></tr><tr><td><b>Rice</b></td><td class='mono'>ARS</td><td class='mono'>stp</td><td class='mono'>&rarr; 69%</td><td class='mono'>1-6</td><td class='mono'>medium</td><td class='mono'>2026-08-11</td><td style='text-align:left'>Guimaraes signed to share his DM/CM workload per Arsenal.com + independent press (rotation intent well corroborated); 25% reduction off his 92% 2025/26 start rate is an UNSOURCED estimate applied on instruction, not a reported figure; see entry 7 above</td></tr></tbody></table>
+  <div class="find">An adjustment without a falsifiable check above it is an unexplained number.
+  Every row here should trace back to a dated entry in the cards above — <span class="mono">see
+  entry N above</span> in its <i>why</i> column is deliberate, not filler.</div>
 </div>
 <footer>Built by <span class='mono'>build_intel_page.py</span>, which reads <span class='mono'>ROLE_INTEL.md</span> rather than copying it. Every entry there carries a date, a source and a falsifiable check.</footer>
 </body></html>

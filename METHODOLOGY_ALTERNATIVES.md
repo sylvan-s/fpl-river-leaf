@@ -19,6 +19,7 @@ if the GW10 bake-off justifies it.
 | A0.1 availability + suspension | built 8 Aug 2026 | `_availability()`, `_suspension()` |
 | **xP from FPL's scoring table** | built 9 Aug 2026 | `build_squad.py:expected_points()` |
 | **Exact ILP optimiser** | built 9 Aug 2026 | `optimise_squad.py` |
+| **xP validated against FPL's own official xP** | checked 11 Aug 2026 | see below |
 
 **The xP model replaced hand-picked coefficients.** The first selection scorer used
 `xGI/90 × 8` and `(1.6 − xGC/90) × 6` — numbers that appear nowhere in FPL's rules.
@@ -49,6 +50,41 @@ now priced on every run (Haaland costs 0.06 xP/90).
 
 **Dependency:** PuLP, with its bundled CBC solver. `pip install pulp` — no other
 requirement, and nothing else in the project depends on it.
+
+### External xP validation — checked 11 Aug 2026
+
+`fetch_gw_history.py` has fetched FPL's own official per-gameweek `xP` field
+since 9 Aug, flagged in its own docstring as "a free external benchmark for
+our model" — but nothing had actually run the comparison. Checked now.
+
+**Method.** Matched all 261 players from the 2025/26 archive with 450+ minutes
+against the current pool's `score` field (both derived from the same
+last-season underlying rates, so the comparison is fair pre-season). For each
+player: summed FPL's own `xP` and `total_points` across the season, divided by
+`minutes/90` to get true per-90 rates, and correlated against our `score`.
+
+**Result — our model tracks reality better than FPL's own xP does:**
+
+| | mean xP/90 | corr with actual pts/90 |
+|---|---|---|
+| FPL's official xP | 1.18 | **0.51** (r² ≈ 0.26) |
+| Our `score` | 3.70 | **0.71** (r² ≈ 0.50) |
+
+Correlation between our `score` and FPL's own xP is only **0.43** — the two
+disagree a lot, and FPL's own xP sits at roughly a third of the real per-90
+points scale (1.18 predicted vs 4.23 actual). That looks alarming until you
+check which one actually predicts outcomes: FPL's official xP explains about a
+quarter of the variance in real results, ours explains about half. **Palmer is
+the clean example** — FPL's own xP had him at 1.00/90 (badly underrating him
+against Chelsea's set-up), actual output was 5.25/90, and our `score` landed
+at 5.24 — almost exact.
+
+**Conclusion: do not treat FPL's own xP as ground truth for future checks.**
+It is a known-blunt, publicly-conservative number, not a gold-standard
+benchmark — this closes the "free external benchmark" question raised in
+`fetch_gw_history.py` with a negative result for FPL's xP, not for ours. The
+GW10 backtest (below) remains the real test, since it checks against actual
+outcomes directly rather than against another model's guess.
 
 **A0.1 fixed a live bug rather than adding a feature.** P(start) was drawn purely
 from a player's historical start rate, so a **suspended or injured player still

@@ -22,11 +22,12 @@ const INTEGRITY = 'sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76i
 // page file -> minimum plausible size. A page that builds but emits almost
 // nothing is a failure that no syntax check catches.
 const PAGES = [
-  { file: 'index.html',    minKB: 10 },   // squad page — the landing page
-  { file: 'analysis.html', minKB: 100, deep: 'diagnostics' },
-  { file: 'workflow.html', minKB: 8 },
-  { file: 'news.html',     minKB: 8 },
-  { file: 'player.html',   minKB: 20 },
+  { file: 'index.html',         minKB: 10 },   // squad page — the landing page
+  { file: 'analysis.html',      minKB: 100, deep: 'diagnostics' },
+  { file: 'relationships.html', minKB: 80 },   // shares analysis.html's payload
+  { file: 'workflow.html',      minKB: 8 },
+  { file: 'news.html',          minKB: 8 },
+  { file: 'player.html',        minKB: 20 },
 ];
 
 let failures = 0;

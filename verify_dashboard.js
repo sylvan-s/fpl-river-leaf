@@ -1,6 +1,9 @@
 // Execute the dashboard script against a minimal DOM + Chart stub.
 // Syntax checking alone missed a fatal parse error; this actually RUNS it.
 const charts = [];
+// Real chart instances, exposed so the click-through test below can reach
+// each chart's options.onClick — the `charts` array above is metadata only.
+const chartInstances = [];
 global.Chart = function (cv, cfg) {
   const tri = (cfg.data.datasets || []).reduce((a, d) =>
     a + (Array.isArray(d.pointStyle) ? d.pointStyle.filter(x => x === 'triangle').length : 0), 0);
@@ -26,7 +29,7 @@ global.Chart = function (cv, cfg) {
     getDatasetMeta: () => ({ data: (cfg.data.datasets[0].data || []).map(() => ({ x: 0, y: 0 })) })
   }));
   const inst = {
-    canvas: cv && cv.id, config: cfg, data: cfg.data,
+    canvas: cv && cv.id, config: cfg, data: cfg.data, options: cfg.options,
     update() {
       const i = charts.findIndex(c => c.canvas === inst.canvas);
       const rec = { canvas: inst.canvas, type: cfg.type,
@@ -37,6 +40,7 @@ global.Chart = function (cv, cfg) {
       if (i >= 0) charts[i] = rec; else charts.push(rec);
     }
   };
+  chartInstances.push(inst);
   return inst;
 };
 Chart.defaults = { color: '', borderColor: '', font: {} };
@@ -68,6 +72,23 @@ global.document = {
 };
 global.getComputedStyle = () => ({ getPropertyValue: () => '#000' });
 global.window = global;
+// goToPlayer() writes window.location.href — a plain settable stub is enough
+// to observe where a chart click would have sent the browser.
+global.location = { href: '' };
+// In-memory stand-in for the sticky start% filter (11 Aug 2026). A real
+// stub, not just a try/catch bypass, so the round-trip actually gets
+// exercised here rather than silently taking the "storage unavailable" path.
+const _lsStore = {};
+global.localStorage = {
+  getItem: k => (k in _lsStore ? _lsStore[k] : null),
+  setItem: (k, v) => { _lsStore[k] = String(v); },
+  removeItem: k => { delete _lsStore[k]; },
+};
+// Pre-seed as if a PRIOR visit had left the filter at 50% — this is what
+// "navigate away and back" looks like on a real page load, since the whole
+// script re-runs from scratch and only localStorage survives.
+const STP_KEY = 'fpl_analysis_min_start_pct';
+_lsStore[STP_KEY] = '50';
 
 try {
   require('./dash.js');
@@ -77,6 +98,23 @@ try {
 console.log('panels rendered :', app.children.length);
 console.log('charts created  :', charts.length);
 charts.forEach(c => console.log(`   ${String(c.canvas).padEnd(5)} ${c.type.padEnd(8)} ${c.datasets} datasets, ${String(c.points).padStart(3)} points, ${c.triangles} triangles`));
+
+// Sticky start% filter: the 50% seeded into localStorage above should already
+// be applied — readout, slider value, AND the charts themselves — with no
+// user interaction at all. This is the "navigated back to the page" case;
+// a filter that only works via the input event would pass every other check
+// here and still fail the one thing this feature was built for.
+const stpReadout = byId['globalStpV'];
+const stpSlider = byId['globalStp'];
+const restoredOk = !!stpReadout && !!stpSlider
+  && stpReadout.textContent === '50%' && String(stpSlider.value) === '50'
+  && charts.find(c => c.canvas === 'c1').points < 110;
+console.log(`sticky filter restored on load : readout "${stpReadout?.textContent}" `
+  + `slider "${stpSlider?.value}" c1 points ${charts.find(c => c.canvas === 'c1').points} -> ${restoredOk ? 'OK' : 'WRONG'}`);
+// Reset to the unfiltered baseline the rest of this suite assumes (squad
+// marker counts, default xP explorer row counts, etc. are all written
+// against the full pool) — the sticky-restore check above is done with it.
+if (stpSlider) stpSlider.fire('input', '0');
 // Derived from squad.json, the single source of truth. These were hardcoded as
 // `5, 5` beside a comment listing O'Reilly, Enzo and Berge — three players who
 // had already been transferred out. The numbers still happened to be right,
@@ -90,17 +128,6 @@ const triOk = charts.find(c => c.canvas === 'c1').triangles === SQUAD_DEF
            && charts.find(c => c.canvas === 'c3m').triangles === SQUAD_MID;
 console.log(`squad markers   : c1 expects ${SQUAD_DEF} triangles, c3m expects ${SQUAD_MID} -> ${triOk ? 'OK' : 'WRONG'}`);
 console.log('header text     :', (sub.textContent || '').slice(0, 70) + '...');
-// Exercise panel 1's blank-risk slider - a chart that renders but whose filter
-// throws is still broken. Drive it to a low value and confirm points drop.
-function drive(id, val, canvas, label) {
-  const el = byId[id];
-  if (!el) { console.log(`${label}: MISSING`); return false; }
-  const before = charts.find(c => c.canvas === canvas).points;
-  el.fire('input', val);
-  const after = charts.find(c => c.canvas === canvas).points;
-  console.log(`${label}: ${before} pts -> ${after} (readouts "${byId[id.replace('s','v')]?.textContent}", "${byId[id.replace('s','c')]?.textContent}")`);
-  return after < before;
-}
 // Panel 7 renders a table, not a canvas, so chart counts say nothing about it.
 // Exercise the filters directly and assert the row counts actually change.
 function tableRows(html) { return (html.match(/<tr class=/g) || []).length; }
@@ -120,21 +147,8 @@ if (xpTable && nsel && btns) {
   xpOk = all25 === 25 && ten === 10 && everything > 250 && gkp === 23;
 }
 
-const s1 = drive('p1s', 80, 'c1', 'start% slider (DEF)');
-const s3 = drive('p3s', 80, 'c3m', 'start% slider (MID)');
-const s4 = drive('p4s', 80, 'c3', 'start% slider (P4) ');
-
-// Panel 2 position buttons: clicking MID should change the point count from
-// the DEF default, and the corr() text alongside it should update too.
-let p2ok = false;
-const p2btns = byId['p2pos'];
-if (p2btns) {
-  const before = charts.find(c => c.canvas === 'c2').points;
-  p2btns.fire('click', null, { dataset: { p: 'MID' } });
-  const after = charts.find(c => c.canvas === 'c2').points;
-  console.log(`p2 position filter  : DEF ${before} pts -> MID ${after}`);
-  p2ok = after !== before;
-}
+// Panel 2 (threshold cliff) moved to relationships.html on 11 Aug 2026 — its
+// position-filter check moved with it and is no longer exercised here.
 
 // Panel 4 position buttons: clicking DEF should also change the point count.
 let p4ok = false;
@@ -147,20 +161,64 @@ if (p4btns) {
   p4ok = after !== before;
 }
 
-// Panel 7: xP4_adj replaces blank%, and its own start% slider filters rows.
+// Panel 7: xP4_adj replaces blank%.
 const xpHeadOk = xpTable && /xP4_adj/.test(xpTable.innerHTML) && !/blank%/.test(xpTable.innerHTML);
 console.log(`xP explorer columns : xP4_adj present, blank% gone -> ${xpHeadOk}`);
-let p7ok = false;
-if (byId['p7s']) {
-  const before = tableRows(xpTable.innerHTML);
-  byId['p7s'].fire('input', '80');
-  const after = tableRows(xpTable.innerHTML);
-  console.log(`p7 start% slider    : ${before} rows -> ${after}`);
-  p7ok = after < before;
-}
 
-const ok = app.children.length === 7 && charts.length === 6
-  && charts.every(c => c.points > 0) && s1 && s3 && s4 && triOk && xpOk
-  && p2ok && p4ok && xpHeadOk && p7ok;
+// The single global start% filter (11 Aug 2026) replaced four separate
+// per-panel sliders. Fire it once and confirm it drives panels 1, 3, 4 AND
+// the panel 7 table together — a shared control that only moves one of them
+// would be the exact failure this consolidation could introduce silently.
+let globalOk = false;
+const globalStp = byId['globalStp'];
+if (globalStp) {
+  const before = {
+    c1: charts.find(c => c.canvas === 'c1').points,
+    c3m: charts.find(c => c.canvas === 'c3m').points,
+    c3: charts.find(c => c.canvas === 'c3').points,
+    rows: tableRows(xpTable.innerHTML),
+  };
+  globalStp.fire('input', '80');
+  const after = {
+    c1: charts.find(c => c.canvas === 'c1').points,
+    c3m: charts.find(c => c.canvas === 'c3m').points,
+    c3: charts.find(c => c.canvas === 'c3').points,
+    rows: tableRows(xpTable.innerHTML),
+  };
+  console.log(`global start% filter: c1 ${before.c1}->${after.c1}  c3m ${before.c3m}->${after.c3m}  `
+    + `c3 ${before.c3}->${after.c3}  xp rows ${before.rows}->${after.rows} `
+    + `(readout "${byId['globalStpV']?.textContent}")`);
+  globalOk = after.c1 < before.c1 && after.c3m < before.c3m
+    && after.c3 < before.c3 && after.rows < before.rows;
+}
+// Moving the slider should also persist the new value — the other half of
+// "sticky": restore-on-load only works if input events actually write.
+const stickyWriteOk = _lsStore[STP_KEY] === '80';
+console.log(`sticky filter persisted     : localStorage[${STP_KEY}] = "${_lsStore[STP_KEY]}" -> ${stickyWriteOk ? 'OK' : 'WRONG'}`);
+
+// Panel 8 (xGC vs CS per club), added 11 Aug 2026: one point per club, no
+// filters to drive — just confirm it actually rendered with real data.
+const p8 = charts.find(c => c.canvas === 'c6');
+const p8ok = !!p8 && p8.points > 0;
+console.log(`xGC vs CS per club  : ${p8 ? p8.points : 0} clubs plotted`);
+
+// Click-through: a point clicked on c1/c3m/c3 should send the browser to
+// player.html carrying that player's name + team (12 Aug 2026 addition).
+let clickOk = false;
+const wired = chartInstances.filter(i => i.options && typeof i.options.onClick === 'function');
+if (wired.length === 3) {
+  const target = wired.find(i => i.data.datasets.some(d => d.data && d.data.length));
+  if (target) {
+    const ds = target.data.datasets.findIndex(d => d.data && d.data.length);
+    location.href = '';
+    target.options.onClick({ native: { target: { style: {} } } }, [{ datasetIndex: ds, index: 0 }]);
+    clickOk = /^player\.html\?name=/.test(location.href);
+  }
+}
+console.log(`chart click-through : ${wired.length} charts wired, sample -> "${location.href}" -> ${clickOk ? 'OK' : 'WRONG'}`);
+
+const ok = app.children.length === 6 && charts.length === 5
+  && charts.every(c => c.points > 0) && triOk && xpOk
+  && p4ok && xpHeadOk && globalOk && p8ok && restoredOk && stickyWriteOk && clickOk;
 console.log('\nRESULT:', ok ? 'ALL PANELS RENDER, ALL FILTERS WORK' : 'INCOMPLETE');
 process.exit(ok ? 0 : 1);
