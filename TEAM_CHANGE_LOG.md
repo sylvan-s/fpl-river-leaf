@@ -15,41 +15,75 @@ one-line record. What remains is what actually governs a decision today.
 
 ---
 
-## CURRENT STATE — as at Tue 11 Aug 2026 (GW1 pre-deadline)
+## CURRENT STATE — as at Wed 12 Aug 2026 (GW1 pre-deadline)
 
-**Deadline:** Fri 21 Aug 2026, 18:30 BST · **Formation:** 3-5-2
-**Last change:** **1 transfer, 11 Aug** — Botman → Van den Berg, 0 pts (unlimited free pre-deadline). **Actioned live on the FPL site**, confirmed by Sylvan.
-**Previous change:** 3 transfers, 10 Aug — O'Reilly/Virgil/O.Dango → Mosquera/Botman/Palmer
-**Squad value** £100.0m · **Bank** £0.0m · **Captain** B.Fernandes · **Vice** Thiago
+**Deadline:** Fri 21 Aug 2026, 18:30 BST · **Formation:** 3-4-3 (was 3-5-2)
+**Last change:** **FULL REBUILD, 6 transfers, 12 Aug** — via `optimise_squad.py`'s
+exact ILP (`--fixtures --intel`), 0 pts (unlimited free pre-deadline). **Not yet
+actioned live on the FPL site** — this file and `squad.json` record the decision;
+Sylvan still needs to submit it on fantasy.premierleague.com before it counts.
+**Previous change:** 1 transfer, 11 Aug — Botman → Van den Berg
+**Squad value** £100.0m · **Bank** £0.0m · **Captain** Thiago · **Vice** B.Fernandes
+(**armband swapped** — see Captaincy below)
 
-**Why the rebuild.** `p_threshold` converted an average CBIT/CBIRT into expected
-DC points through a four-band step function on the season mean. Measured against
-2025/26 per-match counts it was wrong three ways — the 0.80–1.00× band assumed
-0.20 against an actual **0.41**, the 1.30× band was **unreachable**, and everyone
-above the line scored an identical 0.55 while real hit rates ran **52%–70%**.
-Roadmap **A4** replaced it with each player's observed per-match hit rate.
-Scored under the corrected model, rebuilding is worth **+1.17 pts/GW (~44
-pts/season)** over holding.
+**Why the rebuild.** Two corrections landed together on 12 Aug and neither had
+been run through a full rebuild before today: **roadmap A1** (`xbonus90` —
+bonus points, previously entirely absent from the model, shrunk the same
+empirical-Bayes way as every other rate, plus a bounded adjustment for the
+2026/27 BPS rule change) and a fix for a standing gap — `build_squad.py`'s
+`load()` never applied the `contaminated`-prior exclusion the live screens do,
+which the 9-10 Aug rebuild had already worked around by hand but a fresh
+full-pool search would not. Both are documented in `METHODOLOGY_ALTERNATIVES.md`
+and `SELECTION_FRAMEWORK.md`. XI xP/90 (fixture-adjusted, intel applied):
+**56.87** — not directly comparable to the pre-12-Aug figures, which didn't
+include bonus at all.
 
-| Pos | Player | Club | Price | st% | DC hit | Selected on |
+| Pos | Player | Club | Price | st% | xbonus90 | Selected on |
 |---|---|---|---|---|---|---|
-| GK | Raya | ARS | £6.0m | 94% | — | 19 CS, best xGC (0.74) |
-| DEF | Gabriel | ARS | £8.0m | 94% | 37% | xGC 0.72, 18 CS, bps/90 23.7 |
-| DEF | Mosquera | ARS | £5.5m | 85%\* | — | ROLE_INTEL intel: Saliba/Timber both out, minutes opening at Arsenal (\*stp SET by intel, GW1-3) |
-| DEF | Van den Berg | BRE | £5.0m | 81% | near | 11 Aug swap for Botman: same price, xGC/90 near-identical (1.356 v 1.353), +0.19 xP/GW from reliability, no fitness-fragility flag |
-| MID | B.Fernandes | MUN | £12.0m | **100%** | 15% | xGI/90 0.68, highest in game · **CAPTAIN** |
-| MID | Mbeumo | MUN | £8.0m | 88% | 0% | xGI/90 0.58, delta −3.0 |
-| MID | Sarr | CRY | £6.5m | 75% | 0% | flat xP 4.78, delta −1.1 |
-| MID | Palmer | CHE | £9.5m | 88% | — | free 3-transfer intel-adjusted optimum, +0.49 xP/90 |
-| MID | Schade | BRE | £6.0m | 75% | 0% | flat xP 4.55, delta −1.1 |
-| FWD | Thiago | BRE | £8.0m | **100%** | 3% | 22 goals, best availability · **VICE** |
-| FWD | Calvert-Lewin | LEE | £6.0m | 94% | 0% | 14 goals, delta −0.6 |
-| BEN | Verbruggen | BHA | £4.5m | **100%** | — | GK cover — a **first-choice** keeper |
-| BEN | Evanilson | BOU | £6.0m | 94% | 0% | bench 1 · the autosub that matters |
-| BEN | Justin | LEE | £4.5m | **100%** | 20% | bench 2 |
-| BEN | Shaw | MUN | £4.5m | **100%** | 14% | bench 3 |
+| GK | Raya | ARS | £6.0m | 94% | 0.30 | 19 CS, best xGC (0.74). Unchanged. |
+| DEF | Gabriel | ARS | £8.0m | 94% | 0.82 | xGC 0.72, 18 CS, 3rd-highest DEF xbonus90 in the pool. Unchanged. |
+| DEF | O'Reilly | MCI | £6.5m | 81% | — | xP_adj 4.67 with intel vs Mosquera's 4.28 (Mosquera's own intel boost included) |
+| DEF | Virgil | LIV | £6.5m | **100%** | — | Liverpool's GW1-4 DEF x is 0.69, the best defensive run in the league |
+| MID | B.Fernandes | MUN | £12.0m | **100%** | 1.11 | xGI/90 0.68, highest in game, xbonus90 2nd-highest in the pool · **VICE (was captain)** |
+| MID | Mbeumo | MUN | £8.0m | 88% | 0.55 | xGI/90 0.58, delta −3.0. Unchanged. |
+| MID | O.Dango | BRE | £6.5m | 81% | — | xP_adj 5.23 with intel — the cheaper route the ILP found once Palmer's budget was reallocated |
+| MID | Sarr | CRY | £6.5m | 75% | 0.33 | flat xP 4.78, delta −1.1. Unchanged. |
+| FWD | Thiago | BRE | £8.0m | **100%** | 0.63 | xGI/90 0.62, 22 goals · **CAPTAIN** — highest E[pts]/P(haul) on `captaincy_odds`, 12 Aug |
+| FWD | João Pedro | CHE | £7.5m | 75% | **0.97** | xbonus90 4th-highest in the ENTIRE 248-player pool. Delta +7.13 remains unresolved, but bonus is a second route not riding on his finishing |
+| FWD | Calvert-Lewin | LEE | £6.0m | 94% | 0.68 | 14 goals, delta −0.6. Unchanged. |
+| BEN | Leno | FUL | £4.5m | **100%** | — | GK cover, effectively tied with Verbruggen (xP_adj 3.36 v 3.47) — a coin-flip, not a finding |
+| BEN | Justin | LEE | £4.5m | **100%** | — | bench 1 · the autosub that matters. Unchanged. |
+| BEN | Shaw | MUN | £4.5m | **100%** | — | bench 2. Unchanged. |
+| BEN | Sadiki | SUN | £5.0m | **100%** | — | bench 3, replaces Evanilson — a real autosub-value downgrade the objective can't see (A0.6 not built), accepted to fund João Pedro |
 
-**Club counts:** MUN 3 (at the cap) · ARS 2 (Gabriel, Mosquera) · BRE 3 (Schade, Thiago, Van den Berg — at the cap since the 11 Aug swap) — no further BRE or ARS signings possible without an offsetting sale.
+**Club counts:** MUN 3 (B.Fernandes, Mbeumo, Shaw — at the cap) · ARS 2 (Raya,
+Gabriel) · BRE 2 (O.Dango, Thiago) · LEE 2 (Calvert-Lewin, Justin) · LIV 1
+(Virgil) · MCI 1 (O'Reilly) · CHE 1 (João Pedro) · CRY 1 (Sarr) · FUL 1 (Leno)
+· SUN 1 (Sadiki). Only MUN is at the 3-per-club cap.
+
+**Trade-offs stated, not hidden — the reconciliation this rebuild required:**
+
+- **Mosquera's minutes-opening thesis was not wrong, it was outbid.** The
+  ROLE_INTEL intel boost (stp set to 0.85, GW1-3) is still active and still
+  correctly raises his score — 4.28 xP_adj with intel vs 4.02 flat without —
+  but that isn't enough to beat O'Reilly (4.67) or, once Liverpool's fixture
+  run is counted, Virgil (4.48). A single 1-for-1 swap search (what ran on
+  11 Aug) had already found this: Mosquera → Muñoz showed +0.70 xP/90
+  *without* intel, closing to a HOLD *with* intel. A full-budget rebuild can
+  reach further than a 1-for-1 search — it can also drop Palmer's £9.5m
+  entirely and fund two defensive upgrades plus João Pedro at once, a move no
+  single swap could price. Both readings are correct; they're answering
+  different questions (SELECTION_FRAMEWORK.md's transfer-mode-vs-rebuild-mode
+  distinction).
+- **Palmer (xP_adj 5.51, individually one of the best midfielders in the
+  pool) was dropped anyway.** Not because his own number is weak — because
+  freeing his £9.5m, combined with Schade's £6.0m, is what pays for O'Reilly,
+  Virgil and João Pedro together. A real trade, not a free upgrade.
+- **Evanilson → Sadiki is a genuine downgrade in bench value** (94% → 100%
+  starts sounds like an upgrade, but Evanilson's xP_adj 3.91 beats Sadiki's
+  2.79) — bench autosub value isn't in the objective at all (roadmap A0.6,
+  not built), so this loss doesn't show up in the 56.87 headline number.
+  Accepted as the cost of the reallocation above, not unnoticed.
 
 ### Squad shape — the archetype each position is bought for
 
@@ -79,9 +113,12 @@ position, and the trap to avoid. Restated whenever a transfer is argued, so
 dropped Lacroix and Dubravka without being told anything about club changes —
 two independent lines of evidence landing on the same two players.
 
-**Captaincy is provisional.** B.Fernandes has the highest xP (5.27) at 100%
-starts, but **captaincy is free until the deadline** — confirm with
-`captaincy_odds` on team news, not on this table.
+**Captaincy is provisional, and it moved on 12 Aug.** `captaincy_odds` run
+against the new squad's front-runners has Thiago ahead on both E[pts] (5.15)
+and P(haul) (15.1%), narrowly ahead of B.Fernandes (5.05, 9.9%) — armband
+swapped, B.Fernandes to vice. **Captaincy is free until the deadline** —
+re-confirm with `captaincy_odds` on team news before Fri 21 Aug, not on this
+table.
 
 **HOLDING THE FIXTURE-WINDOW CAVEAT.** These figures use the GW1–4 window stamped
 for GW1. The objective remains **xP per 90**, so it is blind to how often a
@@ -311,6 +348,64 @@ share rises; the differential case depends entirely on him playing.
 ---
 
 ## CHANGE HISTORY (newest first)
+
+### Wed 12 Aug 2026 — GW1 — FULL REBUILD via optimise_squad.py (6 transfers, 0 pts)
+
+**Trigger.** Sylvan: "update the squad selection based on the full optimisation
+run." Two model corrections had just landed and neither had been run through a
+full rebuild: **roadmap A1** (`xbonus90`, bonus points — previously entirely
+absent from the model) and a fix for `build_squad.py` never applying the
+`contaminated`-prior exclusion the live screens use.
+
+**Method.** `optimise_squad.py` (exact ILP, no `--transfers` = rebuild/wildcard
+mode), `--fixtures --intel`. Fixture window still correctly stamped for GW1
+(checked, not stale). 248-player pool (267 minus 19 excluded on the
+contaminated fence).
+
+**OUT** (6): Mosquera (ARS, £5.5m) · Van den Berg (BRE, £5.0m) · Palmer (CHE,
+£9.5m) · Schade (BRE, £6.0m) · Verbruggen (BHA, £4.5m) · Evanilson (BOU, £6.0m)
+— **£36.5m**
+**IN** (6): O'Reilly (MCI, £6.5m) · Virgil (LIV, £6.5m) · O.Dango (BRE, £6.5m)
+· João Pedro (CHE, £7.5m) · Leno (FUL, £4.5m) · Sadiki (SUN, £5.0m) — **£36.5m**
+
+Cost **0 pts** — unlimited free transfers pre-deadline. Squad value and bank
+unchanged (£100.0m / £0.0m). Formation **3-5-2 → 3-4-3**.
+
+**Why each swap, and the trade-offs NOT hidden by the 56.87 headline number**
+— full detail in CURRENT STATE above, summarised here:
+
+- **O'Reilly, Virgil in for Mosquera, Van den Berg.** Mosquera's ROLE_INTEL
+  boost (minutes opening at Arsenal, Saliba/Timber both out — strengthened
+  just this week) is real and still applied, but it lifts him to 4.28 xP_adj,
+  short of O'Reilly's 4.67 and Virgil's 4.48 (Liverpool's GW1-4 DEF x of 0.69
+  is the best defensive fixture run in the league). A full rebuild can afford
+  both upgrades at once by reallocating Palmer's price tag; a single 1-for-1
+  swap search (11 Aug) could not, and correctly read as HOLD once intel was
+  applied. Both answers are right — different questions.
+- **Palmer dropped despite scoring individually well** (xP_adj 5.51, one of
+  the best midfielders in the pool) — his £9.5m plus Schade's £6.0m is what
+  funds O'Reilly + Virgil + João Pedro together. Stated as a real trade, not
+  a free upgrade.
+- **João Pedro in for O.Dango's old slot** (O.Dango moves into the XI
+  himself, replacing Palmer/Schade's midfield minutes) — his xbonus90 (0.97)
+  is 4th-highest in the entire pool. His +7.13 delta is still an open
+  question the model doesn't resolve, but bonus gives him a second route to
+  points independent of whether his finishing regresses.
+- **Verbruggen → Leno is a coin-flip, not a finding** — xP_adj 3.47 v 3.36,
+  both 100% starters at the same price; the ILP's bench objective doesn't
+  distinguish tied cases like this.
+- **Evanilson → Sadiki is a genuine downgrade in bench autosub value**
+  (xP_adj 3.91 v 2.79) that the objective cannot see at all — bench value
+  (roadmap A0.6) isn't built. Accepted as the cost of funding the rest.
+
+**Captaincy.** Armband moves from B.Fernandes to **Thiago** —
+`captaincy_odds` on the new squad's front-runners: Thiago E[pts] 5.15,
+P(haul) 15.1%, vs B.Fernandes 5.05, 9.9%. B.Fernandes to vice.
+
+**Not yet actioned live.** This is the recorded decision in `squad.json` and
+here; Sylvan still needs to submit the transfers on fantasy.premierleague.com
+before it's real. Dashboard republished same session — see commit for the
+exact hash.
 
 ### Tue 11 Aug 2026 — GW1 — Botman → Van den Berg (1 transfer, 0 pts)
 
