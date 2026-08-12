@@ -47,7 +47,7 @@
       "bought_for": 5.0,
       "role": "XI",
       "bench_order": null,
-      "selected_on": "11 Aug swap for Botman, same £5.0m price. xGC/90 near-identical (1.356 vs 1.353) but starts 81% vs 75% (+0.19 xP/GW), and no fitness-fragility flag. Trade-off: gives up Botman's DC route (archetype BOTH, clears 10+ CBIT) for a cleansheet-only profile — reliability over the defensive-contribution floor"
+      "selected_on": "81% starts at £5.0m, 8.9 CBIT/90 clears the 10+ defensive-contribution threshold comfortably, xGC 1.36 in a defence that's already banked 8 clean sheets — reliability at budget-enabler price"
     },
     {
       "name": "B.Fernandes",
@@ -87,7 +87,7 @@
       "bought_for": 9.5,
       "role": "XI",
       "bench_order": null,
-      "selected_on": "Part of the free (pre-deadline, no-hit) 3-transfer intel-adjusted optimum, +0.49 xP/90 over the prior squad"
+      "selected_on": "xGI/90 0.60 (xG 0.49 + xA 0.11), 87.5% starts — attacking output at the top end of the midfield pool, with a clean sheet route sitting on top if Chelsea's defence holds"
     },
     {
       "name": "Schade",
@@ -127,7 +127,7 @@
       "bought_for": 4.5,
       "role": "BENCH",
       "bench_order": 0,
-      "selected_on": "Goalkeeper cover — and unlike the player he replaces, a first-choice keeper (3420 mins, 100% starts) rather than a reported backup"
+      "selected_on": "Goalkeeper cover at £4.5m — a genuine #1 (3420 minutes, 100% starts, 10 clean sheets, 2.79 saves/90), not a rotation risk on the bench"
     },
     {
       "name": "Evanilson",

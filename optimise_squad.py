@@ -160,13 +160,26 @@ def optimise(pool, allow_haaland=False, verbose=True):
 
 
 def optimise_transfers(pool, owned_names, bank, n_transfers, allow_haaland=False,
-                       free_transfers=1):
+                       free_transfers=1, force=False):
     """Best n_transfers FROM the current squad. The weekly question.
 
     Differs from rebuild mode in three ways that matter:
       * the squad is a CONSTRAINT, not an output - at most n players may change
       * the budget is the sale proceeds plus the bank, which is usually tiny
       * transfers beyond the free allowance cost 4 points each
+
+    force=False (default): AT MOST n_transfers may change - if holding is
+    genuinely optimal, the solver returns the current squad unchanged. This is
+    the right question for "should I make a transfer" (transfer_mode() below).
+
+    force=True: EXACTLY n_transfers must change - the solver is not permitted
+    to hand back the current squad, so it returns the next-best forced move
+    even if its impact is small or negative. Answers a different question,
+    "if I had to move exactly one player, which one" - useful for showing the
+    next-best alternative alongside a hold recommendation, not for deciding
+    whether to hold. See build_squad_page.py's Alternative 2 panel, which
+    calls this with force=True and applies its own MIN_GAIN threshold to the
+    result to decide what to recommend.
 
     SELL PRICE CAVEAT: this uses current price. FPL actually pays purchase price
     plus half any rise, so mid-season the true proceeds can be lower. Pre-season
@@ -200,8 +213,13 @@ def optimise_transfers(pool, owned_names, bank, n_transfers, allow_haaland=False
     owned_value = sum(P[i]["price"] for i in idx_owned)
     prob += pulp.lpSum(P[i]["price"] * own[i] for i in range(len(P))) <= owned_value + bank
 
-    # At most n_transfers players may LEAVE, so at least (15 - n) must be kept.
-    prob += pulp.lpSum(own[i] for i in idx_owned) >= 15 - n_transfers
+    # At most n_transfers players may LEAVE (exactly, if force=True) - so at
+    # least (15 - n) must be kept, or precisely (15 - n) if forced.
+    kept = pulp.lpSum(own[i] for i in idx_owned)
+    if force:
+        prob += kept == 15 - n_transfers
+    else:
+        prob += kept >= 15 - n_transfers
 
     prob += pulp.lpSum(own[i] for i in range(len(P))) == 15
     prob += pulp.lpSum(x[i] for i in range(len(P))) == XI_SIZE

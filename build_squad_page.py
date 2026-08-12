@@ -148,13 +148,41 @@ def build():
     altgw = best_xi(mine, weight_by_start=True)
     same = {p["name"] for p in alt90} == {p["name"] for p in altgw}
 
-    res = opt.optimise_transfers(pool, state.name_set, state.bank, 1, allow_haaland=False)
+    # force=True: always return the best SINGLE swap, even if its impact is
+    # small or negative, rather than letting the solver hand back the current
+    # squad unchanged. The table should show "what's the next-best move if
+    # you had to make one", not silently collapse to nothing - the actual
+    # hold-vs-transfer call is made separately below via MIN_GAIN, and stated
+    # explicitly in its own recommendation line rather than implied by a
+    # blank row.
+    res = opt.optimise_transfers(pool, state.name_set, state.bank, 1,
+                                  allow_haaland=False, force=True)
     t_xi, t_bench, _ = res
     t_out = sorted(state.name_set - {p["name"] for p in t_xi + t_bench})
     t_in = sorted({p["name"] for p in t_xi + t_bench} - state.name_set)
     t_b, _r, _d = sz.bench_value(t_xi, t_bench)
     t_90 = sum(p["score"] for p in t_xi)
     t_gw = sum(p["stp"] * p["score"] for p in t_xi)
+    # Same threshold optimise_squad.py's CLI uses (transfer_mode()'s
+    # MIN_GAIN) - a swap worth less than this on XI xP/90 is noise, not a
+    # recommendation, however clean the arithmetic looks in the table above it.
+    MIN_GAIN = 0.01
+    t_gain = t_90 - xi90
+    t_hold = t_gain < MIN_GAIN
+
+    # --- the no-Haaland preference, repriced on every run -------------------
+    # TEAM_CHANGE_LOG.md's "STANDING PREFERENCES" section carries the dated
+    # decision (confirmed 9 Aug 2026, cost 0.06 xP/90 then) and the trigger to
+    # revisit it (cost above ~0.30 xP/90). This block does not read that file -
+    # it recomputes the cost live, on the same intel+fixture-adjusted pool the
+    # rest of this page uses, so the number on the page can never go stale
+    # relative to the number that decision was actually made on.
+    h_noH_xi, h_noH_bench, _ = opt.optimise(pool, allow_haaland=False)
+    h_H_xi, h_H_bench, _ = opt.optimise(pool, allow_haaland=True)
+    h_noH_90 = sum(p["score"] for p in h_noH_xi)
+    h_H_90 = sum(p["score"] for p in h_H_xi)
+    h_cost = h_H_90 - h_noH_90
+    h_picked = "Haaland" in {p["name"] for p in h_H_xi + h_H_bench}
 
     # --- pitch ------------------------------------------------------------
     rows = ""
@@ -227,9 +255,11 @@ def build():
 
 <div class="panel">
   <h2>Alternative 2 — one transfer</h2>
-  <p class="tests">The current fifteen against the single best transfer away from
-  it for the next gameweek — exactly one swap, everything else held fixed —
-  priced on both objectives and with its knock-on effect on the bench.</p>
+  <p class="tests">The current fifteen against the <b>next-best forced swap</b> — the
+  optimiser is required to change exactly one player, so this shows the best move
+  available even when the honest answer is to hold, priced on both objectives and
+  with its knock-on effect on the bench. The recommendation below the table, not
+  this row, is where "hold" actually gets said.</p>
   <div class="find">Every score on this page, including this table, runs through
   the ROLE_INTEL.md adjustment layer — set-piece duty, availability overrides
   like an injury opening up minutes, and the guardrailed 0.5x&ndash;1.5x role
@@ -250,6 +280,15 @@ def build():
           <td class="mono">{t_gw-xigw:+.2f}</td><td class="mono">{t_b-bench_pts:+.2f}</td>
           <td class="mono"><b>{(t_gw+t_b)-(xigw+bench_pts):+.2f}</b></td></tr>
     </tbody></table>
+  <div class="find {'ok' if t_hold else 'bad'}">
+    <b>Recommendation: {'HOLD' if t_hold else 'transfer'}.</b>
+    {f"The best available swap ({esc(' · '.join(t_out))} &rarr; {esc(' · '.join(t_in))}) "
+     f"moves XI xP/90 by {t_gain:+.2f} &mdash; under the {MIN_GAIN:.2f} xP/90 noise floor, "
+     f"so it is not a real edge, just the least-bad forced move. Keep the fifteen as is."
+     if t_hold else
+     f"{esc(' · '.join(t_out))} &rarr; {esc(' · '.join(t_in))} clears the {MIN_GAIN:.2f} "
+     f"xP/90 noise floor by {t_gain:+.2f}. Worth making, hit cost permitting."}
+  </div>
   <div class="find">Read the last column, not the first. Mixing an XI measured per 90
   with a bench measured per gameweek produced a confident, entirely false answer once
   already — the two must share a unit before they are added.</div>
@@ -281,6 +320,26 @@ def build():
   <h2>Squad shape — the archetype each position is bought for</h2>
   <p class="tests">The qualitative read behind the xP formula: what a good pick
   looks like at each position, and the trap that number alone can hide.</p>
+  <div class="find {'ok' if h_cost < 0.30 else 'bad'}">
+    <b>This squad is built without Haaland — a standing, confirmed preference,
+    not an oversight.</b> Repriced on every build against the unconstrained
+    optimum (same intel+fixture-adjusted pool as the rest of this page):
+    <table style="margin:8px 0">
+      <tbody>
+        <tr><td>Unconstrained optimum{' (Haaland IS in it)' if h_picked else ' (solver leaves him out anyway)'}</td>
+            <td class="mono">{h_H_90:.2f} xP/90</td></tr>
+        <tr><td>With the no-Haaland preference held</td>
+            <td class="mono">{h_noH_90:.2f} xP/90</td></tr>
+        <tr><td><b>Cost of the preference</b></td>
+            <td class="mono"><b>{h_cost:+.2f}</b></td></tr>
+      </tbody>
+    </table>
+    {"Well inside model error &mdash; effectively free. &pound;15.5m on Haaland buys "
+     "almost exactly what the budget it frees up buys spread across the rest of the "
+     "squad instead." if h_cost < 0.30 else
+     "This has drifted past the ~0.30 xP/90 trigger TEAM_CHANGE_LOG.md set for "
+     "revisiting the preference &mdash; worth an explicit re-check, not a silent hold."}
+  </div>
   <table class="archetype">
     <thead><tr><th>Pos</th><th>Buy for</th><th>The trap</th></tr></thead>
     <tbody>
@@ -313,6 +372,35 @@ def build():
         no variance left to explain.</td></tr>
     </tbody>
   </table>
+  <div class="find">
+    <b>What holding the no-Haaland preference actually requires — it is not free
+    to execute, even though it is priced as near-free above.</b>
+    <ul style="margin:8px 0 0 18px;padding:0">
+      <li><b>Captaincy has to be reviewed every week, not set once.</b> A
+      Haaland squad has a standing captain and the decision is mostly "anyone
+      beating him this week"; without a nailed 75%-owned explosive premium,
+      the armband goes to whoever's fixture and form line up that gameweek —
+      see <span class="mono">captaincy_odds</span> and the escalation check
+      each week, not a default name.</li>
+      <li><b>Triple Captain is structurally weaker.</b> TEAM_CHANGE_LOG.md
+      already flags this: most managers triple the nailed premium; the
+      realistic targets here (Thiago, B.Fernandes) are good, not explosive.
+      TC is purely a P(haul) maximisation, so this preference caps its
+      ceiling — a real cost the table above does not capture in xP/90 terms.</li>
+      <li><b>The budget freed up buys flexibility, not just depth.</b> No
+      single £15.5m anchor means more of the squad can turn over as form and
+      fixtures shift, and a genuinely emerging player (a breakout midfielder,
+      a new-signing forward finding his feet) can be worked in without first
+      funding him by selling a name that's still producing. A Haaland squad
+      effectively locks 15%+ of budget for the season; this one doesn't lock
+      any of it.</li>
+      <li><b>The trade-off is real, not just upside.</b> Spreading value across
+      the XI raises the floor and lowers variance — fewer explosive weeks, fewer
+      disaster weeks. Whether that trade is right depends on where in the mini-league
+      table this squad needs to be climbing from; it is a strategy choice, not a
+      free lunch the model found.</li>
+    </ul>
+  </div>
 </div>
 
 {alt_html}
