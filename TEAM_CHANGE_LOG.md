@@ -402,10 +402,13 @@ unchanged (£100.0m / £0.0m). Formation **3-5-2 → 3-4-3**.
 `captaincy_odds` on the new squad's front-runners: Thiago E[pts] 5.15,
 P(haul) 15.1%, vs B.Fernandes 5.05, 9.9%. B.Fernandes to vice.
 
-**Not yet actioned live.** This is the recorded decision in `squad.json` and
-here; Sylvan still needs to submit the transfers on fantasy.premierleague.com
-before it's real. Dashboard republished same session — see commit for the
-exact hash.
+**Actioned live on the FPL site, confirmed 12 Aug 2026.** All 6 transfers
+submitted via Claude-in-Chrome browser automation (0 pts cost — unlimited free
+transfers pre-deadline), formation set to 3-4-3, captain=Thiago and
+vice=B.Fernandes confirmed by a zoomed screenshot of the armbands (per the
+standing practice below of not trusting FPL's post-transfer captain default).
+Final state on site: 15/15 players, £0.0m bank. Dashboard republished same
+session — see commit for the exact hash.
 
 ### Tue 11 Aug 2026 — GW1 — Botman → Van den Berg (1 transfer, 0 pts)
 
