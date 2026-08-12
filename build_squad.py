@@ -71,6 +71,64 @@ SQUAD_SHAPE = {1: 2, 2: 5, 3: 5, 4: 3}
 MAX_PER_CLUB = 3
 
 
+INTEL_PATH = os.path.join(HERE, "ROLE_INTEL.md")
+_contam_cache = None
+
+
+def _contaminated() -> dict:
+    """{name: destination_team_code} from ROLE_INTEL.md's ```contaminated
+    fence — mid-season club transfers whose 2025/26 record belongs to the
+    OLD club.
+
+    ADDED 12 Aug 2026. This gap was named explicitly in TEAM_CHANGE_LOG.md's
+    10 Aug entry — "build_squad.py's load() never applies the `contaminated`
+    fence correction that fpl_research_mcp.py's _baseline() does; worth
+    closing before it costs a real transfer next time" — and surfaced for
+    real the first time a full rebuild was run after that note: the ILP
+    optimiser picked Senesi, Welbeck and Dubravka, three of the exact players
+    removed from the squad on 9-10 Aug specifically because their record
+    belongs to a different club. That is Tier 1 under
+    SELECTION_FRAMEWORK.md — "the model is not wrong here, it is
+    INAPPLICABLE... the player is either excluded or assessed entirely on
+    Tier-1 grounds. Never quietly averaged with a stale number." Exclusion,
+    not correction, is the prescribed fix, because this file (unlike the live
+    MCP screens) has no team-baseline fallback machinery for xgi90/cbit90/etc
+    to fall back TO — it would need the same _baseline()/_shrunk() apparatus
+    fpl_research_mcp.py uses, which is a bigger change than this one needs.
+
+    NAME COLLISION FOUND WHILE BUILDING THIS, 12 Aug 2026: the pool has TWO
+    900+-minute players web_named "Henderson" — the BRE->CHE mover the fence
+    entry actually means, AND Dean Henderson, Crystal Palace's long-standing
+    #1 keeper, who has nothing to do with it. A plain surname match (which is
+    what fpl_research_mcp._contaminated()/_baseline() also uses, so this bug
+    likely exists live too, not just here) would wrongly exclude Palace's
+    keeper. Fixed by parsing the destination club from the fence's own
+    "OLD -> NEW" reason text and only excluding a same-surname player whose
+    CURRENT team matches NEW — team+surname identifies the right player;
+    surname alone does not.
+    """
+    global _contam_cache
+    if _contam_cache is not None:
+        return _contam_cache
+    out = {}
+    try:
+        text = open(INTEL_PATH, encoding="utf-8").read()
+        parts = text.split("```contaminated", 1)
+        if len(parts) > 1:
+            for line in parts[1].split("```", 1)[0].strip().splitlines():
+                bits = [p.strip() for p in line.split("|")]
+                if len(bits) < 2 or not bits[0]:
+                    continue
+                reason = bits[1]
+                dest = reason.split("->", 1)[1].strip().split(";", 1)[0].strip() \
+                    if "->" in reason else None
+                out[bits[0]] = dest        # dest may be None if unparseable
+    except Exception:
+        pass
+    _contam_cache = out
+    return out
+
+
 def _load_last16():
     """{(web_name, team): (starts, games)} from the last-16-GW archive match.
 
@@ -348,26 +406,43 @@ def expected_points(r):
 # players, not a component of expected points. Kept separate on purpose.
 
 
-def load(season_starts=False, intel=None, bonus=None):
+USE_CONTAM_FILTER = "--allow-contaminated" not in sys.argv
+
+
+def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None):
     use_intel = USE_INTEL if intel is None else intel
     use_bonus = USE_BONUS if bonus is None else bonus
+    use_contam_filter = USE_CONTAM_FILTER if exclude_contaminated is None else exclude_contaminated
     snap = json.load(open(SNAP, encoding="utf-8"))
     teams = {int(k): v for k, v in snap["teams"].items()}
     last16 = {} if season_starts else _load_last16()
     xbonus_map, _bonus_k = _bonus_shrinkage(snap["players"], teams) if use_bonus else ({}, None)
+    contam = _contaminated() if use_contam_filter else {}
+    excluded = []
     matched = set()
     out = []
     for pid, p in snap["players"].items():
         m = p.get("minutes", 0) or 0
         if m < MIN_MINUTES:
             continue
+        name = p["web_name"]
+        team = teams.get(p.get("team"), "?")
+        if contam:
+            hit_dest = next((dest for w, dest in contam.items()
+                              if w.lower() in name.lower() or name.lower() in w.lower()), "MISS")
+            # team+surname match — a same-surname player at the WRONG club
+            # (see Henderson/Henderson in the docstring above) is not this
+            # fence entry and must not be excluded. `dest is None` means the
+            # fence line couldn't be parsed — exclude on surname alone rather
+            # than silently admit an unverifiable case.
+            if hit_dest != "MISS" and (hit_dest is None or hit_dest == team):
+                excluded.append(f"{name} ({team})")
+                continue
         n90 = m / 90.0
         cbi = p.get("clearances_blocks_interceptions", 0) or 0
         tk, rec = p.get("tackles", 0) or 0, p.get("recoveries", 0) or 0
         xgi = f(p.get("expected_goal_involvements"))
         ga = (p.get("goals_scored", 0) or 0) + (p.get("assists", 0) or 0)
-        name = p["web_name"]
-        team = teams.get(p.get("team"), "?")
         stp_season = (p.get("starts", 0) or 0) / 38
         hit = last16.get((name, team))
         if hit:
@@ -403,6 +478,11 @@ def load(season_starts=False, intel=None, bonus=None):
                       f"({e['field']}) matched no player in the pool - check "
                       f"spelling/team code, or he may be below the {MIN_MINUTES}"
                       f"-minute gate", file=sys.stderr)
+    if excluded:
+        print(f"  CONTAMINATED PRIOR — {len(excluded)} player(s) excluded "
+              f"(Tier 1, ROLE_INTEL.md): {', '.join(sorted(excluded))}. "
+              f"Pass --allow-contaminated to include them anyway.",
+              file=sys.stderr)
     return out
 
 
