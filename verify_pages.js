@@ -28,6 +28,7 @@ const PAGES = [
   { file: 'workflow.html',      minKB: 8 },
   { file: 'news.html',          minKB: 8 },
   { file: 'player.html',        minKB: 20 },
+  { file: 'priors.html',        minKB: 8 },   // sits in a "waiting for GW1" empty state pre-season
 ];
 
 let failures = 0;

@@ -1,0 +1,511 @@
+#!/usr/bin/env python3
+"""Build the live prediction tracker — docs/priors.html.
+
+    python3 build_prediction_tracker.py
+
+REPLACES the one-off 2025/26 backtest (build_priors_backtest.py, retired —
+see its docstring and "Shrinkage backtest" in METHODOLOGY_ALTERNATIVES.md).
+That answered a single question once, in principle, on a season that had
+already finished: does shrinkage beat raw and baseline at all? This answers
+the ongoing version of that question, every week, on the season actually
+being played: RIGHT NOW, for THIS metric, is raw data, the hierarchical
+prior, or the shrunk blend the best predictor of what a player just did?
+
+WALK-FORWARD, NOT RETROSPECTIVE. For gameweek N, "raw" and "shrunk" are built
+from ONLY gameweeks 1..N-1 for that player — never from GW N itself. Scoring
+a prediction against the data it was built from is not prediction, it is
+recall, and would make every number on this page meaningless. GW1 is a
+special case: there is no "this season so far" yet, so raw is undefined and
+only the baseline (last season's prior) is scored.
+
+THE HIERARCHICAL PRIOR, SIMPLIFIED FROM THE LIVE 4-TIER LADDER. build_squad.py
+and fpl_research_mcp.py's _baseline() step through: own last-season rate ->
+team+position pool -> position+price pool -> position-only pool. This file
+collapses the middle two tiers into one: own last-season rate (900+ minutes)
+if available, else the LAST-SEASON position-only pool mean. A player who
+changed clubs or lost a starting role therefore falls straight to the coarser
+position average here, where the live system would first try a team+position
+estimate. Simplification, not a different model — noted so a reader comparing
+this page to build_squad.py's actual behaviour isn't confused by the gap.
+
+k IS RE-DERIVED EVERY WEEK, FROM THAT WEEK'S LIVE POOL. Not fixed from last
+season. This matches how fpl_research_mcp.py's _estimate_k() is actually
+called live (on the current bootstrap pool, not a frozen historical one), and
+it is also the honest choice: early gameweeks, almost nobody has the 270+
+minutes _estimate_k() requires to trust a variance estimate, so k correctly
+falls back to a safe default and the page says so (tagged "fallback", not
+silently presented as derived) rather than borrowing a stale number.
+
+NEEDS NETWORK. Pulls the FPL API directly — bootstrap-static once per run,
+then event/{gw}/live/ once per newly-finished gameweek (cheap: one call per
+GW, not per player). Run this wherever publish_dashboard.sh normally runs, on
+a machine with real internet access, not an offline sandbox.
+
+PERSISTENCE, TWO LAYERS.
+  live_gw_cache.json      raw per-gameweek FPL stats, keyed by gameweek. Only
+                          FINISHED gameweeks are ever written — a live
+                          gameweek is still changing, and caching a partial
+                          row as final would poison every week after it, the
+                          same rule fpl_research_mcp.py's cache follows.
+                          Bulky, gitignored, fully regenerable from the API.
+  prediction_tracker.json the small derived walk-forward scoreboard this page
+                          renders from. Committed, so the season's track
+                          record survives even if the raw cache is cleared.
+
+EMPTY-SEASON STATE. If bootstrap-static reports zero finished gameweeks (true
+as of this file's creation — GW1 hasn't happened yet), the page renders a
+clear "waiting for GW1" state rather than crashing or faking data.
+"""
+import importlib.util, json, os, statistics as st, datetime as dt
+from collections import defaultdict
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+PRIORS_SNAP = os.path.join(HERE, "fpl_priors_2025_26_v2.json")
+LIVE_CACHE = os.path.join(HERE, "live_gw_cache.json")
+TRACKER = os.path.join(HERE, "prediction_tracker.json")
+OUT = os.environ.get("FPL_PRIORS_OUT") or os.path.join(HERE, "docs", "priors.html")
+
+MIN_MINS_PRIOR = 900     # this project's standard "trust a season rate" gate
+MIN_POOL = 20             # below this, _estimate_k() already falls back safely
+
+
+def _load(mod, fn):
+    spec = importlib.util.spec_from_file_location(mod, os.path.join(HERE, fn))
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
+
+
+page_shell = _load("page_shell", "page_shell.py")
+squad_state = _load("squad_state", "squad_state.py")
+
+# --- pure shrinkage machinery, copied not imported --------------------------
+# Same reasoning as the retired backtest script: fpl_research_mcp.py's
+# _estimate_k()/_k_degenerate() are pure functions, but importing that FILE
+# pulls in the whole MCP-server dependency stack (httpx, the mcp SDK) for no
+# reason a static-page build has. Keep in sync by hand if the canonical
+# version in fpl_research_mcp.py changes.
+_XG_DISPERSION = 0.11
+
+
+def _estimate_k(samples, dispersion=1.0):
+    pts = [(r, n) for r, n in samples if n >= 3 and r >= 0]
+    if len(pts) < MIN_POOL:
+        return 10.0, True
+    rates = [r for r, _ in pts]
+    m = sum(rates) / len(rates)
+    if m <= 0:
+        return 10.0, True
+    total_var = sum((r - m) ** 2 for r in rates) / (len(rates) - 1)
+    sampling_var = dispersion * (sum(r / n for r, n in pts) / len(pts))
+    between_var = total_var - sampling_var
+    if between_var <= 1e-9:
+        return 40.0, True
+    k = m / between_var
+    k = max(1.0, min(k, 60.0))
+    return k, False
+
+
+def _estimate_k_binomial(samples):
+    """Start-rate is a share of appearances, not a per-90 count — its own
+    binomial method-of-moments k, same approach the retired backtest used."""
+    pts = [(r, n) for r, n in samples if n >= 2]
+    if len(pts) < MIN_POOL:
+        return 8.0, True
+    rates = [r for r, _ in pts]
+    m = sum(rates) / len(rates)
+    if not (0 < m < 1):
+        return 8.0, True
+    total_var = st.variance(rates)
+    sampling_var = sum(r * (1 - r) / n for r, n in pts) / len(pts)
+    between_var = total_var - sampling_var
+    if between_var <= 1e-6:
+        return 20.0, True
+    k = max(1.0, min(30.0, m * (1 - m) / between_var - 1))
+    return k, False
+
+
+POS = {1: "GKP", 2: "DEF", 3: "MID", 4: "FWD"}
+
+# key: short label used in baseline/cumulative dicts. field: bootstrap AND
+# event/live stats field name (identical in both endpoints). dispersion: see
+# fpl_research_mcp.py's DISPERSION table — 0.11 for the xG family (a sum of
+# per-shot probabilities, not whole events), 1.0 for counts.
+METRICS = [
+    dict(key="xg90", short="xg", label="xG per 90", field="expected_goals",
+         positions=["DEF", "MID", "FWD"], dispersion=_XG_DISPERSION),
+    dict(key="xa90", short="xa", label="xA per 90", field="expected_assists",
+         positions=["DEF", "MID", "FWD"], dispersion=_XG_DISPERSION),
+    dict(key="xgc90", short="xgc", label="xGC per 90", field="expected_goals_conceded",
+         positions=["GKP", "DEF"], dispersion=_XG_DISPERSION),
+    dict(key="sv90", short="sv", label="Saves per 90", field="saves",
+         positions=["GKP"], dispersion=1.0),
+]
+# CBIT/CBIRT are sums of two or three raw fields, not one - handled specially
+# in _rates_from_totals()/the walk-forward loop rather than via `field`.
+DC_METRICS = [
+    dict(key="cbit90", short="cbit", label="CBIT per 90",
+         positions=["DEF"], dispersion=1.0),
+    dict(key="cbirt90", short="cbirt", label="CBIRT per 90",
+         positions=["MID", "FWD"], dispersion=1.0),
+]
+ALL_METRIC_KEYS = [m["key"] for m in METRICS] + [m["key"] for m in DC_METRICS] + ["stp"]
+
+
+def _f(v):
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _dc_totals(t):
+    return _f(t.get("clearances_blocks_interceptions")) + _f(t.get("tackles"))
+
+
+def _dcr_totals(t):
+    return _dc_totals(t) + _f(t.get("recoveries"))
+
+
+def _rates_from_totals(t, mins):
+    n90 = mins / 90.0
+    if n90 <= 0:
+        return {k: 0.0 for k in ("xg", "xa", "xgc", "sv", "cbit", "cbirt")}
+    return dict(
+        xg=_f(t.get("expected_goals")) / n90, xa=_f(t.get("expected_assists")) / n90,
+        xgc=_f(t.get("expected_goals_conceded")) / n90, sv=_f(t.get("saves")) / n90,
+        cbit=_dc_totals(t) / n90, cbirt=_dcr_totals(t) / n90)
+
+
+# ============================================================ NETWORK =======
+def _http_get(url):
+    import httpx
+    r = httpx.get(url, timeout=20, headers={"User-Agent": "fpl-river-leaf-dashboard/1.0"})
+    r.raise_for_status()
+    return r.json()
+
+
+def _bootstrap():
+    return _http_get("https://fantasy.premierleague.com/api/bootstrap-static/")
+
+
+def _fetch_live(gw):
+    d = _http_get(f"https://fantasy.premierleague.com/api/event/{gw}/live/")
+    return {str(e["id"]): e["stats"] for e in d["elements"]}
+
+
+def update_live_cache(boot):
+    """Fetch any newly-finished gameweek not already cached. Never re-fetches
+    or overwrites one already stored - see module docstring."""
+    cache = json.load(open(LIVE_CACHE, encoding="utf-8")) if os.path.exists(LIVE_CACHE) else {}
+    finished = sorted(e["id"] for e in boot["events"] if e.get("finished"))
+    new = [gw for gw in finished if str(gw) not in cache]
+    for gw in new:
+        cache[str(gw)] = _fetch_live(gw)
+    if new:
+        json.dump(cache, open(LIVE_CACHE, "w", encoding="utf-8"))
+    return cache, finished, new
+
+
+# ============================================================ BASELINES =====
+def build_baselines():
+    """Hierarchical prior per element id: own last-season rate (900+ mins) if
+    available, else the last-season position-only pool mean. See module
+    docstring for how this simplifies the live 4-tier _baseline() ladder."""
+    snap = json.load(open(PRIORS_SNAP, encoding="utf-8"))
+    players = snap["players"]  # keyed by str(id)
+    pool_by_pos = defaultdict(list)
+    rates = {}
+    for pid, p in players.items():
+        pos = POS.get(p["element_type"])
+        r = _rates_from_totals(p, p.get("minutes", 0) or 0)
+        rates[pid] = (r, pos)
+        if (p.get("minutes", 0) or 0) >= MIN_MINS_PRIOR:
+            pool_by_pos[pos].append(r)
+    pos_mean = {}
+    for pos, rs in pool_by_pos.items():
+        pos_mean[pos] = {k: sum(r[k] for r in rs) / len(rs) for k in ("xg", "xa", "xgc", "sv", "cbit", "cbirt")}
+    baselines = {}
+    for pid, p in players.items():
+        r, pos = rates[pid]
+        mins = p.get("minutes", 0) or 0
+        if mins >= MIN_MINS_PRIOR and pos in pool_by_pos:
+            baselines[pid] = dict(rates=r, source="own", pos=pos,
+                                   stp=(p.get("starts", 0) or 0) / 38.0)
+        elif pos in pos_mean:
+            baselines[pid] = dict(rates=pos_mean[pos], source="pos", pos=pos,
+                                   stp=(p.get("starts", 0) or 0) / 38.0 if mins else None)
+        else:
+            baselines[pid] = dict(rates={k: 0.0 for k in ("xg", "xa", "xgc", "sv", "cbit", "cbirt")},
+                                   source="pos", pos=pos, stp=None)
+    # position-only fallback for stp when a player has no own last-season data at all
+    stp_pos_mean = {}
+    for pos in ("GKP", "DEF", "MID", "FWD"):
+        vals = [b["stp"] for b in baselines.values() if b["pos"] == pos and b["stp"] is not None]
+        stp_pos_mean[pos] = sum(vals) / len(vals) if vals else 0.3
+    for b in baselines.values():
+        if b["stp"] is None:
+            b["stp"] = stp_pos_mean.get(b["pos"], 0.3)
+    return baselines
+
+
+# ============================================================ WALK-FORWARD ==
+def walk_forward(boot, cache, finished, baselines):
+    id_pos = {el["id"]: POS.get(el["element_type"]) for el in boot["elements"]}
+    id_name = {el["id"]: el["web_name"] for el in boot["elements"]}
+    cum = defaultdict(lambda: dict(mins=0.0, apps=0, starts=0, xg=0.0, xa=0.0,
+                                    xgc=0.0, sv=0.0, cbit=0.0, cbirt=0.0))
+    weeks = {}
+    for gw in finished:
+        stats = cache[str(gw)]
+        buckets = {k: {"raw": [], "base": [], "shrunk": [], "weights": []} for k in ALL_METRIC_KEYS}
+        pool_now = {mk["key"]: defaultdict(list) for mk in METRICS + DC_METRICS}
+        pool_now["stp"] = defaultdict(list)
+        # Pass 1: gather this gameweek's live pool (rate-through-prev-GW, n)
+        # per position, so k can be derived from THIS week's actual data.
+        prepared = []
+        for pid_s, s in stats.items():
+            pid = int(pid_s)
+            pos = id_pos.get(pid)
+            mins = _f(s.get("minutes"))
+            if mins <= 0 or pos is None:
+                continue
+            base = baselines.get(pid_s)
+            if base is None:
+                continue
+            c = cum[pid_s]
+            prev_n90, prev_apps = c["mins"] / 90.0, c["apps"]
+            prepared.append((pid_s, pid, pos, mins, s, base, prev_n90, prev_apps))
+            for mk in METRICS + DC_METRICS:
+                if pos in mk["positions"] and prev_n90 > 0:
+                    short = mk["short"]
+                    raw_rate = c[short] / prev_n90
+                    pool_now[mk["key"]][pos].append((raw_rate, prev_n90))
+            if prev_apps > 0:
+                pool_now["stp"][pos].append((c["starts"] / prev_apps, prev_apps))
+
+        k_by_pos = {}
+        for mk in METRICS + DC_METRICS:
+            for pos in mk["positions"]:
+                k, deg = _estimate_k(pool_now[mk["key"]].get(pos, []), mk["dispersion"])
+                k_by_pos[(mk["key"], pos)] = (k, deg)
+        for pos in ("GKP", "DEF", "MID", "FWD"):
+            k, deg = _estimate_k_binomial(pool_now["stp"].get(pos, []))
+            k_by_pos[("stp", pos)] = (k, deg)
+
+        # Pass 2: score this gameweek's ACTUAL against predictions built only
+        # from data through the previous gameweek, then accumulate.
+        for pid_s, pid, pos, mins, s, base, prev_n90, prev_apps in prepared:
+            actual = _rates_from_totals(s, mins)
+            actual["stp"] = 1.0 if _f(s.get("starts")) > 0 else 0.0
+            for mk in METRICS + DC_METRICS:
+                if pos not in mk["positions"]:
+                    continue
+                short, key = mk["short"], mk["key"]
+                b = base["rates"][short]
+                k, deg = k_by_pos[(key, pos)]
+                if prev_n90 > 0:
+                    raw = cum[pid_s][short] / prev_n90
+                    shrunk = (prev_n90 * raw + k * b) / (prev_n90 + k)
+                    buckets[key]["raw"].append((raw - actual[short]) ** 2)
+                    buckets[key]["weights"].append(prev_n90 / (prev_n90 + k))
+                else:
+                    shrunk = b
+                buckets[key]["base"].append((b - actual[short]) ** 2)
+                buckets[key]["shrunk"].append((shrunk - actual[short]) ** 2)
+            k, deg = k_by_pos[("stp", pos)]
+            bstp = base["stp"]
+            if prev_apps > 0:
+                raw = cum[pid_s]["starts"] / prev_apps
+                shrunk = (prev_apps * raw + k * bstp) / (prev_apps + k)
+                buckets["stp"]["raw"].append((raw - actual["stp"]) ** 2)
+                buckets["stp"]["weights"].append(prev_apps / (prev_apps + k))
+            else:
+                shrunk = bstp
+            buckets["stp"]["base"].append((bstp - actual["stp"]) ** 2)
+            buckets["stp"]["shrunk"].append((shrunk - actual["stp"]) ** 2)
+
+            # accumulate AFTER scoring, so next week's "raw" includes this week
+            c = cum[pid_s]
+            c["mins"] += mins; c["apps"] += 1
+            c["starts"] += _f(s.get("starts"))
+            c["xg"] += _f(s.get("expected_goals")); c["xa"] += _f(s.get("expected_assists"))
+            c["xgc"] += _f(s.get("expected_goals_conceded")); c["sv"] += _f(s.get("saves"))
+            c["cbit"] += _dc_totals(s); c["cbirt"] += _dcr_totals(s)
+
+        def rmse(xs):
+            return (sum(xs) / len(xs)) ** 0.5 if xs else None
+
+        def mean(xs):
+            return sum(xs) / len(xs) if xs else None
+
+        weeks[str(gw)] = {
+            key: dict(n=len(b["shrunk"]), rmse_raw=rmse(b["raw"]), rmse_base=rmse(b["base"]),
+                      rmse_shrunk=rmse(b["shrunk"]), mean_weight=mean(b["weights"]),
+                      k_by_pos={p: round(k_by_pos[(key, p)][0], 2) for p in ("GKP", "DEF", "MID", "FWD")
+                                if (key, p) in k_by_pos},
+                      degenerate=any(k_by_pos[(key, p)][1] for p in ("GKP", "DEF", "MID", "FWD")
+                                     if (key, p) in k_by_pos))
+            for key, b in buckets.items()
+        }
+    return weeks
+
+
+def build():
+    empty_state = None
+    weeks, finished = {}, []
+    try:
+        boot = _bootstrap()
+        cache, finished, new = update_live_cache(boot)
+        if not finished:
+            empty_state = "The 2026/27 season has not started yet — no finished gameweeks to score against."
+        else:
+            baselines = build_baselines()
+            weeks = walk_forward(boot, cache, finished, baselines)
+            json.dump(dict(updated_utc=f"{dt.datetime.utcnow():%Y-%m-%dT%H:%M:%SZ}", weeks=weeks),
+                      open(TRACKER, "w", encoding="utf-8"), indent=1)
+    except Exception as e:
+        # Network is unavailable in some environments this build runs in
+        # (see module docstring) — fall back to whatever was last persisted
+        # rather than crashing the whole dashboard publish.
+        saved = json.load(open(TRACKER, encoding="utf-8")) if os.path.exists(TRACKER) else {}
+        weeks = saved.get("weeks", {})
+        if weeks:
+            finished = sorted(int(k) for k in weeks)
+            empty_state = f"Live fetch failed ({e}); showing last saved tracker state."
+        else:
+            empty_state = f"Live fetch failed ({e}) and no saved tracker state exists yet."
+
+    payload = dict(finished=finished, weeks=weeks, empty_state=empty_state,
+                    generated=f"{dt.datetime.now():%Y-%m-%d %H:%M}",
+                    metric_labels={m["key"]: m["label"] for m in METRICS + DC_METRICS}
+                                   | {"stp": "Start rate"})
+
+    body = '<div id="app"></div>'
+    script = f"""
+<script>
+const DATA = {json.dumps(payload)};
+const C = {{a:'#4ea3ff',b:'#ffc857',c:'#5fd38d',d:'#ff6b6b',e:'#c792ea',dim:'#8b98a5'}};
+const css = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+Chart.defaults.color = css('--dim');
+Chart.defaults.borderColor = css('--grid');
+Chart.defaults.font.family = "ui-monospace,Menlo,monospace";
+const f3 = n => n===null||n===undefined ? '\\u2014' : n.toFixed(3);
+const METRIC_ORDER = ['xg90','xa90','xgc90','sv90','cbit90','cbirt90','stp'];
+const COLORS = {{xg90:C.a,xa90:C.b,xgc90:C.d,sv90:C.e,cbit90:C.c,cbirt90:'#7aa2ff',stp:'#e0a458'}};
+
+function panel(id, title, tests, body){{
+  const d = document.createElement('div'); d.className='panel'; d.id=id;
+  d.innerHTML = `<h2>${{title}}</h2><p class="tests">${{tests}}</p>${{body}}`;
+  document.getElementById('app').appendChild(d); return d;
+}}
+
+if (DATA.empty_state) {{
+  panel('waiting', 'Waiting for gameweeks', DATA.empty_state,
+    `<div class="find">This page tracks, week by week, which of RAW (this season's own data),
+     the HIERARCHICAL PRIOR (last season, or a positional fallback), or the SHRUNK blend of the
+     two best predicts what a player actually does \\u2014 scored only after the fact, never on
+     data it was built from. It fills in automatically as gameweeks finish and this build is
+     re-run. See <span class="mono">build_prediction_tracker.py</span> for the full method, and
+     <span class="mono">METHODOLOGY_ALTERNATIVES.md</span> ("Shrinkage backtest") for the
+     retrospective check already run on 2025/26 that justified building this.</div>`);
+}} else {{
+  const gws = DATA.finished;
+  const latest = String(gws[gws.length-1]);
+
+  /* ---------- 1. which estimator predicts best \\u2014 latest GW + cumulative ---------- */
+  function cum(mkey, uptoIdx){{
+    let n=0, sr=0, sb=0, ss=0;
+    for (let i=0;i<=uptoIdx;i++){{
+      const w = DATA.weeks[String(gws[i])][mkey];
+      if (!w || !w.n) continue;
+      n += w.n;
+      if (w.rmse_raw!==null) sr += w.rmse_raw*w.rmse_raw*w.n;
+      if (w.rmse_base!==null) sb += w.rmse_base*w.rmse_base*w.n;
+      if (w.rmse_shrunk!==null) ss += w.rmse_shrunk*w.rmse_shrunk*w.n;
+    }}
+    return {{n, raw: n?Math.sqrt(sr/n):null, base: n?Math.sqrt(sb/n):null, shrunk: n?Math.sqrt(ss/n):null}};
+  }}
+  const rowsSum = METRIC_ORDER.map((k,i)=>{{
+    const wk = DATA.weeks[latest][k];
+    const c = cum(k, gws.length-1);
+    const bestLatest = Math.min(wk.rmse_raw??1e9, wk.rmse_base??1e9, wk.rmse_shrunk??1e9);
+    const bestCum = Math.min(c.raw??1e9, c.base??1e9, c.shrunk??1e9);
+    const tag = (v,best) => v!==null && Math.abs(v-best)<1e-9 ? ' <span class="tag ok">best</span>' : '';
+    return `<tr><td><b>${{DATA.metric_labels[k]}}</b></td><td class="mono">${{wk.n}}</td>
+      <td class="mono">${{f3(wk.rmse_raw)}}${{tag(wk.rmse_raw,bestLatest)}}</td>
+      <td class="mono">${{f3(wk.rmse_base)}}${{tag(wk.rmse_base,bestLatest)}}</td>
+      <td class="mono">${{f3(wk.rmse_shrunk)}}${{tag(wk.rmse_shrunk,bestLatest)}}</td>
+      <td class="mono">${{f3(c.raw)}}${{tag(c.raw,bestCum)}}</td>
+      <td class="mono">${{f3(c.base)}}${{tag(c.base,bestCum)}}</td>
+      <td class="mono">${{f3(c.shrunk)}}${{tag(c.shrunk,bestCum)}}</td></tr>`;
+  }}).join('');
+  panel('p1', '1 \\u00b7 Which estimator predicts best right now?',
+   `GW${{latest}} is the latest finished gameweek. Every column is RMSE against what actually
+    happened that week (lower is better; best of the three tagged per row) \\u2014 left three for
+    GW${{latest}} alone, right three cumulative across every gameweek this season. Raw and shrunk
+    for GW1 are blank by design: there was no "season so far" yet to build them from.`,
+   `<table><thead><tr><th>metric</th><th>n (GW${{latest}})</th>
+     <th colspan="3">GW${{latest}} only</th><th colspan="3">cumulative, season to date</th></tr>
+     <tr><th></th><th></th><th>raw</th><th>prior</th><th>shrunk</th>
+     <th>raw</th><th>prior</th><th>shrunk</th></tr></thead>
+     <tbody>${{rowsSum}}</tbody></table>
+    <div class="find">Early season, "prior" (last season, or a positional fallback) often wins
+    \\u2014 a handful of matches of noise can be worse than a full season of someone else's
+    history. Watch for "shrunk" starting to beat "prior" consistently as gameweeks accumulate;
+    that crossover is when a player's own 2026/27 data has become more informative than his
+    2025/26 record, which is exactly what panel 2 plots directly.</div>`);
+
+  /* ---------- 2. does raw data gain influence as the season progresses? ---------- */
+  panel('p2', '2 \\u00b7 Weight on a player\\'s own data, by gameweek',
+   'weight = n90 / (n90 + k) \\u2014 the share of the shrunk estimate coming from THIS season\\'s observations rather than the prior. k is re-derived fresh each gameweek from that week\\'s live pool (not fixed from last season), so a fallback k early on is visible here rather than hidden. Averaged across every player with enough minutes to be scored that week.',
+   `<div class="wrap"><canvas id="cWeight"></canvas></div>
+    <div class="legend">${{METRIC_ORDER.map(k=>`<span><i style="background:${{COLORS[k]}}"></i>${{DATA.metric_labels[k]}}</span>`).join('')}}</div>
+    <div class="find" id="weightFind"></div>`);
+  const labels = gws.map(g=>'GW'+g);
+  new Chart(cWeight, {{type:'line', data:{{labels, datasets: METRIC_ORDER.map(k=>({{
+    label: DATA.metric_labels[k], borderColor: COLORS[k], backgroundColor: COLORS[k],
+    data: gws.map(g => DATA.weeks[String(g)][k].mean_weight),
+    spanGaps: true, pointRadius: 3, pointHoverRadius: 6, borderWidth: 2, tension: 0.2}})) }},
+   options:{{plugins:{{legend:{{display:false}}}},
+    scales:{{y:{{min:0,max:1,title:{{display:true,text:'weight on own data (0 = pure prior, 1 = pure raw)'}},grid:{{color:css('--grid')}}}},
+            x:{{title:{{display:true,text:'gameweek'}},grid:{{color:css('--grid')}}}}}}}}}});
+  const firstDeg = METRIC_ORDER.find(k => DATA.weeks[latest][k].degenerate);
+  document.getElementById('weightFind').innerHTML = firstDeg
+    ? `<b>${{DATA.metric_labels[firstDeg]}}</b> is still on a fallback k as of GW${{latest}} \\u2014
+       not enough players have crossed the 270-minute (3 x 90) floor _estimate_k() requires for
+       a trustworthy variance read yet. Expect the fallback tag to clear metric by metric as the
+       season goes on, not all at once.`
+    : `Every metric has a properly-derived (non-fallback) k as of GW${{latest}}.`;
+}}
+</script>"""
+
+    html = page_shell.shell(
+        title="Prior vs reality",
+        active="priors",
+        subtitle=(f"Live weekly walk-forward tracker &middot; page generated {payload['generated']}"
+                   + (f" &middot; through GW{finished[-1]}" if finished else "")),
+        body=body,
+        footer="Built by <span class='mono'>build_prediction_tracker.py</span>. Scores raw, prior, "
+               "and shrunk against each gameweek only AFTER it finishes, using only data through "
+               "the gameweek before. See METHODOLOGY_ALTERNATIVES.md for the 2025/26 backtest that "
+               "validated the shrinkage mechanism before this live version was built.")
+    html = html.replace("</body>", script + "\n</body>")
+    os.makedirs(os.path.dirname(OUT), exist_ok=True)
+    open(OUT, "w", encoding="utf-8").write(html)
+    return html, payload
+
+
+if __name__ == "__main__":
+    h, payload = build()
+    print(f"written: {OUT}  ({len(h)/1024:.0f} KB)")
+    assert "cdn.jsdelivr.net/npm/chart.js@4.5.0" in h, "Chart.js tag missing"
+    if payload["empty_state"]:
+        print(f"  {payload['empty_state']}")
+    else:
+        latest = payload["finished"][-1]
+        print(f"  through GW{latest}, {len(payload['finished'])} gameweek(s) scored")
+        for k, label in payload["metric_labels"].items():
+            w = payload["weeks"][str(latest)][k]
+            print(f"  {label:16s} n={w['n']:4d}  RMSE raw {w['rmse_raw']}  base {w['rmse_base']}  "
+                  f"shrunk {w['rmse_shrunk']}  weight {w['mean_weight']}")

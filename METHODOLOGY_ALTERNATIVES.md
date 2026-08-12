@@ -1601,3 +1601,51 @@ GW20+    Shrinkage fades in value; raw data is reliable. Second chip set.
 - **Two terms measured in different units are ever summed** → the result is void,
   not approximate. See A0.6's worked example: it produced a clean, plausible,
   entirely false reversal of a live recommendation.
+
+---
+
+## Shrinkage backtest — 2025/26 GW1-8 vs GW9-38, 12 Aug 2026
+
+**Question.** Does the shrunk posterior (empirical-Bayes blend of a player's own
+rate and a positional baseline, weight `k` derived from the pool's own variance)
+actually predict reality better than either input alone — before trusting it on
+a 2026/27 season that had not started yet (GW1 deadline: 21 Aug 2026, so there
+was no current-season data to test against directly)?
+
+**Method.** Split the finished 2025/26 archive (`.cache_merged_gw.csv`, 38
+rounds) into period 1 (GW1-8, standing in for "the season so far") and period 2
+(GW9-38, ground truth). For every metric feeding `expected_points()` — xG90,
+xA90, xGC90, saves90, CBIT90, CBIRT90, start rate — scored three period-1-only
+estimates against period-2 reality: RAW (the player's own period-1 rate),
+BASELINE (period-1 positional pool mean, ignoring the player), SHRUNK (the same
+`_estimate_k()`/blend formula `fpl_research_mcp.py` uses live). Built as a
+one-off dashboard page (`build_priors_backtest.py` → `docs/priors.html`),
+now retired — see below.
+
+**Result.** Shrunk beat both raw and baseline on RMSE for all seven metrics:
+
+| metric | RMSE raw | RMSE baseline | RMSE shrunk | n |
+|---|---|---|---|---|
+| xG per 90 | 0.128 | 0.089 | **0.082** | 217 |
+| xA per 90 | 0.062 | 0.061 | **0.056** | 217 |
+| xGC per 90 | 0.357 | 0.285 | **0.253** | 111 |
+| Saves per 90 | 0.932 | 0.614 | **0.593** | 22 |
+| CBIT per 90 | 1.651 | 1.935 | **1.443** | 89 |
+| CBIRT per 90 | 1.736 | 2.485 | **1.593** | 128 |
+| Start rate | 0.271 | 0.234 | **0.226** | 378 |
+
+Two pools honestly fell back to a default `k` rather than deriving one from
+variance (FWD xA90, n=26; GKP start rate, n=27) — both flagged as fallback in
+the original page's output, not silently treated as derived.
+
+**Verdict.** Shrinkage is validated in principle on a season with a full 38
+rounds of ground truth. Not re-run against 2026/27 — the point was to check the
+mechanism before trusting it live, not to re-derive last season's answer.
+
+**Disposition.** The dashboard page this ran on (`docs/priors.html` v1,
+`build_priors_backtest.py`) is retired now that its one question is answered;
+kept as this note instead of an ongoing tab. `docs/priors.html` was rebuilt on
+12 Aug 2026 as a live weekly walk-forward tracker (`build_prediction_tracker.py`)
+that answers the *ongoing* version of this question once 2026/27 gameweeks
+start finishing — see that file's docstring for the walk-forward methodology,
+which differs from this backtest's fixed-split design.

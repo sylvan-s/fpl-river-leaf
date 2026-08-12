@@ -21,3 +21,12 @@ _wtest.txt
 
 # fetched at build time, never committed — see DASHBOARD_PLAN.md
 .cache_merged_gw.csv
+
+# Secrets — never committed under any circumstance
+git_access.md
+.git-credentials
+
+# Raw per-gameweek FPL API pulls — bulky, regenerable from the API. The
+# derived prediction_tracker.json (small, walk-forward summary) IS committed,
+# so the season's track record survives even if this cache is cleared.
+live_gw_cache.json

@@ -1,0 +1,5 @@
+{
+ "updated_utc": null,
+ "weeks": {},
+ "_note": "Empty on purpose. This project's sandbox filesystem would not permit deleting this file outright when the synthetic-data test run that accidentally populated it was cleaned up on 12 Aug 2026 (same restriction noted in build_priors_backtest.py's retirement stub), so it was overwritten with this empty placeholder instead. It fills in for real starting from GW1 of 2026/27."
+}

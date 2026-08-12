@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prior vs reality</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
+<style>
+
+:root{--bg:#0f1216;--panel:#171c22;--line:#2a323c;--tx:#e6edf3;--dim:#8b98a5;
+--a:#4ea3ff;--b:#ffc857;--c:#5fd38d;--d:#ff6b6b;--e:#c792ea;--grid:#232b34}
+@media(prefers-color-scheme:light){:root{--bg:#f6f7f9;--panel:#fff;--line:#dde3ea;
+--tx:#1a1f26;--dim:#5b6673;--grid:#e8edf3}}
+*{box-sizing:border-box}
+body{margin:0;padding:28px;background:var(--bg);color:var(--tx);
+font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+h1{font-size:22px;margin:0 0 4px} h2{font-size:16px;margin:0 0 2px}
+.sub{color:var(--dim);font-size:12.5px;margin:0 0 22px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+padding:18px 20px;margin-bottom:18px}
+.tests{color:var(--dim);font-size:12.5px;margin:2px 0 14px;font-style:italic}
+.wrap{position:relative;height:380px}
+.wrap.short{height:300px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:900px){.grid2{grid-template-columns:1fr}}
+.find{border-left:3px solid var(--b);background:rgba(255,200,87,.08);
+padding:10px 14px;margin:14px 0 0;border-radius:0 6px 6px 0;font-size:13px}
+.find.bad{border-color:var(--d);background:rgba(255,107,107,.08)}
+.find.ok{border-color:var(--c);background:rgba(95,211,141,.08)}
+.find b{color:var(--tx)}
+table{border-collapse:collapse;width:100%;font-size:13px;margin-top:6px}
+th,td{text-align:right;padding:6px 9px;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--dim);font-weight:600;font-size:12px}
+.mono{font-variant-numeric:tabular-nums;font-family:ui-monospace,Menlo,monospace}
+.tag{display:inline-block;padding:1px 7px;border-radius:99px;font-size:11px;
+font-weight:600}
+.tag.bad{background:rgba(255,107,107,.18);color:var(--d)}
+.tag.ok{background:rgba(95,211,141,.18);color:var(--c)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--dim);
+margin:10px 0 0}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;
+margin-right:5px;vertical-align:-1px}
+input[type=range]{-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;background:var(--grid);outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--a);cursor:pointer;border:2px solid var(--panel)}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--a);cursor:pointer;border:2px solid var(--panel)}
+footer{color:var(--dim);font-size:12px;margin-top:26px;border-top:1px solid var(--line);
+padding-top:14px}
+
+/* ---- shared nav (added 9 Aug 2026 with the multipage split) ---- */
+nav.top{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 20px;padding:4px;
+background:var(--panel);border:1px solid var(--line);border-radius:10px}
+nav.top a,nav.top span{padding:6px 12px;border-radius:7px;font-size:13px;
+font-weight:600;text-decoration:none;color:var(--dim);white-space:nowrap}
+nav.top a:hover{background:var(--grid);color:var(--tx)}
+nav.top a.on{background:var(--a);color:#fff}
+nav.top span.soon{color:var(--dim);opacity:.45;cursor:not-allowed}
+nav.top span.soon::after{content:" · planned";font-weight:400;font-size:11px}
+.diagram{background:#FCFCFB;border-radius:8px;padding:14px;overflow:auto}
+.diagram svg{display:block;max-width:100%;height:auto;margin:0 auto}
+</style></head><body>
+<nav class="top">
+<a href="index.html" data-page="squad">Squad</a>
+<a href="analysis.html" data-page="analysis">Player analysis</a>
+<a href="relationships.html" data-page="relationships">Statistical relationships</a>
+<a href="player.html" data-page="player">Player timeseries</a>
+<a href="workflow.html" data-page="workflow">Weekly workflow</a>
+<a href="news.html" data-page="news">Availability &amp; intel</a>
+<a href="priors.html" data-page="priors" class="on">Prior vs reality</a>
+</nav>
+
+<h1>Prior vs reality</h1>
+<p class="sub">Live weekly walk-forward tracker &middot; page generated 2026-08-12 11:18</p>
+<div id="app"></div>
+<footer>Built by <span class='mono'>build_prediction_tracker.py</span>. Scores raw, prior, and shrunk against each gameweek only AFTER it finishes, using only data through the gameweek before. See METHODOLOGY_ALTERNATIVES.md for the 2025/26 backtest that validated the shrinkage mechanism before this live version was built.</footer>
+
+<script>
+const DATA = {"finished": [], "weeks": {}, "empty_state": "Live fetch failed (Using SOCKS proxy, but the 'socksio' package is not installed. Make sure to install httpx using `pip install httpx[socks]`.) and no saved tracker state exists yet.", "generated": "2026-08-12 11:18", "metric_labels": {"xg90": "xG per 90", "xa90": "xA per 90", "xgc90": "xGC per 90", "sv90": "Saves per 90", "cbit90": "CBIT per 90", "cbirt90": "CBIRT per 90", "stp": "Start rate"}};
+const C = {a:'#4ea3ff',b:'#ffc857',c:'#5fd38d',d:'#ff6b6b',e:'#c792ea',dim:'#8b98a5'};
+const css = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+Chart.defaults.color = css('--dim');
+Chart.defaults.borderColor = css('--grid');
+Chart.defaults.font.family = "ui-monospace,Menlo,monospace";
+const f3 = n => n===null||n===undefined ? '\u2014' : n.toFixed(3);
+const METRIC_ORDER = ['xg90','xa90','xgc90','sv90','cbit90','cbirt90','stp'];
+const COLORS = {xg90:C.a,xa90:C.b,xgc90:C.d,sv90:C.e,cbit90:C.c,cbirt90:'#7aa2ff',stp:'#e0a458'};
+
+function panel(id, title, tests, body){
+  const d = document.createElement('div'); d.className='panel'; d.id=id;
+  d.innerHTML = `<h2>${title}</h2><p class="tests">${tests}</p>${body}`;
+  document.getElementById('app').appendChild(d); return d;
+}
+
+if (DATA.empty_state) {
+  panel('waiting', 'Waiting for gameweeks', DATA.empty_state,
+    `<div class="find">This page tracks, week by week, which of RAW (this season's own data),
+     the HIERARCHICAL PRIOR (last season, or a positional fallback), or the SHRUNK blend of the
+     two best predicts what a player actually does \u2014 scored only after the fact, never on
+     data it was built from. It fills in automatically as gameweeks finish and this build is
+     re-run. See <span class="mono">build_prediction_tracker.py</span> for the full method, and
+     <span class="mono">METHODOLOGY_ALTERNATIVES.md</span> ("Shrinkage backtest") for the
+     retrospective check already run on 2025/26 that justified building this.</div>`);
+} else {
+  const gws = DATA.finished;
+  const latest = String(gws[gws.length-1]);
+
+  /* ---------- 1. which estimator predicts best \u2014 latest GW + cumulative ---------- */
+  function cum(mkey, uptoIdx){
+    let n=0, sr=0, sb=0, ss=0;
+    for (let i=0;i<=uptoIdx;i++){
+      const w = DATA.weeks[String(gws[i])][mkey];
+      if (!w || !w.n) continue;
+      n += w.n;
+      if (w.rmse_raw!==null) sr += w.rmse_raw*w.rmse_raw*w.n;
+      if (w.rmse_base!==null) sb += w.rmse_base*w.rmse_base*w.n;
+      if (w.rmse_shrunk!==null) ss += w.rmse_shrunk*w.rmse_shrunk*w.n;
+    }
+    return {n, raw: n?Math.sqrt(sr/n):null, base: n?Math.sqrt(sb/n):null, shrunk: n?Math.sqrt(ss/n):null};
+  }
+  const rowsSum = METRIC_ORDER.map((k,i)=>{
+    const wk = DATA.weeks[latest][k];
+    const c = cum(k, gws.length-1);
+    const bestLatest = Math.min(wk.rmse_raw??1e9, wk.rmse_base??1e9, wk.rmse_shrunk??1e9);
+    const bestCum = Math.min(c.raw??1e9, c.base??1e9, c.shrunk??1e9);
+    const tag = (v,best) => v!==null && Math.abs(v-best)<1e-9 ? ' <span class="tag ok">best</span>' : '';
+    return `<tr><td><b>${DATA.metric_labels[k]}</b></td><td class="mono">${wk.n}</td>
+      <td class="mono">${f3(wk.rmse_raw)}${tag(wk.rmse_raw,bestLatest)}</td>
+      <td class="mono">${f3(wk.rmse_base)}${tag(wk.rmse_base,bestLatest)}</td>
+      <td class="mono">${f3(wk.rmse_shrunk)}${tag(wk.rmse_shrunk,bestLatest)}</td>
+      <td class="mono">${f3(c.raw)}${tag(c.raw,bestCum)}</td>
+      <td class="mono">${f3(c.base)}${tag(c.base,bestCum)}</td>
+      <td class="mono">${f3(c.shrunk)}${tag(c.shrunk,bestCum)}</td></tr>`;
+  }).join('');
+  panel('p1', '1 \u00b7 Which estimator predicts best right now?',
+   `GW${latest} is the latest finished gameweek. Every column is RMSE against what actually
+    happened that week (lower is better; best of the three tagged per row) \u2014 left three for
+    GW${latest} alone, right three cumulative across every gameweek this season. Raw and shrunk
+    for GW1 are blank by design: there was no "season so far" yet to build them from.`,
+   `<table><thead><tr><th>metric</th><th>n (GW${latest})</th>
+     <th colspan="3">GW${latest} only</th><th colspan="3">cumulative, season to date</th></tr>
+     <tr><th></th><th></th><th>raw</th><th>prior</th><th>shrunk</th>
+     <th>raw</th><th>prior</th><th>shrunk</th></tr></thead>
+     <tbody>${rowsSum}</tbody></table>
+    <div class="find">Early season, "prior" (last season, or a positional fallback) often wins
+    \u2014 a handful of matches of noise can be worse than a full season of someone else's
+    history. Watch for "shrunk" starting to beat "prior" consistently as gameweeks accumulate;
+    that crossover is when a player's own 2026/27 data has become more informative than his
+    2025/26 record, which is exactly what panel 2 plots directly.</div>`);
+
+  /* ---------- 2. does raw data gain influence as the season progresses? ---------- */
+  panel('p2', '2 \u00b7 Weight on a player\'s own data, by gameweek',
+   'weight = n90 / (n90 + k) \u2014 the share of the shrunk estimate coming from THIS season\'s observations rather than the prior. k is re-derived fresh each gameweek from that week\'s live pool (not fixed from last season), so a fallback k early on is visible here rather than hidden. Averaged across every player with enough minutes to be scored that week.',
+   `<div class="wrap"><canvas id="cWeight"></canvas></div>
+    <div class="legend">${METRIC_ORDER.map(k=>`<span><i style="background:${COLORS[k]}"></i>${DATA.metric_labels[k]}</span>`).join('')}</div>
+    <div class="find" id="weightFind"></div>`);
+  const labels = gws.map(g=>'GW'+g);
+  new Chart(cWeight, {type:'line', data:{labels, datasets: METRIC_ORDER.map(k=>({
+    label: DATA.metric_labels[k], borderColor: COLORS[k], backgroundColor: COLORS[k],
+    data: gws.map(g => DATA.weeks[String(g)][k].mean_weight),
+    spanGaps: true, pointRadius: 3, pointHoverRadius: 6, borderWidth: 2, tension: 0.2})) },
+   options:{plugins:{legend:{display:false}},
+    scales:{y:{min:0,max:1,title:{display:true,text:'weight on own data (0 = pure prior, 1 = pure raw)'},grid:{color:css('--grid')}},
+            x:{title:{display:true,text:'gameweek'},grid:{color:css('--grid')}}}}});
+  const firstDeg = METRIC_ORDER.find(k => DATA.weeks[latest][k].degenerate);
+  document.getElementById('weightFind').innerHTML = firstDeg
+    ? `<b>${DATA.metric_labels[firstDeg]}</b> is still on a fallback k as of GW${latest} \u2014
+       not enough players have crossed the 270-minute (3 x 90) floor _estimate_k() requires for
+       a trustworthy variance read yet. Expect the fallback tag to clear metric by metric as the
+       season goes on, not all at once.`
+    : `Every metric has a properly-derived (non-fallback) k as of GW${latest}.`;
+}
+</script>
+</body></html>
