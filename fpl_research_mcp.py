@@ -135,29 +135,45 @@ def _intel_block(tag: str) -> dict[str, str]:
 
 
 # =============================================================================
-# EXTERNAL-RESEARCH ADJUSTMENT LAYER — behind with_intel=True, OFF by default
+# EXTERNAL-RESEARCH ADJUSTMENT LAYER — captaincy_odds' with_intel defaults to
+# TRUE since 13 Aug 2026 (was OFF by default). Pass with_intel=False for the
+# raw, intel-blind comparison.
+#
+# FLIPPED to match build_squad.py / optimise_squad.py / fixture_adjust.py,
+# which made the same change the same day: pre-season, `stp` (P(start)) here
+# is derived purely from LAST SEASON's starts, with zero current-season
+# signal - stale for an incumbent, potentially wrong or zero for a
+# transferred-in or newly-promoted player. ROLE_INTEL.md's `set stp` overrides
+# exist precisely to correct that, but were silently inert on the weekly
+# captaincy call before this fix, since with_intel defaulted False and the
+# fpl-weekly-brief skill's documented `captaincy_odds` call never passed it.
+# See METHODOLOGY_ALTERNATIVES.md A0.5 for the full reasoning (found while
+# assessing whether a start-weighted xP objective would add value).
+#
+# _cap_rows() itself keeps with_intel=False as ITS OWN default - only
+# captaincy_odds (the tool) defaults to True and passes it through explicitly.
+# log_predictions calls _cap_rows() directly with with_intel left unset
+# (i.e. False) ON PURPOSE and unaffected by this change - calibration must
+# score the MODEL, not model+intel.
 #
 # Delegates to intel_adjust.py, the single source of truth for the
 # ROLE_INTEL.md `adjustments` fence (also used by build_squad.py) - see that
 # file's docstring for the schema and "agreed with Sylvan 10 Aug 2026"
 # reasoning. Do not fork a second parser here.
 #
-# LOADED LAZILY AND DEFENSIVELY, not at import time. This whole layer is
-# optional and off by default; this module's long-standing rule for every
-# other ROLE_INTEL.md block (_role_intel, _contaminated) is "missing or
-# malformed data must never break a screen" - a live MCP server has a much
-# higher cost for a hard import failure than a standalone script does, so a
-# missing/broken sibling file degrades with_intel to a no-op (with a stderr
-# note) rather than taking every tool in this server down with it.
+# LOADED LAZILY AND DEFENSIVELY, not at import time. This module's
+# long-standing rule for every other ROLE_INTEL.md block (_role_intel,
+# _contaminated) is "missing or malformed data must never break a screen" - a
+# live MCP server has a much higher cost for a hard import failure than a
+# standalone script does, so a missing/broken sibling file degrades
+# with_intel to a no-op (with a stderr note) rather than taking every tool in
+# this server down with it.
 #
 # Two shapes, per intel_adjust.py:
 #   op=mult on xg90/xa90/xgi90/cbit90/cbirt90 - CAPPED to 0.5x-1.5x. A thesis
 #     should move a score, never dominate a season of observed data.
 #   op=set on stp ONLY - UNCAPPED. Non-availability is a binary fact ("out for
 #     four weeks" is P(start)=0), not a graded belief, so it gets no guardrail.
-#
-# Kept off log_predictions on purpose - calibration needs to score the MODEL,
-# not model+intel.
 # =============================================================================
 MULT_LO, MULT_HI = 0.5, 1.5  # mirrors intel_adjust.py's own - keep in sync
 
@@ -2062,9 +2078,13 @@ def _cap_rows(names: str, shrunk: bool = True, with_intel: bool = False):
 
     with_intel=True applies the ROLE_INTEL.md `adjustments` fence (see the
     module note above _load_adjustments()): a CAPPED 0.5x-1.5x multiplier on
-    xg90/xa90/xgi90, and an UNCAPPED op=set override on stp/P(start). OFF by
-    default so callers can compare with/without. log_predictions deliberately
-    never sets this - calibration must score the model, not model+intel."""
+    xg90/xa90/xgi90, and an UNCAPPED op=set override on stp/P(start).
+
+    THIS FUNCTION'S OWN DEFAULT STAYS False - it is captaincy_odds (the tool)
+    that defaults with_intel=True since 13 Aug 2026 and passes it through
+    explicitly. log_predictions deliberately calls this with with_intel
+    unset (False) and must keep doing so - calibration needs to score the
+    model, not model+intel."""
     teams, _ = _maps()
     b = _boot()
     wanted = [n.strip().lower() for n in names.split(",") if n.strip()]
@@ -2120,10 +2140,10 @@ def _cap_rows(names: str, shrunk: bool = True, with_intel: bool = False):
         avail, avail_lbl = _availability(el)
         p_start *= avail
 
-        # External-research overlay (ROLE_INTEL.md `adjustments` fence) - OFF
-        # unless with_intel=True, so this whole block is a no-op by default and
-        # callers get identical output with/without it until explicitly asked
-        # for the comparison.
+        # External-research overlay (ROLE_INTEL.md `adjustments` fence) - runs
+        # only when with_intel=True is passed in. captaincy_odds passes True
+        # by default since 13 Aug 2026; log_predictions never passes it, so
+        # this stays a no-op for calibration regardless of the tool default.
         intel_note = ""
         if with_intel:
             for e in _intel_entries(el, teams, _screen_gw()):
@@ -2216,14 +2236,14 @@ def _cap_rows(names: str, shrunk: bool = True, with_intel: bool = False):
         "it. Also reports an ownership-adjusted differential score, because "
         "captaining a heavily-owned player is largely rank-neutral whatever "
         "happens. Use for both the weekly armband and Triple Captain timing "
-        "(TC is purely a P(haul) maximisation). Pass with_intel=True to layer "
-        "the ROLE_INTEL.md `adjustments` fence on top (capped 0.5x-1.5x xG/xA "
-        "multipliers, uncapped P(start) overrides) - OFF by default so you "
-        "can run it both ways and compare."
+        "(TC is purely a P(haul) maximisation). Layers the ROLE_INTEL.md "
+        "`adjustments` fence on top by default since 13 Aug 2026 (capped "
+        "0.5x-1.5x xG/xA multipliers, uncapped P(start) overrides) - pass "
+        "with_intel=False for the raw, intel-blind comparison."
     )
 )
 def captaincy_odds(names: str, mode: str = "neutral", shrunk: bool = True,
-                    with_intel: bool = False) -> str:
+                    with_intel: bool = True) -> str:
     rows, _meta = _cap_rows(names, shrunk, with_intel)
     if not rows:
         return f"No players matched: {names}"
@@ -2236,7 +2256,7 @@ def captaincy_odds(names: str, mode: str = "neutral", shrunk: bool = True,
             f"{'SUSP':>11}")
     out = [f"CAPTAINCY ODDS (mode: {mode}, "
            f"{'SHRUNK rates' if shrunk else 'RAW rates'}"
-           f"{', WITH INTEL ADJUSTMENTS' if with_intel else ''})",
+           f"{', WITH INTEL ADJUSTMENTS (default)' if with_intel else ', INTEL OFF (with_intel=False)'})",
            "", head, "-" * len(head)]
     for r in rows:
         flag = "" if r["status"] == "a" else " " + STATUS.get(r["status"], "")
@@ -2292,11 +2312,11 @@ def captaincy_odds(names: str, mode: str = "neutral", shrunk: bool = True,
         "a raw two-game rate would make the distribution wildly over-confident.",
         "Pass shrunk=False to see the unsmoothed version.",
         "",
-        "with_intel=True (OFF by default) layers ROLE_INTEL.md's `adjustments` fence",
-        "on top: a CAPPED 0.5x-1.5x multiplier on xg90/xa90/xgi90, and an UNCAPPED",
-        "op=set override on stp/P(start) - a binary non-availability claim, not a",
-        "graded one. Any player it touched is tagged '[...]' in the row. Run both",
-        "ways and diff to see what the external research is actually worth.",
+        "with_intel=True (ON by default since 13 Aug 2026) layers ROLE_INTEL.md's",
+        "`adjustments` fence on top: a CAPPED 0.5x-1.5x multiplier on xg90/xa90/xgi90,",
+        "and an UNCAPPED op=set override on stp/P(start) - a binary non-availability",
+        "claim, not a graded one. Any player it touched is tagged '[...]' in the row.",
+        "Pass with_intel=False for the raw, intel-blind comparison.",
         "",
         "CAVEATS: Poisson assumes a constant rate and independence - real matches",
         "have game-state effects. Bonus is a flat per-90 average, not modelled from",
