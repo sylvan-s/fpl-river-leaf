@@ -14,8 +14,16 @@ one. This solves the same problem exactly.
     python3 optimise_squad.py --haaland --gate 0.70
     python3 optimise_squad.py --fixtures               # score on xP_adj (GW1-4)
     python3 optimise_squad.py --fixtures --transfers 1
-    python3 optimise_squad.py --intel                  # ROLE_INTEL.md adjustments applied
-    python3 optimise_squad.py --intel --transfers 1
+
+ROLE_INTEL.md adjustments are ON BY DEFAULT since 13 Aug 2026 (see
+build_squad.py USE_INTEL) - every run above already applies the `set stp` /
+`mult` fence entries. This was flipped after finding the weekly brief's
+documented command never passed --intel, so transferred/new-signing players
+were scored on ROLE_INTEL-blind numbers in the actual weekly run, not just in
+explicit comparisons. Pass --no-intel to see the raw, unadjusted numbers:
+
+    python3 optimise_squad.py --no-intel                # ROLE_INTEL.md adjustments OFF
+    python3 optimise_squad.py --no-intel --transfers 1
     python3 optimise_squad.py --compare-intel           # WITH vs WITHOUT, one run
     python3 optimise_squad.py --compare-intel --transfers 1
 
@@ -367,7 +375,11 @@ def main():
 
     pool = bs.load(season_starts="--season-starts" in sys.argv)
     if bs.USE_INTEL:
-        print("INTEL: ROLE_INTEL.md `adjustments` fence is ACTIVE (--intel)\n")
+        print("INTEL: ROLE_INTEL.md `adjustments` fence is ACTIVE (default since "
+              "13 Aug 2026 - pass --no-intel to disable)\n")
+    else:
+        print("INTEL: DISABLED (--no-intel) - stp/xg90/etc. are the raw, "
+              "ROLE_INTEL-blind numbers\n")
     if "--fixtures" in sys.argv:
         # Swap the objective from flat xP to opponent-adjusted xP over the
         # window. Everything else - gates, constraints, bench rule - is

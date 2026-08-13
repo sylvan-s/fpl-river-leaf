@@ -4,14 +4,15 @@
 WHY. ROLE_INTEL.md could STATE a thesis ("Szoboszlai now takes penalties") but
 had no path from that sentence to a number build_squad.py actually uses. This
 closes the gap: the `adjustments` fence in ROLE_INTEL.md is parsed here and,
-only when the --intel flag is passed, mutates the pool BEFORE
+unless the --no-intel flag is passed, mutates the pool BEFORE
 expected_points() runs.
 
-    python3 build_squad.py --intel                    # squad WITH intel applied
-    python3 optimise_squad.py --intel --transfers 1    # weekly move, intel-aware
-    python3 optimise_squad.py --compare-intel          # WITH vs WITHOUT, one run
-    python3 intel_adjust.py                            # audit every entry
-    python3 intel_adjust.py --report                   # per-player xP with vs without
+    python3 build_squad.py                             # squad WITH intel applied (default since 13 Aug 2026)
+    python3 optimise_squad.py --transfers 1             # weekly move, intel-aware by default
+    python3 optimise_squad.py --no-intel --transfers 1  # weekly move, intel-blind (for comparison)
+    python3 optimise_squad.py --compare-intel           # WITH vs WITHOUT, one run
+    python3 intel_adjust.py                             # audit every entry
+    python3 intel_adjust.py --report                    # per-player xP with vs without
 
 Also consumed by fpl_research_mcp.py's captaincy_odds/_cap_rows via
 with_intel=True (see _intel_entries() there) - SAME fence, SAME parser,
@@ -41,9 +42,15 @@ reinterpreted — see the GUARDRAIL checks below. This is enforced in code, not
 just documented, because a typo that let a mult entry land on stp would defeat
 the entire reason the two are split.
 
-FLAG-GATED, OFF BY DEFAULT. Mirrors USE_EMPIRICAL_DC / --legacy-dc in
-build_squad.py: default behaviour (no --intel) must stay byte-identical to
-before this file existed.
+FLAG-GATED, ON BY DEFAULT SINCE 13 AUG 2026 (pass --no-intel to disable).
+Originally off-by-default, mirroring USE_EMPIRICAL_DC / --legacy-dc in
+build_squad.py. Flipped after discovering the fpl-weekly-brief skill's
+documented weekly command never passed --intel, so ROLE_INTEL.md's `set stp`
+overrides for transferred/new-signing players were silently never applied in
+the real weekly run — only in explicit --intel/--compare-intel comparisons.
+See METHODOLOGY_ALTERNATIVES.md A0.5 for why this mattered: a start-weighted
+xP objective would otherwise weight those exact players on a stale,
+pre-transfer 2025/26 number.
 
 PROVENANCE. Every entry carries date, confidence and a why — the same
 discipline ROLE_INTEL.md already applies to its narrative entries. `gws` is

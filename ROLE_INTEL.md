@@ -339,14 +339,24 @@ who actually deputises would be worth roughly £4.0m better spent.
 **Why this exists.** Every entry above states a thesis. None of them, until
 10 Aug 2026, changed a single number `build_squad.py` actually scores on — a
 penalty-duty claim sat next to the model without ever touching `xg90`. This
-fence closes that gap. It is parsed by `intel_adjust.py` and applied only when
-`--intel` is passed to `build_squad.py` / `optimise_squad.py` /
-`fixture_adjust.py` — **off by default**, so nothing here changes existing
-output unless asked for.
+fence closes that gap. It is parsed by `intel_adjust.py` and applied to
+`build_squad.py` / `optimise_squad.py` / `fixture_adjust.py` **by default,
+since 13 Aug 2026** — pass `--no-intel` to see the raw, unadjusted numbers.
 
-    python3 build_squad.py --intel              # squad WITH intel applied
-    python3 optimise_squad.py --compare-intel    # WITH vs WITHOUT, one run
-    python3 intel_adjust.py --report             # per-player xP with vs without
+*Corrected 13 Aug 2026: this was originally off-by-default, gated behind an
+explicit `--intel` flag. The flag was never actually passed by the
+`fpl-weekly-brief` skill's documented weekly optimiser command, so every `set
+stp` / `mult` entry below was silently inert in the real weekly run — only
+live in explicit `--intel`/`--compare-intel` comparisons. This mattered most
+for exactly the players this fence is meant to correct: transferred-in or
+newly-promoted signings whose pre-season `stp` is a stale 2025/26 number with
+no current-season signal at all. Flipped after a review of whether a
+start-weighted xP objective (roadmap A0.5) would add value found this gap.*
+
+    python3 build_squad.py                       # squad WITH intel applied (default)
+    python3 optimise_squad.py --no-intel          # squad WITHOUT intel, for comparison
+    python3 optimise_squad.py --compare-intel     # WITH vs WITHOUT, one run
+    python3 intel_adjust.py --report              # per-player xP with vs without
 
 **Two shapes, not one — agreed with Sylvan 10 Aug 2026.**
 

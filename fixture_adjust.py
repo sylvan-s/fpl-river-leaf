@@ -19,12 +19,13 @@ xG/xGC with home/away applied, shrunk toward the prior season. They are pasted
 in below rather than recomputed, so this file and captaincy_odds can never
 disagree about how hard a fixture is.
 
-    python3 fixture_adjust.py            # show the adjustment per player
+    python3 fixture_adjust.py            # show the adjustment per player (intel ON by default)
     python3 fixture_adjust.py --squad    # only the current squad
-    python3 fixture_adjust.py --intel    # ROLE_INTEL.md adjustments applied first
+    python3 fixture_adjust.py --no-intel # ROLE_INTEL.md adjustments OFF
 
---intel is read by build_squad.load() (same sys.argv, one process) - nothing
-here duplicates that logic. See intel_adjust.py.
+--no-intel is read by build_squad.load() (same sys.argv, one process) - nothing
+here duplicates that logic. See intel_adjust.py. ROLE_INTEL.md adjustments are
+ON BY DEFAULT since 13 Aug 2026.
 
     # WEEKLY REFRESH - paste the raw fixture_difficulty output and stamp the GW:
     python3 fixture_adjust.py --update --gw 3 < window.txt
@@ -211,7 +212,10 @@ def main():
     _fx, prov, _stamp = active_window()
     print(f"window source: {prov}\n")
     if bs.USE_INTEL:
-        print("INTEL: ROLE_INTEL.md `adjustments` fence is ACTIVE (--intel)\n")
+        print("INTEL: ROLE_INTEL.md `adjustments` fence is ACTIVE (default since "
+              "13 Aug 2026 - pass --no-intel to disable)\n")
+    else:
+        print("INTEL: DISABLED (--no-intel)\n")
     pool = adjust(bs.load())
     only_squad = "--squad" in sys.argv
     # From squad.json via squad_state.py. This copy was the one that went stale

@@ -116,10 +116,12 @@ def build():
 
     # --- modelled-input adjustments -----------------------------------------
     # The `adjustments` fence in ROLE_INTEL.md is the ONLY thing on this page
-    # that actually changes a number build_squad.py uses (via --intel); every
-    # other block here is descriptive. Rendering it is what turns "intel
-    # summary" into "intel summary AND its effect on the model", not just a
-    # second description of the same narrative.
+    # that actually changes a number build_squad.py uses (applied by default
+    # since 13 Aug 2026 - previously required --intel, which the documented
+    # weekly command never passed, so these rows were silently inert in the
+    # real weekly run); every other block here is descriptive. Rendering it is
+    # what turns "intel summary" into "intel summary AND its effect on the
+    # model", not just a second description of the same narrative.
     def adj_value(e):
         if e["op"] == "mult":
             c = min(max(e["value"], intel_adjust.MULT_LO), intel_adjust.MULT_HI)
@@ -143,11 +145,16 @@ def build():
     adj_html = f"""
   <h3 style="margin:22px 0 6px;font-size:14px">Adjustments to modelled inputs</h3>
   <p class="tests">Every row here mutates a rate <span class="mono">expected_points()</span>
-  reads — but only when a squad or transfer run is built with <span class="mono">--intel</span>.
-  Default behaviour ignores this fence entirely. <span class="mono">mult</span> is guardrailed to
-  0.5&times;&ndash;1.5&times; so one line of narrative can never out-weigh a season of observed
-  data; <span class="mono">set</span> (start probability only) is an override, not a multiplier,
-  because unavailability is closer to binary than continuous.</p>
+  reads, and is applied <b>by default</b> in every squad or transfer run since 13 Aug 2026
+  (pass <span class="mono">--no-intel</span> to see the raw, unadjusted numbers). Before that
+  date this fence required an explicit <span class="mono">--intel</span> flag that the weekly
+  brief's documented command never passed, so these rows were silently inert in the actual
+  weekly optimiser run — fixed after review found a start-weighted objective would otherwise
+  rank transferred/new-signing players on a stale, pre-transfer number this fence exists to
+  correct. <span class="mono">mult</span> is guardrailed to 0.5&times;&ndash;1.5&times; so one
+  line of narrative can never out-weigh a season of observed data; <span class="mono">set</span>
+  (start probability only) is an override, not a multiplier, because unavailability is closer
+  to binary than continuous.</p>
   <table><thead><tr><th>Player</th><th>Team</th><th>Field</th><th>Effect</th>
   <th>GWs</th><th>Confidence</th><th>Logged</th><th style="text-align:left">Why</th></tr></thead>
   <tbody>{adj_rows if adj_rows else '<tr><td colspan="8" style="text-align:center;color:var(--dim)">none logged</td></tr>'}</tbody></table>

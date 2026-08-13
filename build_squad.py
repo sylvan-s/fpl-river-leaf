@@ -10,6 +10,7 @@ player: it looks justified but cannot be reproduced.
     python3 build_squad.py --haaland       # allow Haaland
     python3 build_squad.py --gate 0.70     # loosen the availability gate
     python3 build_squad.py --season-starts # gate 2 on full-season starts, not last-16
+    python3 build_squad.py --no-intel      # disable ROLE_INTEL.md adjustments (ON by default since 13 Aug 2026)
 
 NOT a live tool. It reads the frozen prior-season snapshot, so from GW1 it should
 read player_gw from SQLite instead — see METHODOLOGY_ALTERNATIVES.md B6.
@@ -188,12 +189,18 @@ def f(x):
 # step function, for the GW10 comparison.
 USE_EMPIRICAL_DC = "--legacy-dc" not in sys.argv
 
-# Adjustments layer, 10 Aug 2026. OFF by default - pass --intel to apply the
-# `adjustments` fence in ROLE_INTEL.md. load() also accepts an explicit
-# `intel=True/False` override so a single process can build both pools for a
-# with-vs-without comparison (see intel_adjust.py --report and
-# optimise_squad.py --compare-intel) without relying on sys.argv twice.
-USE_INTEL = "--intel" in sys.argv
+# Adjustments layer, 10 Aug 2026. ON BY DEFAULT since 13 Aug 2026 - pass
+# --no-intel to disable. Flipped after finding the weekly brief's documented
+# command never passed --intel, so ROLE_INTEL.md's `set stp` overrides for
+# transferred/new-signing players (the exact case a start-weighted objective
+# would otherwise weight on a stale 2025/26 number - see
+# METHODOLOGY_ALTERNATIVES.md A0.5) were silently never applied in the real
+# weekly run, only in explicit --intel/--compare-intel comparisons. load()
+# also accepts an explicit `intel=True/False` override so a single process can
+# build both pools for a with-vs-without comparison (see intel_adjust.py
+# --report and optimise_squad.py --compare-intel) without relying on
+# sys.argv twice.
+USE_INTEL = "--no-intel" not in sys.argv
 
 GOAL   = {"GKP": 10, "DEF": 6, "MID": 5, "FWD": 4}
 ASSIST = 3
@@ -545,7 +552,7 @@ def main():
     print(f"gates: {MIN_MINUTES}+ mins · starts% basis: {basis} · "
           f">={gate:.0%} (XI) / {GATE_BENCH:.0%} (bench) "
           f"· £{BUDGET}m · max {MAX_PER_CLUB}/club" + ("" if allow_haaland else " · no Haaland")
-          + (" · INTEL ADJUSTMENTS APPLIED (--intel)" if USE_INTEL else ""))
+          + (" · INTEL ADJUSTMENTS APPLIED (default)" if USE_INTEL else " · INTEL OFF (--no-intel)"))
     print(f"formation {form[0]}-{form[1]}-{form[2]}   XI £{xs:.1f}m   "
           f"squad £{tot:.1f}m   bank £{BUDGET-tot:.1f}m\n")
     for r in sorted(xi, key=lambda x: (list(POS.values()).index(x["pos"]), -x["score"])):

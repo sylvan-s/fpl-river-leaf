@@ -912,6 +912,24 @@ non-players. **A0.2 is a precondition, not a parallel option:** a gate only need
 the ranking right near one threshold, whereas a multiplier propagates `stp` noise
 into every score.
 
+**A second precondition, found 13 Aug 2026 and now fixed.** Sylvan asked, before
+building this: pre-season, `stp` is a pure 2025/26 number (last-16-GW starts,
+or a full-season fallback) — for a transferred-in or newly-promoted player that
+is either stale or, for a genuine newcomer, literally zero. `ROLE_INTEL.md`'s
+`adjustments` fence can `set stp` for exactly these players and was already
+wired to the same field the objective would use — but it required an explicit
+`--intel` flag that the weekly brief's documented command never passed. So
+building `xp_gw` at that point would have multiplied xP by a number that is
+correct for incumbents and silently wrong for the specific players (transfers,
+promoted-club signings) where a start-weighted objective matters most, with no
+mechanism to un-freeze it as the season progressed. **Fixed 13 Aug 2026:**
+`--intel` is now applied by default in `build_squad.py` / `optimise_squad.py`
+/ `fixture_adjust.py` (`--no-intel` to opt out); see the roadmap table entry
+and `ROLE_INTEL.md`. This does not replace A0.2 — it only ensures the manually
+curated overrides that exist are actually live. A0.2's automatic blending
+toward real 2026/27 starts, as they accrue, is still needed before `stp` stops
+being frozen on last season for everyone WITHOUT a hand-entered override.
+
 **Unit discipline — this bit is load-bearing.** The change makes the objective
 expected points **per gameweek**, so every historic xP/90 figure in
 `TEAM_CHANGE_LOG.md` stops being comparable. Date the switch in the log.
@@ -1591,9 +1609,13 @@ NOW      ** A4: p_threshold recalibration ** — NOT gated. The data exists.
          0.42 xP/90 understated for the 39 players in the 0.80-1.00 band;
          the 1.30x band is unreachable and never fires.
 GW3      Price decision (B1). First calibration entries exist.
-GW5–6    Start-rate shrinkage (A0.2). Goalkeeper screen (A2). Bonus/BPS (A1).
+GW5–6    Start-rate shrinkage (A0.2). Goalkeeper screen (A2). Bonus/BPS (A1) —
+         DONE 12 Aug 2026, ahead of schedule.
          First calibration read.
-         Start-weighted objective (A0.5) behind a flag — needs A0.2 first.
+         Start-weighted objective (A0.5) behind a flag — needs A0.2. Its other
+         precondition, intel actually reaching `stp` by default, was fixed
+         13 Aug 2026 (see A0.5 section) — was silently off in the real weekly
+         run before that.
          Autosub bench value (A0.6) ONLY after A0.5 ships; before it, the
          term is not merely premature, it gives wrong answers.
 GW8      Club rotation index (A0.3) + manager-change register. EO if
