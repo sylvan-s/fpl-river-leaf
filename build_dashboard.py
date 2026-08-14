@@ -27,6 +27,8 @@ five panels build with non-empty data.
 """
 import importlib.util, json, math, os, sys, datetime as dt
 
+import scoring
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 SNAP = os.environ.get("FPL_SNAPSHOT") or os.path.join(HERE, "fpl_priors_2025_26_v2.json")
 OUT  = os.environ.get("FPL_DASH_OUT") or os.path.join(HERE, "FPL_DIAGNOSTICS.html")
@@ -64,11 +66,6 @@ _sq_spec = importlib.util.spec_from_file_location(
 _squad_state = importlib.util.module_from_spec(_sq_spec)
 _sq_spec.loader.exec_module(_squad_state)
 SQUAD = _squad_state.load().name_set
-
-_bs_spec = importlib.util.spec_from_file_location(
-    "bs_for_dash", os.path.join(HERE, "build_squad.py"))
-_bs = importlib.util.module_from_spec(_bs_spec)
-_bs_spec.loader.exec_module(_bs)
 
 FIXTURE_WINDOW_PATH = os.path.join(HERE, "fixture_window.json")
 
@@ -140,6 +137,15 @@ except FileNotFoundError:
 
 teams = {int(k): v for k, v in (snap.get("teams") or {}).items()}
 LAST16, LAST16_META = load_last16()
+# xbonus90 (architecture review candidate #1). This pool didn't compute bonus
+# at all before — expected_points()/expected_points_adj() below were two of
+# the four independently-drifted copies of the scoring formula, and both had
+# silently dropped the xbonus90 term because there was no bonus data on
+# these rows to add. scoring.bonus_shrinkage() is the same computation
+# build_squad.py's load() does; MIN_MINS here (450) is this page's own,
+# broader gate, not build_squad's 900.
+XBONUS_MAP, _XBONUS_K = scoring.bonus_shrinkage(snap.get("players") or {}, teams,
+                                                 min_minutes=MIN_MINS)
 rows = []
 for pid, p in (snap.get("players") or {}).items():
     mins = p.get("minutes", 0) or 0
@@ -171,10 +177,11 @@ for pid, p in (snap.get("players") or {}).items():
         xgc90=f(p.get("expected_goals_conceded"))/n90,
         cs=p.get("clean_sheets", 0) or 0,
         bps90=(p.get("bps") or 0)/n90,
-        saves90=(p.get("saves") or 0)/n90,
+        sv90=(p.get("saves") or 0)/n90,
         yellows=p.get("yellow_cards") or 0,
         own=f(p.get("selected_by_percent")),
         squad=name in SQUAD,
+        xbonus90=XBONUS_MAP.get(pid, 0.0),
     ))
 
 CBIT_HIT_THRESH = 10          # fixed across ALL positions, deliberately - see loader docstring
@@ -282,60 +289,17 @@ def blank_risk(r):
     import math
     p_start = min(max(r["stp"], 0.0), 0.98)
     p_cs = math.exp(-max(r["xgc90"], 0.05)) if r["pos"] in ("DEF", "GKP") else 0.0
-    p_dc = p_threshold(r["cbit90"], CBIT_THRESH, key=f'{r["name"]}|{r["team"]}')
+    p_dc = scoring.p_threshold(r["cbit90"], CBIT_THRESH, key=f'{r["name"]}|{r["team"]}')
     p_ret = 1.0 - math.exp(-max(r["xgi90"], 0.0))
     played_blank = (1 - p_cs) * (1 - p_dc) * (1 - p_ret)
     return round(100.0 * ((1 - p_start) + p_start * played_blank), 1)
 
 
-
-# ---- expected points, identical to build_squad.expected_points ---------------
-GOAL_PTS = {"GKP": 10, "DEF": 6, "MID": 5, "FWD": 4}
-ASSIST_PTS = 3
-CS_PTS = {"GKP": 4, "DEF": 4, "MID": 1, "FWD": 0}
-DC_PTS = 2
-DC_THRESH_POS = {"GKP": 99.0, "DEF": 10.0, "MID": 12.0, "FWD": 12.0}
-
-
-# Roadmap A4. This file used to hold a FOURTH copy of the step function, so the
-# published dashboard kept showing the superseded estimator after build_squad.py
-# had moved on. Delegate instead — one implementation, no drift.
-def p_threshold(mean, thresh, key=None):
-    return _bs.p_threshold(mean, thresh, key=key)
-
-
-def expected_points(r):
-    pos = r["pos"]
-    dc = r["cbit90"] if pos == "DEF" else r["cbirt90"]
-    p_cs = math.exp(-max(r["xgc90"], 0.05)) if CS_PTS[pos] else 0.0
-    xp = 2 + GOAL_PTS[pos]*r["xg90"] + ASSIST_PTS*r["xa90"] + CS_PTS[pos]*p_cs
-    xp += DC_PTS * p_threshold(dc, DC_THRESH_POS[pos],
-                               key=f'{r["name"]}|{r["team"]}')
-    if pos in ("GKP", "DEF"): xp -= r["xgc90"]/2
-    if pos == "GKP":          xp += r["saves90"]/3
-    return round(xp, 2)
-
-
-def expected_points_adj(r, att_x, def_x):
-    """Same scoring table as expected_points(), inputs scaled by opponent
-    strength. Mirrors fixture_adjust.adjust() term-for-term so the two files
-    can never quietly disagree about what "fixture-adjusted" means."""
-    pos = r["pos"]
-    xg = r["xg90"] * att_x
-    xa = r["xa90"] * att_x
-    xgc = r["xgc90"] * def_x
-    p_cs = math.exp(-max(xgc, 0.05)) if CS_PTS[pos] else 0.0
-    dc = r["cbit90"] if pos == "DEF" else r["cbirt90"]
-    saves = r["saves90"]
-    if SCALE_WORKLOAD:
-        dc *= def_x
-        saves *= def_x
-    xp = 2 + GOAL_PTS[pos]*xg + ASSIST_PTS*xa + CS_PTS[pos]*p_cs
-    xp += DC_PTS * p_threshold(dc, DC_THRESH_POS[pos],
-                               key=f'{r["name"]}|{r["team"]}')
-    if pos in ("GKP", "DEF"): xp -= xgc/2
-    if pos == "GKP":          xp += saves/3
-    return xp
+# expected_points / expected_points_adj / p_threshold used to be a THIRD and
+# FOURTH hand-written copy of the scoring formula here (architecture review
+# candidate #1) — both missing the xbonus90 term added to build_squad.py on
+# 12 Aug, so this page's xP silently disagreed with squad.html's. Delegating
+# to scoring.py fixes that structurally: one implementation, both terms.
 
 
 def archetype_att(r, med_xgi):
@@ -385,11 +349,12 @@ for r in F_: r["arch"] = archetype_att(r, med_xgi_f)
 # GOALKEEPERS HAVE NO ARCHETYPE. A2 on the roadmap is still undefined, and
 # inventing one here to fill a column would be worse than an honest blank.
 for r in G: r["arch"] = "—"
-for r in rows: r["xp"] = expected_points(r)
+for r in rows: r["xp"] = round(scoring.expected_points(r), 2)
 for r in rows: r["blank"] = blank_risk(r)
 for r in rows:
     att_x, def_x, games = FIXTURE_MAP.get(r["team"], (1.0, 1.0, 4))
-    r["xp4_adj"] = round(expected_points_adj(r, att_x, def_x) * games, 2)
+    r["xp4_adj"] = round(scoring.expected_points_scaled(
+        r, att_x, def_x, scale_workload=SCALE_WORKLOAD) * games, 2)
 
 # ---------------------------------------------------------------- stats
 stats = {
@@ -403,7 +368,7 @@ stats = {
     "corr_cbit_xgc": corr([r["cbit90"] for r in D], [r["xgc90"] for r in D]),
 }
 Gk = [r for r in G if r["mins"] >= 900]
-stats["corr_saves_cs"] = corr([r["saves90"] for r in Gk], [float(r["cs"]) for r in Gk])
+stats["corr_saves_cs"] = corr([r["sv90"] for r in Gk], [float(r["cs"]) for r in Gk])
 stats["gk_n"] = len(Gk)
 
 # shrinkage diagnostics - before and after the dispersion fix
@@ -425,7 +390,7 @@ for label, pool, metric, disp in (
 
 med_xgi_mid = sorted(r["xgi90"] for r in M)[len(M)//2]
 for r in rows:
-    for k in ("n90","stp","stp_season","xgi90","xg90","xa90","delta","cbit90","cbirt90","xgc90","bps90","saves90","own","price"):
+    for k in ("n90","stp","stp_season","xgi90","xg90","xa90","delta","cbit90","cbirt90","xgc90","bps90","sv90","own","price"):
         r[k] = round(r[k], 3)
 
 n_last16 = sum(1 for r in rows if r["stp_src"] == "last16")

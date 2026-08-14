@@ -43,6 +43,8 @@ already been bitten by twice.
 """
 import importlib.util, os, sys
 
+import scoring
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 spec = importlib.util.spec_from_file_location("bs", os.path.join(HERE, "build_squad.py"))
 bs = importlib.util.module_from_spec(spec)
@@ -131,51 +133,22 @@ def check_stale(current_gw):
     return stamp["generated_for_gw"] != current_gw
 
 
-def adjust(pool, fixtures=None, scale_workload=SCALE_WORKLOAD):
+def adjust(pool, fixtures=None, scale_workload=SCALE_WORKLOAD, empirical=None):
     """Add xp_adj (per 90, opponent-adjusted) and xp_adj_win (over the window).
 
-    Applies the SAME scoring table as build_squad.expected_points; only the
-    inputs are scaled.
+    Applies the SAME scoring table as scoring.expected_points; only the
+    inputs are scaled — scoring.expected_points_scaled() is that formula
+    (architecture review candidate #1: this function used to reassemble the
+    scoring table term-by-term itself, a second hand-written copy of the
+    same formula build_squad.py and build_dashboard.py each also carried).
     """
-    import math
     if fixtures is None:
         fixtures, _prov, _stamp = active_window()
+    use_empirical_dc = bs.USE_EMPIRICAL_DC if empirical is None else empirical
     for r in pool:
         att_x, def_x, games = fixtures.get(r["team"], (1.0, 1.0, HORIZON))
-        pos = r["pos"]
-
-        xg = r["xg90"] * att_x            # opponent defence scales your output
-        xa = r["xa90"] * att_x
-        xgc = r["xgc90"] * def_x          # opponent attack scales your concessions
-        p_cs = math.exp(-max(xgc, 0.05)) if bs.CS[pos] else 0.0
-
-        dc_metric = r["cbit90"] if pos == "DEF" else r["cbirt90"]
-        saves = r["sv90"]
-        if scale_workload:
-            dc_metric *= def_x            # tougher opponent -> more defensive work
-            saves *= def_x                # and more shots to save
-
-        xp = bs.APPEARANCE
-        xp += bs.GOAL[pos] * xg + bs.ASSIST * xa
-        xp += bs.CS[pos] * p_cs
-        # Roadmap A4: the key must be passed, or this path silently keeps the
-        # superseded step function — which is exactly what happened on the
-        # first build, because a second copy of the scoring kept the old
-        # behaviour while build_squad.py had already moved on.
-        xp += bs.DC_PTS * bs.p_threshold(dc_metric, bs.DC_THRESH_POS[pos],
-                                         key=f'{r["name"]}|{r["team"]}')
-        if pos in ("GKP", "DEF"):
-            xp -= xgc / bs.GC_PER_MINUS
-        if pos == "GKP":
-            xp += saves / bs.SAVES_PER_POINT
-        # xbonus90 (roadmap A1, added 12 Aug 2026) — carried through UNSCALED.
-        # Bonus plausibly does have a fixture channel (an easier match likely
-        # means more bonus-worthy performances, same logic as att_x for
-        # goals), but there is no established, sourced way to scale it yet —
-        # inventing one here would be exactly the kind of silent, untested
-        # coefficient this project has already had to correct twice. Flat
-        # pass-through is the honest choice until that channel is designed.
-        xp += r.get("xbonus90", 0.0)
+        xp = scoring.expected_points_scaled(
+            r, att_x, def_x, scale_workload=scale_workload, empirical=use_empirical_dc)
 
         r["att_x"], r["def_x"], r["games"] = att_x, def_x, games
         r["xp_flat"] = r["score"]
@@ -209,14 +182,21 @@ def main():
         print(f"  best for defenders: {best_def[0]} {best_def[1][1]:.2f}x conceded")
         return
 
+    # This file parses its OWN argv now (architecture review candidate #3)
+    # rather than relying on build_squad's ambient USE_INTEL/USE_EMPIRICAL_DC
+    # defaults — those are only for callers that don't have an opinion.
+    use_intel = "--no-intel" not in sys.argv
+    use_empirical_dc = "--legacy-dc" not in sys.argv
+
     _fx, prov, _stamp = active_window()
     print(f"window source: {prov}\n")
-    if bs.USE_INTEL:
+    if use_intel:
         print("INTEL: ROLE_INTEL.md `adjustments` fence is ACTIVE (default since "
               "13 Aug 2026 - pass --no-intel to disable)\n")
     else:
         print("INTEL: DISABLED (--no-intel)\n")
-    pool = adjust(bs.load())
+    pool = adjust(bs.load(intel=use_intel, empirical=use_empirical_dc),
+                  empirical=use_empirical_dc)
     only_squad = "--squad" in sys.argv
     # From squad.json via squad_state.py. This copy was the one that went stale
     # on 9 Aug 2026 — it listed a player transferred out two changes earlier,

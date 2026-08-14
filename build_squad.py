@@ -50,6 +50,9 @@ comparison. Re-derive from real 2026/27 BPS data as soon as GW1-5 exist.
 import json, math, os, sys
 import importlib.util as _il
 
+import scoring
+import constants
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 SNAP = os.path.join(HERE, "fpl_priors_2025_26_v2.json")
 LAST16_PATH = os.path.join(HERE, "last16_starts.json")
@@ -67,9 +70,13 @@ _ia_spec.loader.exec_module(ia)
 MIN_MINUTES = 900       # gate 1 - below this a per-90 rate is noise
 GATE_XI     = 0.75      # gate 2 - start rate for anyone in the XI
 GATE_BENCH  = 0.60      # gate 2 - relaxed for fodder, who still must PLAY
-BUDGET      = 100.0
-SQUAD_SHAPE = {1: 2, 2: 5, 3: 5, 4: 3}
-MAX_PER_CLUB = 3
+
+# Squad shape (architecture review candidate #4) — was hand-duplicated here
+# with int position keys (1-4) and again in optimise_squad.py with string
+# keys ("GKP" etc). One representation now, in constants.py.
+BUDGET = constants.BUDGET
+SQUAD_SHAPE = constants.SQUAD_SHAPE
+MAX_PER_CLUB = constants.MAX_PER_CLUB
 
 
 INTEL_PATH = os.path.join(HERE, "ROLE_INTEL.md")
@@ -185,241 +192,46 @@ def f(x):
 # archetypes remain the right tool for READING a screen; xP is the right tool
 # for CHOOSING between positions under a budget.
 
-# Roadmap A4. Set False (or pass --legacy-dc) to score on the superseded
-# step function, for the GW10 comparison.
-USE_EMPIRICAL_DC = "--legacy-dc" not in sys.argv
+# Defaults for load()'s optional overrides (architecture review candidate
+# #3). NOT read from sys.argv at import time any more — build_squad.py is
+# loaded dynamically by six other scripts, so an ambient read here picked up
+# whichever process happened to import it, not a real per-call choice (see
+# build_squad_page.py's 11 Aug 2026 bug, fixed at the time by passing
+# intel=True explicitly at that one call site rather than by removing the
+# hazard). Every script now parses its OWN CLI flags in its OWN main() and
+# passes them to load() explicitly; these four are just the defaults a
+# caller gets when it doesn't override. Every default here matches the
+# pipeline's long-standing behaviour — all ON.
+USE_EMPIRICAL_DC = True   # roadmap A4. Pass --legacy-dc for the superseded step function.
+USE_INTEL = True          # ROLE_INTEL.md adjustments. Pass --no-intel to disable.
+USE_BONUS = True          # roadmap A1 (xbonus90). Pass --no-bonus to rebuild without it.
+USE_CONTAM_FILTER = True  # Tier-1 contaminated-prior exclusion. Pass --allow-contaminated to include them.
 
-# Adjustments layer, 10 Aug 2026. ON BY DEFAULT since 13 Aug 2026 - pass
-# --no-intel to disable. Flipped after finding the weekly brief's documented
-# command never passed --intel, so ROLE_INTEL.md's `set stp` overrides for
-# transferred/new-signing players (the exact case a start-weighted objective
-# would otherwise weight on a stale 2025/26 number - see
-# METHODOLOGY_ALTERNATIVES.md A0.5) were silently never applied in the real
-# weekly run, only in explicit --intel/--compare-intel comparisons. load()
-# also accepts an explicit `intel=True/False` override so a single process can
-# build both pools for a with-vs-without comparison (see intel_adjust.py
-# --report and optimise_squad.py --compare-intel) without relying on
-# sys.argv twice.
-USE_INTEL = "--no-intel" not in sys.argv
-
-GOAL   = {"GKP": 10, "DEF": 6, "MID": 5, "FWD": 4}
-ASSIST = 3
-CS     = {"GKP": 4, "DEF": 4, "MID": 1, "FWD": 0}
-DC_PTS = 2                       # defensive contribution, capped
-DC_THRESH_POS = {"GKP": 99.0, "DEF": 10.0, "MID": 12.0, "FWD": 12.0}
-APPEARANCE = 2                   # 60+ minutes
-SAVES_PER_POINT = 3
-GC_PER_MINUS = 2                 # -1 per 2 goals conceded (GKP and DEF only)
-
-
-# --- Roadmap A4: empirical hit rates, built 9 Aug 2026 ----------------------
-# Loaded lazily and tolerantly: this file must still run before dc_hit_rates.json
-# exists, or the project cannot bootstrap. A missing file falls back to the step
-# function and SAYS SO on first use — silence would hide which estimator is live.
-_DC_RATES, _DC_WARNED = None, False
-
-
-_DC_DOC, _PRIOR_CACHE = None, {}
-
-
-def _dc_rates():
-    global _DC_RATES, _DC_DOC
-    if _DC_RATES is None:
-        try:
-            _DC_DOC = json.load(open(os.path.join(HERE, "dc_hit_rates.json"),
-                                     encoding="utf-8"))
-            _DC_RATES = _DC_DOC["players"]
-        except Exception:
-            _DC_DOC, _DC_RATES = {}, {}
-    return _DC_RATES
-
-
-def _prior_at(pos, eff):
-    """Positional mean hit rate AT this effective threshold, and shrinkage k.
-
-    Recomputed per threshold because a fixture-scaled line moves the whole
-    population, not just one player — shrinking toward a fixed prior would drag
-    every scaled estimate back toward the unscaled world.
-    """
-    ck = (pos, round(eff, 3))
-    if ck not in _PRIOR_CACHE:
-        rs = [sum(1 for x in r["counts"] if x >= eff) / len(r["counts"])
-              for r in _dc_rates().values()
-              if r["pos"] == pos and r["apps"] >= 20]
-        k = (_DC_DOC.get("priors", {}).get(pos, {}) or {}).get("k_pseudo_matches", 5.0)
-        _PRIOR_CACHE[ck] = ((sum(rs) / len(rs)) if rs else 0.3, k)
-    return _PRIOR_CACHE[ck]
-
-
-def p_threshold_legacy(mean, thresh):
-    """SUPERSEDED by the empirical hit rate. Kept for the GW10 comparison only.
-
-    Measured against 2025/26 per-match counts this was wrong three ways:
-    the 0.80-1.00x band assumed 0.20 against an actual 0.41 (0.42 xP/90 over
-    39 of 160 qualifying players); the 1.30x band was unreachable and never
-    fired; and everyone above the line scored an identical 0.55 while real
-    hit rates inside that band ran 52%-70%. See METHODOLOGY_ALTERNATIVES A4.
-    """
-    if mean >= thresh * 1.30: return 0.75
-    if mean >= thresh:        return 0.55
-    if mean >= thresh * 0.80: return 0.20
-    return 0.05
-
-
-def p_threshold(mean, thresh, key=None):
-    """P(clearing the DC line in a given match).
-
-    Prefers the player's OBSERVED per-match hit rate, shrunk toward the
-    positional prior. The award is a per-match threshold, so the hit rate is
-    the quantity itself rather than an estimate of it — no distribution assumed,
-    no bands, no constants. Falls back to the step function only where the
-    player is absent from the archive.
-    """
-    global _DC_WARNED
-    if not USE_EMPIRICAL_DC:
-        return p_threshold_legacy(mean, thresh)
-    rec = _dc_rates().get(key or "")
-    if rec:
-        # `mean` arrives already fixture-scaled by fixture_adjust; recover the
-        # scale and move the THRESHOLD by the inverse, so P(X >= thresh/scale).
-        scale = (mean / rec["mean_dc"]) if rec.get("mean_dc") else 1.0
-        scale = min(max(scale, 0.5), 2.0)          # guard against a bad ratio
-        eff = thresh / scale
-        m, k = _prior_at(rec["pos"], eff)
-        hits = sum(1 for x in rec["counts"] if x >= eff)
-        return (hits + m * k) / (rec["apps"] + k)
-    if not _DC_WARNED and not _dc_rates():
-        _DC_WARNED = True
-        print("  NOTE: dc_hit_rates.json not found — using the superseded "
-              "p_threshold step function. Run build_dc_rates.py.", file=sys.stderr)
-    return p_threshold_legacy(mean, thresh)
-
-
-# ---- xbonus90 (roadmap A1, added 12 Aug 2026) -------------------------------
-#
-# Bonus points are already resolved by FPL into a per-player, per-match award
-# (`bonus`), so this is a rate-shrinkage problem like xG90/CBIT90/etc., not a
-# from-scratch simulation of the BPS ranking. Mirrors
-# fpl_research_mcp._estimate_k (design D3) as a LOCAL COPY rather than an
-# import — same pattern build_dashboard.py already uses for the same reason:
-# this file has no other dependency on the MCP module, and importing it would
-# pull in its whole server/tool surface for ~15 lines of arithmetic.
-USE_BONUS = "--no-bonus" not in sys.argv
-
-BONUS_DISPERSION = 1.0        # ASSUMED count-like (bonus is bounded 0-3/match).
-                               # NOT derived from measured match-to-match
-                               # variance — flagged, not trusted, exactly the
-                               # kind of unverified assumption that caused the
-                               # xGI dispersion bug (see METHODOLOGY_ALTERNATIVES.md).
-
-# 2026/27 Bonus Points System change, PL's own "What's new" article (20 Jul
-# 2026): CBI now feeds BPS at 1-per-3 (was 1-per-2) — worse for CBI-heavy
-# defenders. The -1 BPS tackled-penalty is removed — better for dribble-exposed
-# MID/FWD, who took that penalty most. DIRECTION is sourced. MAGNITUDE IS NOT —
-# there is no published number, and this file lacks the full BPS component
-# breakdown needed to recompute it exactly. Same standard as the Rice `stp`
-# override in ROLE_INTEL.md: a small, capped, clearly-labelled nudge, not a
-# fabricated precise coefficient. RE-DERIVE FROM REAL 2026/27 BPS DATA (GW1-5)
-# AND DELETE THIS BLOCK once it can be measured directly.
-CBI_HAIRCUT = 0.95             # UNSOURCED magnitude, bounded
-TACKLE_BUMP = 1.05             # UNSOURCED magnitude, bounded
-CBI_HEAVY_THRESH = 6.0         # CBI(not CBIT)/90 above which a defender counts
-                               # as "CBI-heavy" for the haircut
-
-
-def _estimate_k_bonus(samples):
-    """Poisson-Gamma method of moments, mirrors fpl_research_mcp._estimate_k."""
-    pts = [(r, n) for r, n in samples if n >= 3 and r >= 0]
-    if len(pts) < 20:
-        return 10.0
-    rates = [r for r, _ in pts]
-    m = sum(rates) / len(rates)
-    if m <= 0:
-        return 10.0
-    total_var = sum((r - m) ** 2 for r in rates) / (len(rates) - 1)
-    sampling_var = BONUS_DISPERSION * (sum(r / n for r, n in pts) / len(pts))
-    between_var = total_var - sampling_var
-    if between_var <= 1e-9:
-        return 40.0
-    return max(1.0, min(m / between_var, 60.0))
-
-
-def _bonus_shrinkage(players, teams):
-    """{pid: xbonus90} for every 900+-minute player.
-
-    shrunk = (n90*raw + k*baseline) / (n90+k), baseline = team x position
-    mean bonus90, falling back to position mean where the team+pos group is
-    thin (<3 players). This is the D2 ladder's TAIL only, without the "own
-    prior season" head — for this file the prior season IS the only season
-    on record (it reads nothing but the frozen snapshot), so there is no
-    separate prior to fall back FROM.
-    """
-    rows = []
-    for pid, p in players.items():
-        m = p.get("minutes", 0) or 0
-        if m < MIN_MINUTES:
-            continue
-        n90 = m / 90.0
-        cbi = p.get("clearances_blocks_interceptions", 0) or 0
-        rows.append(dict(
-            pid=pid, pos=POS[p["element_type"]], team=teams.get(p.get("team"), "?"),
-            n90=n90, raw=(p.get("bonus", 0) or 0) / n90, cbi90=cbi / n90))
-
-    k = _estimate_k_bonus([(r["raw"], r["n90"]) for r in rows])
-    if k in (10.0, 40.0, 60.0):
-        print(f"  NOTE: xbonus90 shrinkage k={k:.1f} is a fallback/clamp, not "
-              f"derived from variance — treat xbonus90 as unvalidated until "
-              f"this is investigated.", file=sys.stderr)
-
-    def _mean(sel):
-        vals = [x["raw"] for x in sel]
-        return sum(vals) / len(vals) if vals else None
-
-    out = {}
-    for r in rows:
-        same_team_pos = [x for x in rows if x["pos"] == r["pos"] and x["team"] == r["team"]]
-        base = _mean(same_team_pos) if len(same_team_pos) >= 3 else None
-        if base is None:
-            base = _mean([x for x in rows if x["pos"] == r["pos"]]) or 0.0
-        shrunk = (r["n90"] * r["raw"] + k * base) / (r["n90"] + k)
-        mult = 1.0
-        if r["pos"] == "DEF" and r["cbi90"] >= CBI_HEAVY_THRESH:
-            mult = CBI_HAIRCUT
-        elif r["pos"] in ("MID", "FWD"):
-            mult = TACKLE_BUMP
-        out[r["pid"]] = shrunk * mult
-    return out, k
-
-
-def expected_points(r):
-    """Expected FPL points per 90. Every coefficient is a rule, not a choice."""
-    pos = r["pos"]
-    dc_metric = r["cbit90"] if pos == "DEF" else r["cbirt90"]
-    xp = APPEARANCE
-    xp += GOAL[pos] * r["xg90"] + ASSIST * r["xa90"]
-    xp += CS[pos] * r["p_cs"]
-    xp += DC_PTS * p_threshold(dc_metric, DC_THRESH_POS[pos],
-                           key=f'{r["name"]}|{r["team"]}')
-    if pos in ("GKP", "DEF"):
-        xp -= r["xgc90"] / GC_PER_MINUS
-    if pos == "GKP":
-        xp += r["sv90"] / SAVES_PER_POINT
-    # Bonus is already in point units — no coefficient, unlike goals/saves.
-    xp += r.get("xbonus90", 0.0)
-    return xp
+# Scoring table, the DC-threshold estimator, and bonus shrinkage all moved to
+# scoring.py (architecture review candidate #1) — see that module's
+# docstring for the drift bug this fixed. Re-exported here so any caller
+# still doing bs.GOAL / bs.expected_points / bs.p_threshold keeps working;
+# the implementation lives in scoring.py, this is not a second copy of it.
+GOAL, ASSIST, CS = scoring.GOAL, scoring.ASSIST, scoring.CS
+DC_PTS, DC_THRESH_POS = scoring.DC_PTS, scoring.DC_THRESH_POS
+APPEARANCE = scoring.APPEARANCE
+SAVES_PER_POINT, GC_PER_MINUS = scoring.SAVES_PER_POINT, scoring.GC_PER_MINUS
+p_threshold = scoring.p_threshold
+p_threshold_legacy = scoring.p_threshold_legacy
+expected_points = scoring.expected_points
+_bonus_shrinkage = scoring.bonus_shrinkage
 
 
 # delta is NOT in the xP model - it is a discount signal for spotting underpriced
 # players, not a component of expected points. Kept separate on purpose.
 
 
-USE_CONTAM_FILTER = "--allow-contaminated" not in sys.argv
-
-
-def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None):
+def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
+         empirical=None):
     use_intel = USE_INTEL if intel is None else intel
     use_bonus = USE_BONUS if bonus is None else bonus
     use_contam_filter = USE_CONTAM_FILTER if exclude_contaminated is None else exclude_contaminated
+    use_empirical_dc = USE_EMPIRICAL_DC if empirical is None else empirical
     snap = json.load(open(SNAP, encoding="utf-8"))
     teams = {int(k): v for k, v in snap["teams"].items()}
     last16 = {} if season_starts else _load_last16()
@@ -472,7 +284,7 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None)
                 matched.add((e["player"], e["team"]))
         r["p_cs"] = math.exp(-max(r["xgc90"], 0.05)) if CS[r["pos"]] else 0.0
         r["ok"] = r["name"] not in UNAVAILABLE
-        r["score"] = expected_points(r)
+        r["score"] = scoring.expected_points(r, empirical=use_empirical_dc)
         out.append(r)
     if use_intel:
         # UNMATCHED IS A BUG, NOT A NO-OP. A typo'd name/team in the fence
@@ -534,10 +346,19 @@ def build(pool, form, allow_haaland, gate_xi):
 def main():
     allow_haaland = "--haaland" in sys.argv
     season_starts = "--season-starts" in sys.argv
+    # Each script parses its OWN argv now (architecture review candidate #3)
+    # rather than relying on the USE_INTEL/USE_BONUS/USE_CONTAM_FILTER/
+    # USE_EMPIRICAL_DC ambient defaults above — those are for callers that
+    # import load() without an opinion, not for this file's own CLI.
+    use_intel = "--no-intel" not in sys.argv
+    use_bonus = "--no-bonus" not in sys.argv
+    use_contam_filter = "--allow-contaminated" not in sys.argv
+    use_empirical_dc = "--legacy-dc" not in sys.argv
     gate = GATE_XI
     if "--gate" in sys.argv:
         gate = float(sys.argv[sys.argv.index("--gate") + 1])
-    pool = load(season_starts=season_starts)
+    pool = load(season_starts=season_starts, intel=use_intel, bonus=use_bonus,
+                exclude_contaminated=use_contam_filter, empirical=use_empirical_dc)
     best = None
     for form in ((3,4,3),(3,5,2),(4,4,2),(4,3,3),(5,3,2),(4,5,1),(5,4,1)):
         ok, xi, sq, xs, tot = build(pool, form, allow_haaland, gate)
@@ -552,7 +373,7 @@ def main():
     print(f"gates: {MIN_MINUTES}+ mins · starts% basis: {basis} · "
           f">={gate:.0%} (XI) / {GATE_BENCH:.0%} (bench) "
           f"· £{BUDGET}m · max {MAX_PER_CLUB}/club" + ("" if allow_haaland else " · no Haaland")
-          + (" · INTEL ADJUSTMENTS APPLIED (default)" if USE_INTEL else " · INTEL OFF (--no-intel)"))
+          + (" · INTEL ADJUSTMENTS APPLIED (default)" if use_intel else " · INTEL OFF (--no-intel)"))
     print(f"formation {form[0]}-{form[1]}-{form[2]}   XI £{xs:.1f}m   "
           f"squad £{tot:.1f}m   bank £{BUDGET-tot:.1f}m\n")
     for r in sorted(xi, key=lambda x: (list(POS.values()).index(x["pos"]), -x["score"])):

@@ -88,6 +88,8 @@ decision, and the model has no view on which starter is likeliest to be dropped.
 """
 import importlib.util, json, math, os, sys
 
+import constants
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 spec = importlib.util.spec_from_file_location("bs", os.path.join(HERE, "build_squad.py"))
 bs = importlib.util.module_from_spec(spec)
@@ -98,8 +100,12 @@ try:
 except ImportError:
     sys.exit("PuLP not installed.  pip install pulp")
 
-BUDGET, SQUAD, XI_SIZE, MAX_CLUB = 100.0, {"GKP": 2, "DEF": 5, "MID": 5, "FWD": 3}, 11, 3
-FORMATION = {"GKP": (1, 1), "DEF": (3, 5), "MID": (2, 5), "FWD": (1, 3)}
+# Squad shape (architecture review candidate #4) — was hand-duplicated here
+# with string position keys and again in build_squad.py with int keys. One
+# representation now, in constants.py.
+BUDGET, SQUAD, XI_SIZE, MAX_CLUB = (
+    constants.BUDGET, constants.SQUAD_SHAPE, constants.XI_SIZE, constants.MAX_PER_CLUB)
+FORMATION = constants.FORMATION
 HIT_COST = 4                     # points per transfer beyond the free allowance
 
 # The live squad, from squad.json via squad_state.py - the SINGLE source of
@@ -373,8 +379,13 @@ def main():
                       "--fixtures" in sys.argv, n_transfers)
         return
 
-    pool = bs.load(season_starts="--season-starts" in sys.argv)
-    if bs.USE_INTEL:
+    # Parses its own argv now (architecture review candidate #3) rather than
+    # relying on build_squad's ambient USE_INTEL default — this file IS the
+    # entry point, so this was already correct in practice, but an explicit
+    # local variable is the real fix, not a coincidence of shared argv.
+    use_intel = "--no-intel" not in sys.argv
+    pool = bs.load(season_starts="--season-starts" in sys.argv, intel=use_intel)
+    if use_intel:
         print("INTEL: ROLE_INTEL.md `adjustments` fence is ACTIVE (default since "
               "13 Aug 2026 - pass --no-intel to disable)\n")
     else:
