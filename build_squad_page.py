@@ -24,7 +24,23 @@ script is another way for the page to render completely blank.
 """
 import importlib.util, json, os, re, datetime as dt
 
+import scoring
+
 HERE = os.path.dirname(os.path.abspath(__file__))
+
+# The six scoring routes shown on the "where the points come from" chart
+# (ADR 0001), in the order they render: (scoring.py breakdown key, display
+# label, palette key from the shared chart colours below). Defensive
+# Contribution is NET of the goals-conceded penalty for GKP/DEF — see
+# scoring.expected_points_scaled_breakdown()'s docstring.
+ROUTE_CATEGORIES = [
+    ("appearance", "Appearance", "dim"),
+    ("goal_involvement", "Goal Involvement", "a"),
+    ("clean_sheets", "Clean Sheets", "c"),
+    ("defensive_contribution", "Defensive Contribution", "e"),
+    ("saves", "Saves", "b"),
+    ("bonus", "Bonus", "d"),
+]
 
 
 def _load(mod, fn):
@@ -170,6 +186,33 @@ def build():
     # --- headline numbers -------------------------------------------------
     xi90 = sum(p["score"] for p in declared_xi)
     xigw = sum(p["stp"] * p["score"] for p in declared_xi)
+
+    # --- scoring-route composition (ADR 0001) ------------------------------
+    # Start-weighted per player BEFORE summing, matching xigw's own
+    # construction (stp * score) rather than weighting the total afterwards —
+    # stp multiplies linearly, so stp*score == sum_category(stp*category_term)
+    # and the six numbers below reconcile to xigw exactly, not approximately.
+    # att_x/def_x/scale_workload/empirical are the SAME values fa.adjust()
+    # already used to produce p["score"] (== p["xp_adj"]) for this player, so
+    # this is a re-decomposition of that number, not an independent estimate.
+    route_totals = {k: 0.0 for k, _, _ in ROUTE_CATEGORIES}
+    for p in declared_xi:
+        terms = scoring.expected_points_scaled_breakdown(
+            p, p["att_x"], p["def_x"], scale_workload=fa.SCALE_WORKLOAD,
+            empirical=bs.USE_EMPIRICAL_DC)
+        for k in route_totals:
+            route_totals[k] += p["stp"] * terms[k]
+    route_sum = sum(route_totals.values())
+    # Fail loudly, not silently — DASHBOARD_PLAN.md's page-3 rule, applied
+    # here too. If this drifts, scoring.py's breakdown has fallen out of sync
+    # with expected_points_scaled() and the chart would be showing routes
+    # that don't actually add up to the number printed above it.
+    assert abs(route_sum - xigw) < 1e-6, (
+        f"route composition ({route_sum:.4f}) does not reconcile with XI xP/GW "
+        f"({xigw:.4f}) — see docs/adr/0001-xi-scoring-route-composition-chart.md")
+    bonus_k = declared_xi[0].get("bonus_k") if declared_xi else None
+    bonus_unvalidated = bonus_k in scoring.BONUS_FALLBACK_KS
+
     bench_pts, bench_rows, blank_dist = sz.bench_value(declared_xi, declared_bench)
     exp_blanks = sum(j * q for j, q in enumerate(blank_dist))
     days = (DEADLINE - dt.datetime.now(dt.timezone.utc)).total_seconds() / 86400
@@ -363,6 +406,81 @@ def build():
   <ul style="margin:8px 0 0 18px;padding:0">{checklist_html}</ul></div>
 </div>"""
 
+    # --- "where the points come from" chart (ADR 0001) ---------------------
+    # The one inline script on this page, deliberately — see the module
+    # docstring. Everything else here is server-rendered HTML.
+    route_payload = json.dumps({
+        "labels": [label for _, label, _ in ROUTE_CATEGORIES],
+        "values": [round(route_totals[k], 4) for k, _, _ in ROUTE_CATEGORIES],
+        "colors": [pal for _, _, pal in ROUTE_CATEGORIES],
+        "bonusUnvalidated": bonus_unvalidated,
+        "total": round(xigw, 4),
+    })
+    bonus_note = (f"""<div class="find bad"><b>Bonus is flagged, not just plotted.</b>
+      This build's bonus shrinkage constant (k={bonus_k:.1f}) is one of scoring.py's
+      fallback/clamp values, not one fitted from observed variance — the code's own
+      comment says to treat <span class="mono">xbonus90</span> as unvalidated until
+      investigated. The Bonus segment below is dashed for exactly that reason: it is
+      a real number, not a trusted one.</div>"""
+                  if bonus_unvalidated else
+                  f"""<div class="find ok">Bonus shrinkage constant this build:
+      k={bonus_k:.1f}, fitted from observed variance rather than a fallback/clamp
+      value — no flag needed on the segment below.</div>""") if bonus_k is not None else ""
+    route_chart_html = f"""
+<div class="panel">
+  <h2>Where the points come from</h2>
+  <p class="tests">A human-in-the-loop risk read, not an optimiser constraint —
+  see <span class="mono">docs/adr/0001-xi-scoring-route-composition-chart.md</span>.
+  <span class="mono">xP_adj</span> blends goals, assists, clean sheets, defensive
+  actions and bonus into one number per player; this unblends the XI's
+  {xigw:.1f} xP/GW back into the six routes that produce it, start-weighted the
+  same way, so the segments below sum to that figure exactly.</p>
+  <div class="wrap tiny"><canvas id="routeChart"></canvas></div>
+  {bonus_note}
+  <div class="find">Composition only, not a risk measure — showing where the
+  points come from doesn't yet say how sure the model is about each route.
+  Goal Involvement and Defensive Contribution carry a Gamma-Poisson dispersion
+  estimate, Clean Sheets a nonlinear transform of Poisson uncertainty, and
+  Bonus a differently-derived shrinkage constant that can itself go unvalidated
+  (above) — three incompatible uncertainty models, not one confidence scale
+  yet. Per-route confidence intervals are deferred to a future gated roadmap
+  item rather than faked here.</div>
+</div>
+<script>
+const RC = {route_payload};
+const RCC = {{a:'#4ea3ff',b:'#ffc857',c:'#5fd38d',d:'#ff6b6b',e:'#c792ea',dim:'#8b98a5'}};
+const rcCss = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+new Chart(document.getElementById('routeChart'), {{
+  type: 'bar',
+  data: {{
+    labels: ['XI, this gameweek'],
+    datasets: RC.labels.map((lab, i) => {{
+      const flagged = lab === 'Bonus' && RC.bonusUnvalidated;
+      return {{
+        label: lab, data: [RC.values[i]], backgroundColor: RCC[RC.colors[i]],
+        borderColor: flagged ? '#ff6b6b' : RCC[RC.colors[i]],
+        borderWidth: flagged ? 2 : 0, borderDash: flagged ? [4, 3] : [],
+      }};
+    }}),
+  }},
+  options: {{
+    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+    scales: {{
+      x: {{ stacked: true, min: 0, title: {{ display: true, text: 'xP per gameweek' }},
+            grid: {{ color: rcCss('--grid') }} }},
+      y: {{ stacked: true, grid: {{ display: false }} }},
+    }},
+    plugins: {{
+      legend: {{ position: 'bottom' }},
+      tooltip: {{ callbacks: {{ label: cx =>
+        `${{cx.dataset.label}}: ${{cx.raw.toFixed(2)}} xP` +
+        (cx.dataset.label === 'Bonus' && RC.bonusUnvalidated
+          ? '  (unvalidated shrinkage — ADR 0001)' : '') }} }},
+    }},
+  }},
+}});
+</script>"""
+
     body = f"""
 <div class="kpis">{kpis}</div>
 {contam_html}
@@ -384,6 +502,8 @@ def build():
   slot, which is the one that usually plays.</p>
   <div class="row">{bench_html}</div>
 </div>
+
+{route_chart_html}
 
 <div class="panel">
   <h2>Squad shape — the archetype each position is bought for</h2>
@@ -492,6 +612,7 @@ border-radius:9px;padding:9px 11px}
 .pc-h{font-size:14px;margin-bottom:3px} .pc-h b{margin-right:5px}
 .pc-m,.pc-n{font-size:11.5px;color:var(--dim)} .pc-n{margin-top:2px}
 .pc-w{font-size:11.5px;margin-top:6px;padding-top:6px;border-top:1px solid var(--line);color:var(--tx);opacity:.85}
+.wrap.tiny{height:150px}
 @media(max-width:700px){.pc{flex:1 1 100%;max-width:none}}
 </style>"""
 
@@ -518,5 +639,7 @@ if __name__ == "__main__":
     assert "cdn.jsdelivr.net/npm/chart.js@4.5.0" in h, "Chart.js tag missing"
     assert 'class="on"' in h, "nav active state missing"
     assert "pc-w" in h, "selection reasoning did not render"
-    print("  chart.js pinned · nav active · reasoning rendered")
+    assert 'id="routeChart"' in h, "scoring-route composition chart canvas missing"
+    assert "RC.bonusUnvalidated" in h, "route chart script did not render"
+    print("  chart.js pinned · nav active · reasoning rendered · route chart present")
     print(f"  the two objectives pick the {'SAME' if same else 'DIFFERENT'} XI")

@@ -67,12 +67,12 @@ nav.top span.soon::after{content:" · planned";font-weight:400;font-size:11px}
 </nav>
 
 <h1>Prior vs reality</h1>
-<p class="sub">Live weekly walk-forward tracker &middot; page generated 2026-08-13 01:25</p>
+<p class="sub">Live weekly walk-forward tracker &middot; page generated 2026-08-14 17:44</p>
 <div id="app"></div>
 <footer>Built by <span class='mono'>build_prediction_tracker.py</span>. Scores raw, prior, and shrunk against each gameweek only AFTER it finishes, using only data through the gameweek before. See METHODOLOGY_ALTERNATIVES.md for the 2025/26 backtest that validated the shrinkage mechanism before this live version was built.</footer>
 
 <script>
-const DATA = {"finished": [], "weeks": {}, "empty_state": "Live fetch failed (Using SOCKS proxy, but the 'socksio' package is not installed. Make sure to install httpx using `pip install httpx[socks]`.) and no saved tracker state exists yet.", "generated": "2026-08-13 01:25", "metric_labels": {"xg90": "xG per 90", "xa90": "xA per 90", "xgc90": "xGC per 90", "sv90": "Saves per 90", "cbit90": "CBIT per 90", "cbirt90": "CBIRT per 90", "stp": "Start rate"}};
+const DATA = {"finished": [], "weeks": {}, "empty_state": "Live fetch failed (No module named 'httpx') and no saved tracker state exists yet.", "generated": "2026-08-14 17:44", "metric_labels": {"xg90": "xG per 90", "xa90": "xA per 90", "xgc90": "xGC per 90", "sv90": "Saves per 90", "cbit90": "CBIT per 90", "cbirt90": "CBIRT per 90", "stp": "Start rate"}};
 const C = {a:'#4ea3ff',b:'#ffc857',c:'#5fd38d',d:'#ff6b6b',e:'#c792ea',dim:'#8b98a5'};
 const css = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
 Chart.defaults.color = css('--dim');

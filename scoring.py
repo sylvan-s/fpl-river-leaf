@@ -59,6 +59,14 @@ CBI_HEAVY_THRESH = 6.0           # CBI(not CBIT)/90 above which a defender count
 CBI_HAIRCUT = 0.95               # UNSOURCED magnitude, bounded — see build_squad.py's prior note
 TACKLE_BUMP = 1.05               # UNSOURCED magnitude, bounded — 2026/27 BPS change
 
+# The three values estimate_k_bonus() returns when it could NOT fit k from
+# variance (too few points, non-positive between-player variance, or a ratio
+# outside [1,60]) rather than deriving it. Named once here so the "treat as
+# unvalidated" check below and any downstream consumer (the squad page's
+# scoring-route composition chart, ADR 0001) test the same three numbers
+# instead of a second hand-copied tuple silently drifting from this one.
+BONUS_FALLBACK_KS = (10.0, 40.0, 60.0)
+
 # ---- empirical defensive-contribution hit rate (roadmap A4) -----------------
 _DC_PATH = os.path.join(HERE, "dc_hit_rates.json")
 _DC_RATES, _DC_DOC, _DC_WARNED = None, None, False
@@ -179,7 +187,7 @@ def bonus_shrinkage(players, teams, min_minutes=900):
             n90=n90, raw=(p.get("bonus", 0) or 0) / n90, cbi90=cbi / n90))
 
     k = estimate_k_bonus([(r["raw"], r["n90"]) for r in rows])
-    if k in (10.0, 40.0, 60.0):
+    if k in BONUS_FALLBACK_KS:
         print(f"  NOTE: xbonus90 shrinkage k={k:.1f} is a fallback/clamp, not "
               f"derived from variance — treat xbonus90 as unvalidated until "
               f"this is investigated.", file=sys.stderr)
@@ -236,11 +244,25 @@ def expected_points(r, empirical=True):
     return xp
 
 
-def expected_points_scaled(r, att_x, def_x, scale_workload=True, empirical=True):
-    """Same scoring table as expected_points(), inputs scaled by opponent
-    strength. One implementation for both fixture_adjust.py's xP_adj and the
-    dashboard's fixture-swing panel, instead of two independently-written
-    copies of the same scaling logic.
+def expected_points_scaled_breakdown(r, att_x, def_x, scale_workload=True, empirical=True):
+    """Same inputs as expected_points_scaled(), but returns the additive
+    terms as a labelled dict instead of collapsing them to one number.
+
+    Added 14 Aug 2026 for the squad page's scoring-route composition chart
+    (ADR 0001 — docs/adr/0001-xi-scoring-route-composition-chart.md). Two
+    deliberate departures from the raw formula, both explained in that ADR:
+
+      - The goals-conceded penalty (GKP/DEF only, always <= 0) is NOT its own
+        entry. A standalone negative term breaks a non-negative composition
+        chart, so it's netted into "defensive_contribution" and that category
+        is understood as NET defensive value, not the raw DC-points-only
+        figure the CBIT screens show.
+      - Every category is returned even when it's structurally zero for a
+        position (e.g. clean_sheets for a FWD, saves for an outfield player)
+        so callers can sum a fixed six-key set without per-position branching.
+
+    expected_points_scaled() below is defined as sum(this dict) — one
+    formula, not two independently-maintained copies that can drift.
     """
     pos = r["pos"]
     xg = r["xg90"] * att_x            # opponent defence scales what you score
@@ -253,18 +275,32 @@ def expected_points_scaled(r, att_x, def_x, scale_workload=True, empirical=True)
         dc_metric *= def_x            # tougher opponent -> more defensive work
         saves *= def_x                # and more shots to save
 
-    xp = APPEARANCE
-    xp += GOAL[pos] * xg + ASSIST * xa
-    xp += CS[pos] * p_cs
-    xp += DC_PTS * p_threshold(dc_metric, DC_THRESH_POS[pos],
-                                key=f'{r["name"]}|{r["team"]}', empirical=empirical)
-    if pos in ("GKP", "DEF"):
-        xp -= xgc / GC_PER_MINUS
-    if pos == "GKP":
-        xp += saves / SAVES_PER_POINT
-    # xbonus90 carried through UNSCALED — no sourced fixture channel yet for
-    # bonus (see the prior note in fixture_adjust.py: inventing one would be
-    # exactly the kind of silent, untested coefficient this project has
-    # already had to correct twice).
-    xp += r.get("xbonus90", 0.0)
-    return xp
+    dc_pts = DC_PTS * p_threshold(dc_metric, DC_THRESH_POS[pos],
+                                   key=f'{r["name"]}|{r["team"]}', empirical=empirical)
+    gc_penalty = -(xgc / GC_PER_MINUS) if pos in ("GKP", "DEF") else 0.0
+    saves_pts = (saves / SAVES_PER_POINT) if pos == "GKP" else 0.0
+
+    return {
+        "appearance": APPEARANCE,
+        "goal_involvement": GOAL[pos] * xg + ASSIST * xa,
+        "clean_sheets": CS[pos] * p_cs,
+        "defensive_contribution": dc_pts + gc_penalty,   # netted — see docstring
+        "saves": saves_pts,
+        # xbonus90 carried through UNSCALED — no sourced fixture channel yet
+        # for bonus (see the prior note in fixture_adjust.py: inventing one
+        # would be exactly the kind of silent, untested coefficient this
+        # project has already had to correct twice).
+        "bonus": r.get("xbonus90", 0.0),
+    }
+
+
+def expected_points_scaled(r, att_x, def_x, scale_workload=True, empirical=True):
+    """Same scoring table as expected_points(), inputs scaled by opponent
+    strength. One implementation for both fixture_adjust.py's xP_adj and the
+    dashboard's fixture-swing panel, instead of two independently-written
+    copies of the same scaling logic. Defined as the sum of
+    expected_points_scaled_breakdown()'s terms — see that function if you
+    need the terms individually rather than their total.
+    """
+    return sum(expected_points_scaled_breakdown(
+        r, att_x, def_x, scale_workload=scale_workload, empirical=empirical).values())

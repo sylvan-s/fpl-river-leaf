@@ -278,7 +278,14 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
                  cs=p.get("clean_sheets", 0) or 0, bps90=(p.get("bps") or 0)/n90,
                  sv90=(p.get("saves") or 0)/n90, own=f(p.get("selected_by_percent")),
                  xg90=f(p.get("expected_goals"))/n90, xa90=f(p.get("expected_assists"))/n90,
-                 bonus90=(p.get("bonus") or 0)/n90, xbonus90=xbonus_map.get(pid, 0.0))
+                 bonus90=(p.get("bonus") or 0)/n90, xbonus90=xbonus_map.get(pid, 0.0),
+                 # Population-level shrinkage k, same value on every row this
+                 # load() call — carried per-row (rather than returned
+                 # separately) so callers already threading `pool`/`r` around
+                 # (e.g. the squad page's composition chart, ADR 0001) can
+                 # tell whether xbonus90 came from a fitted k or one of
+                 # scoring.BONUS_FALLBACK_KS without re-deriving it.
+                 bonus_k=_bonus_k)
         if use_intel:
             for e in ia.apply(r):
                 matched.add((e["player"], e["team"]))
