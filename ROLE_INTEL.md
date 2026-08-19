@@ -99,6 +99,15 @@ the adjustments fence below may be under-crediting Mosquera's minutes rather
 than over-crediting them. Revisit the GW window (currently set 1-3) once GW1
 team news confirms he starts.
 
+**Still open, 17 Aug 2026 — live `injury_report` check.** Both Timber and
+Saliba remain flagged INJURED with 0% odds and "Unknown return date" as of
+this check, two days before the deadline. Nothing has shortened the window;
+if anything, "unknown" is less specific than the "weeks away" language from
+12 Aug. Doesn't change the live squad decision — O'Reilly (4.67 xP_adj) and
+Virgil (4.48) still beat Mosquera's intel-boosted 4.28 on the full-budget
+rebuild — but the thesis itself is intact and worth another look if a swap is
+ever considered.
+
 ### 4. Ndiaye (EVE, £6.0m, MID) — penalties + shot volume
 
 **Thesis:** locked-in penalty duty plus underlying volume beats his £6.0m price.
@@ -114,6 +123,16 @@ Margine, Fantasy Football Scout's set-piece list) converge on Ndiaye as
 Everton's primary penalty taker, ahead of Garner. Same caveat as Szoboszlai:
 not yet in the FPL API's own field pre-season, `?` suffix stays.
 
+**Reconfirmed 16 Aug 2026 — on-pitch evidence, not just reporting.** Ndiaye
+has now taken AND SCORED Everton's last two pre-season penalties (most
+recently in the 1-1 draw with Lille, 15 Aug), ahead of Thierno Barry, who had
+taken an earlier one against Stuttgart. This is behavioural confirmation, not
+just a source claim — the strongest form of evidence this file distinguishes.
+No change to the `mult 1.25` in the adjustments fence; this reconfirms the
+existing confidence rather than raising it further. Source: Fantasy Football
+Scout, "FPL pre-season: Villa injuries, another Ndiaye pen + no Norgaard,"
+16 Aug 2026.
+
 ### 5. João Pedro (CHE, £7.5m, FWD) — central catalyst — **ALREADY OWNED**
 
 **Thesis:** operates as the focal point in Chelsea's setup.
@@ -126,7 +145,20 @@ does not protect the finishing.
 **Falsifiable check:** does the delta compress toward zero over the opening weeks
 as expected? If it stays high, he may be a genuine finisher rather than lucky.
 
-### 6. Botman (NEW, £5.0m, DEF) — recurring fitness fragility — **ALREADY OWNED**
+**Observed 16 Aug 2026 — pre-season scoring streak continues, delta question
+still unresolved.** Brace against Real Sociedad (Chelsea's final pre-season
+friendly, 15 Aug) takes him to 7 goals in 5 pre-season appearances, 8 in his
+last 7 for club and country. Played the full 90 as Chelsea's only recognised
+striker with Delap, Jackson and Welbeck all missing — he is confirmed as
+Alonso's first-choice #9 for GW1. This is a role/minutes confirmation, not
+new evidence on the finishing-vs-luck question the falsifiable check above is
+actually asking — pre-season friendlies against weaker opposition don't
+resolve whether a +7.13 delta regresses. Logged for completeness; the check
+above still stands and can only be answered by competitive matches. Source:
+Fantasy Football Scout, "FPL pre-season: Pedro again, Rogers debut, Munoz
+returns," 16 Aug 2026.
+
+### 6. Botman (NEW, £5.0m, DEF) — recurring fitness fragility — **NOT CURRENTLY OWNED (tag corrected 18 Aug)**
 
 **Thesis (risk flag, not a buy/sell thesis):** repeated fitness interruptions
 across the last two seasons are a plausible, non-hype explanation for his low
@@ -146,10 +178,13 @@ from the March facial fracture for part of last season's run-in, not out of
 favour. The gap the last-16 methodology change was designed to catch has a
 real, findable cause here, not just noise.
 
-**Not yet re-verified live.** Web search and `injury_report` both hit
-temporary limits when this was checked — his CURRENT fitness status has not
-been confirmed since. Re-check before trusting the pick, and before the 21 Aug
-deadline in particular.
+**Re-verified live, 18 Aug 2026.** `injury_report` now shows Botman as
+"available" with no active flag — a good sign he's cleared the late-July
+facial knock. Note the tag correction above: the 12 Aug full-rebuild
+(`TEAM_CHANGE_LOG.md`) superseded the 11 Aug Botman→Van den Berg swap and he
+is not part of the current 15 — this entry was mislabelled "ALREADY OWNED"
+since the rebuild and should have been corrected sooner. Left in the file as
+a live watchlist item, not a squad concern.
 
 **Falsifiable check:** does he complete pre-season and start GW1 without a new
 knock? A clean run through August would meaningfully undercut this flag.
@@ -190,6 +225,47 @@ below ~90%? If he's still starting nearly every match once the season begins,
 the magnitude here was wrong even if the underlying signing/intent was real.
 Review at GW6, not GW8 — a shorter window than usual given the magnitude is
 unsourced guesswork rather than a specific injury/suspension window.
+
+**Weak early signal, 16 Aug 2026 — noted, not acted on.** Rice was an unused
+substitute for Arsenal's Community Shield win over Man City (Cardiff,
+16 Aug). Directionally consistent with the rotation thesis, but one
+non-competitive fixture is nowhere near the GW1-6 competitive-minutes window
+the falsifiable check above requires, and a Community Shield squad often
+rests players for reasons unrelated to a season-long plan. Not owned, so no
+action regardless — logged so the eventual GW6 review has the full picture
+rather than starting from zero.
+
+### 8. Bruno Fernandes (MUN, £12.0m, MID) — pre-season penalty misses — **ALREADY OWNED, VICE-CAPTAIN**
+
+**Thesis (risk flag, not a buy/sell thesis):** two missed penalties in
+pre-season raise a real, if unresolved, question about how much of his xP is
+riding on retained set-piece duty. Logged 16 Aug 2026, web-confirmed.
+
+**What happened.** Fernandes missed a penalty in United's final pre-season
+friendly (2-4 defeat to AC Milan, 15 Aug) — the second miss "in a few days"
+per Fantasy Football Scout, following an earlier one in the same week. He
+also missed twice from the spot last season (autumn) and kept the duty both
+times regardless.
+
+**Why this doesn't (yet) change anything.** The screen's `xg90`/`xa90` for
+Fernandes is derived from his actual accumulated match record, which already
+includes his real conversion rate including past penalty misses — this isn't
+a case of the model being blind to something, the way it is with a genuine
+role change. Fantasy Football Scout's own read is there's "nothing yet to
+suggest" he loses the duty over it, consistent with last season's pattern.
+No `adjustments` fence entry warranted on current evidence — a multiplier
+would need a specific reason to expect his rate to change, not just two
+misses in meaningless friendlies.
+
+**Why it's logged anyway.** He carries the armband (vice, since the 12 Aug
+swap) and a large share of his xbonus90/xGI comes from set-piece
+involvement (penalties, corners, free-kicks). If United's press conference
+ever floats a change of taker, this is the thread to pull.
+
+**Falsifiable check:** does he take and convert United's first competitive
+penalty of the season? A miss there, or a hint from Amorim/Carrick about a
+change of taker, would warrant a `stp`-adjacent look at his set-piece share —
+a straight miss with no taker change does not.
 
 ---
 
