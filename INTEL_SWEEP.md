@@ -62,6 +62,10 @@ not "intel" in the falsifiable-hypothesis sense this pipeline logs.
 
 ## What the daily sweep does
 
+0. **Record a start timestamp** — `started_utc`, ISO 8601 UTC, captured
+   before any reading or searching begins. Needed for the run-metadata
+   record in step 4.
+
 1. **Check open bites first.** Read `docs/data/intel_sweep_log.jsonl`,
    filter to bites with no resolution record, and for any whose
    `falsifiable_check` can be evaluated now (team news, `injury_report`,
@@ -105,9 +109,38 @@ not "intel" in the falsifiable-hypothesis sense this pipeline logs.
    `setpieces` or `adjustments` fences, regardless of how well-corroborated a
    finding is.** That gate only opens in the Friday review, below.
 
-4. **Commit.** `git add ROLE_INTEL.md docs/data/intel_sweep_log.jsonl && git
-   commit -m "Intel sweep <date>: <n> new bites, <n> resolved"`. Do not
-   regenerate `SOURCE_RELIABILITY.md`/`INTEL_REVIEW.md` on every run — see
+4. **Record run metadata, then commit — every day, even a quiet one.**
+   Immediately before committing, append one `run_meta` line to
+   `docs/data/intel_sweep_log.jsonl` (same append-only file, new `kind`,
+   never edited or deleted like every other record here):
+
+   ```json
+   {"kind": "run_meta", "date": "2026-08-21", "started_utc": "2026-08-21T07:02:10Z",
+    "finished_utc": "2026-08-21T07:19:44Z", "duration_seconds": 1054,
+    "tokens_input": 18420, "tokens_output": 3110, "tokens_cache_read": 96500,
+    "tokens_cache_write": 21200, "bites_logged": 3, "resolutions_logged": 1,
+    "logged_utc": "2026-08-21T07:19:44Z"}
+   ```
+
+   `started_utc` comes from step 0. `finished_utc`/`duration_seconds` are
+   captured right here, right before the commit. Token fields are summed
+   from this run's own transcript — the most recently modified `*.jsonl`
+   under `$HOME/mnt/.claude/projects/*/` — by reading every turn's `usage`
+   block (`input_tokens`, `output_tokens`, `cache_read_input_tokens`,
+   `cache_creation_input_tokens`) and totalling across the file, the same
+   technique the `explain-usage` skill uses. `bites_logged`/
+   `resolutions_logged` are just counts of what steps 1-2 wrote this run
+   (0 is fine). If the transcript can't be found or parsed, log zeros
+   rather than skip the record or guess — a visibly-wrong zero is easier
+   to notice and fix than a silently missing record.
+
+   Then: `git add ROLE_INTEL.md docs/data/intel_sweep_log.jsonl && git
+   commit -m "Intel sweep <date>: <n> new bites, <n> resolved"`. The
+   commit now happens every run regardless of whether steps 1-3 found
+   anything, since `run_meta` itself is always new — the commit message
+   still says "0 new bites, 0 resolved" on a quiet day rather than
+   claiming there's nothing to commit. Do not regenerate
+   `SOURCE_RELIABILITY.md`/`INTEL_REVIEW.md` on every daily run — see
    below, those are weekly.
 
 ---
@@ -146,10 +179,13 @@ sourced and falsifiable. Conversely an `accepted` bite that later resolves
 this pipeline doesn't yet auto-revert an accepted-then-contradicted entry;
 treat that as a manual prune, same as `ROLE_INTEL.md` rule 6 always has.
 
-**If nothing material was found and no bite resolved**, log nothing and
-reply with one line saying so — same discipline `fpl-pre-deadline-news-watch`
-already used; a daily task that pads out empty days trains everyone to stop
-reading it.
+**If nothing material was found and no bite resolved**, log no `bite` or
+`resolution` records and reply with one line saying so — same discipline
+`fpl-pre-deadline-news-watch` already used; a daily task that pads out
+empty days trains everyone to stop reading it. The `run_meta` record from
+step 4 still gets logged and committed regardless — that's timing/cost
+bookkeeping, not a finding, and skipping it on quiet days would leave gaps
+in the one place duration and token cost are tracked.
 
 ---
 
@@ -225,9 +261,12 @@ attempts — cosmetic clutter, not corruption, but worth a periodic clean.
 
 ## Reference
 
-- `docs/data/intel_sweep_log.jsonl` — append-only (bites, resolutions —
-  first-write-stands) / mutable-by-design for `decision` records (latest
-  wins) — the source of truth
+- `docs/data/intel_sweep_log.jsonl` — append-only (bites, resolutions,
+  run_meta — first-write-stands) / mutable-by-design for `decision` records
+  (latest wins) — the source of truth. `run_meta` is one record per daily
+  run: `started_utc`/`finished_utc`/`duration_seconds` plus a token-usage
+  breakdown pulled from that run's own transcript, logged even on days
+  with zero bites — see step 4 above.
 - `score_source_reliability.py` — per-source scorer; `build_intel_review.py`
   — Friday decision-queue builder; both regenerate weekly, do not hand-edit
   their outputs

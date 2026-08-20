@@ -56,6 +56,18 @@ a measurement error but a blind spot: *the screens cannot price a role change.*
 **Falsifiable check:** who takes Liverpool's first penalty and first direct free
 kick? Also watch `penalties_order` in the API once populated.
 
+**Contested, 20 Aug 2026 — daily sweep, pending Friday review.** Fantasy
+Football Scout's 20 Aug Liverpool set-piece guide (corroborated by
+thisisanfield.com and Il Margine) has the club/FPL-listed penalty order as
+Isak first, Szoboszlai second, Gakpo third — not the sole-primary duty this
+entry has assumed since 12 Aug. Szoboszlai is still the "evidence-led" taker
+(took one on the pitch alongside Gakpo in pre-season; 90% career conversion
+vs Isak's 76%), but no same-pitch competitive test has settled the order.
+Worth revisiting the `xg90 mult 1.35` in the adjustments fence below once
+GW1 team news shows who actually takes the first live penalty — a suggested
+1.15 is logged in the sweep log (`Szoboszlai-LIV-xg90-20260820-1`) pending
+that review, not applied here.?
+
 ### 2. Elliott Anderson (MCI, £6.5m, MID) — budget enabler, elevated creative role
 
 **Thesis:** absorbs heavy minutes with an elevated creative role, out-projecting
@@ -70,6 +82,18 @@ adds a *ceiling*. Floor + ceiling = **box-to-box**, the most valuable archetype.
 qualitative signals pointing the same way.
 
 **Falsifiable check:** does his xGI/90 rise above ~0.30 in the opening weeks?
+
+**Complication, 20 Aug 2026 — daily sweep, pending Friday review.** Man
+City have a new manager: Enzo Maresca replaced Pep Guardiola over the
+summer (see the new manager-change entry below), and Rodri has left for
+Barcelona. In a 15 Aug press conference (mancity.com), Maresca said of
+Anderson: "I see him as a holding midfielder, but he can also be attacking
+midfielder... I think he doesn't need a physical player next to him" —
+explicitly flagging him for a possible No.6 role, not fixing him in the
+advanced creative one this entry's `xgi90 mult 1.15` assumes. Other
+reporting frames him as a long-term Rodri replacement at the base of
+midfield. Doesn't resolve which role wins out — logged as a flag
+(`Anderson-MCI-xgi90-20260820-1`) for GW1-4 positional data to settle.?
 
 ### 3. Mosquera (ARS, £5.5m, DEF) — minutes opening through injury
 
@@ -107,6 +131,18 @@ if anything, "unknown" is less specific than the "weeks away" language from
 Virgil (4.48) still beat Mosquera's intel-boosted 4.28 on the full-budget
 rebuild — but the thesis itself is intact and worth another look if a swap is
 ever considered.
+
+**Window looks longer, not shorter, 20 Aug 2026 — daily sweep, pending
+Friday review.** Fresh Arteta press-conference coverage (Yahoo/Sports Mole)
+now puts Timber's return "in September," not by GW3 as the current
+`stp` window (GWs 1-3) assumes, and Saliba's return is being pencilled for
+"winter 2026" (a 2-3 month estimate). Both point to the current
+`Mosquera | ARS | stp | set | 0.85 | 1-3` line in the adjustments fence
+under-crediting the window's length rather than over-crediting it — logged
+as `Saliba-ARS-stp-20260820-1` for the Friday review to size a wider
+window, not changed here. `injury_report` itself still shows both simply
+"INJURED, unknown return date," so this is press reporting ahead of the
+API, same caveat as always.?
 
 ### 4. Ndiaye (EVE, £6.0m, MID) — penalties + shot volume
 
@@ -266,6 +302,38 @@ ever floats a change of taker, this is the thread to pull.
 penalty of the season? A miss there, or a hint from Amorim/Carrick about a
 change of taker, would warrant a `stp`-adjacent look at his set-piece share —
 a straight miss with no taker change does not.
+
+### 9. Manchester City — new manager, Maresca replaces Guardiola — **structural context, not a single-player thesis**
+
+**Logged 20 Aug 2026, daily sweep, pending Friday review.** Pep Guardiola
+left City after 10 years; Enzo Maresca (ex-Chelsea) has been permanent
+first-team manager since being announced 29 June 2026, confirmed on City's
+own site and widely in the press. Rodri has also departed to Barcelona.
+Neither change has been logged anywhere in this file before today, despite
+underlying both the Anderson (entry 2) and O'Reilly (entry 10) items below.
+Guardiola-era pecking order and role assumptions for City players are not a
+safe prior for 2026/27 — treat any City-specific stp/role read from before
+summer 2026 with that in mind.
+
+**Falsifiable check:** does Maresca's confirmed GW1 XI/setup materially
+differ from Guardiola's final-season patterns (formation, who plays the
+Rodri role, fullback usage)? Source: `Maresca-MCI-managerchange-20260820-1`.?
+
+### 10. O'Reilly (MCI, £6.5m, DEF) — right-back competition risk — **ALREADY OWNED**
+
+**Logged 20 Aug 2026, daily sweep, pending Friday review.** O'Reilly is in
+the live XI on an 81%-starts assumption (see squad.json). Under the new
+Maresca regime (entry 9), multiple predicted-lineup reports for City's next
+fixture have Matheus Nunes as first-choice right-back and Ait-Nouri at left,
+with O'Reilly used in midfield or left out of the back four rather than
+nailed at RB. Corroborating: Fantasy Football Scout (18 Aug) notes his
+Community Shield start was capped under an hour "as planned," consistent
+with managed minutes rather than a fixed berth. Sourcing here is scattered
+predicted-XI pieces, not a confirmed team sheet or press-conference quote —
+a flag to watch, not settled.
+
+**Falsifiable check:** does O'Reilly start at right-back (or at all) in
+City's actual GW1 fixture? Source: `OReilly-MCI-stp-20260820-1`.?
 
 ---
 
