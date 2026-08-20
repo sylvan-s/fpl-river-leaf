@@ -161,14 +161,15 @@ not "intel" in the falsifiable-hypothesis sense this pipeline logs.
    rather than skip the record or guess — a visibly-wrong zero is easier
    to notice and fix than a silently missing record.
 
-   Then: `git add ROLE_INTEL.md docs/data/intel_sweep_log.jsonl docs/news.html
-   && git commit -m "Intel sweep <date>: <n> new bites, <n> resolved"`.
-   `docs/news.html` is only staged if step 3's rebuild ran and both verify
-   steps passed — on a quiet day with no new intel there's nothing to
-   rebuild, so it's simply unchanged and `git add` no-ops on it harmlessly.
-   The commit now happens every run regardless of whether steps 1-3 found
-   anything, since `run_meta` itself is always new — the commit message
-   still says "0 new bites, 0 resolved" on a quiet day rather than
+   Then: `bash safe_git_commit.sh "Intel sweep <date>: <n> new bites, <n>
+   resolved"` — see "Known issue" below for why this script, not raw
+   `git add`/`git commit`/`git push`. It picks up whatever changed
+   (`ROLE_INTEL.md`, `docs/data/intel_sweep_log.jsonl`, and `docs/news.html`
+   if step 3's rebuild ran and both verify steps passed) automatically from
+   `git status` — nothing to list by hand, and nothing to no-op on a quiet
+   day. The commit now happens every run regardless of whether steps 1-3
+   found anything, since `run_meta` itself is always new — the commit
+   message still says "0 new bites, 0 resolved" on a quiet day rather than
    claiming there's nothing to commit. Do not regenerate
    `SOURCE_RELIABILITY.md`/`INTEL_REVIEW.md` on every daily run — see
    below, those are weekly.
@@ -244,33 +245,51 @@ verify calls the same as sources that are simply incorrect.
 
 ---
 
-## Known issue — stray `.git/index.lock`
+## Known issue — the connected-folder mount can't do what git needs
 
-Some sandboxed sessions running against this repo (this was first hit
-interactively on 20 Aug 2026) have left a stray, unremovable-from-that-session
-`.git/index.lock` behind after a git operation, which then blocks the next
-`git add`/`git commit` with `fatal: Unable to create '.git/index.lock': File
-exists.` It is not a real concurrent-process conflict — nothing else writes to
-this repo automatically except `fpl-daily-intel-sweep` and
-`fpl-friday-intel-review`, which never run at the same time as each other.
+Sandboxed Cowork sessions running against this repo (first hit interactively
+20 Aug 2026) have repeatedly left a stray `.git/index.lock`, `.git/HEAD.lock`,
+or `.git/objects/*/tmp_obj_*` behind after a git operation, which then blocks
+the next `git add`/`git commit` with `fatal: Unable to create
+'.git/index.lock': File exists.` **This is not a transient race** — it's the
+connected-folder mount itself. That mount is a permission-mediated bridge to
+the real folder on Sylvan's Mac, built for safe reading/writing/creating
+files; it does not support the `unlink()`/rename-over-existing semantics
+git's own lock and loose-object cleanup depend on. `rm -f` on the stray file
+from inside a Cowork session either silently no-ops (reports success, file
+persists) or returns `Operation not permitted` — confirmed repeatedly, not a
+one-off. Nothing else writes to this repo automatically except
+`fpl-daily-intel-sweep` and `fpl-friday-intel-review`, which never run at the
+same time as each other, so this was never a real concurrent-process
+conflict.
 
-Both of those tasks now self-heal once (`rm -f .git/index.lock`, retry the
-commit, give up and report honestly if it fails twice) rather than silently
-dropping a commit — see their `KNOWN ISSUE` step. If you ever see a task
-report a failed commit, the fix is the same one used a few times by hand
-already:
+**Fix: `safe_git_commit.sh`, not `rm -f`.** Every scheduled task's commit
+step now runs `bash safe_git_commit.sh "<message>"` instead of raw
+`git add`/`git commit`/`git push`. It clones this repo's own origin into
+`/tmp` — ordinary ephemeral sandbox disk, untouched by the connected-folder
+mount — copies over exactly the files `git status --porcelain` shows as
+changed here, and commits/pushes from that clone. This repo's own `.git/` is
+only ever read (to get the origin URL and the diff), never written to for
+the commit — so the mount's unlink/rename restriction never comes into play.
+Verified working end-to-end 20 Aug 2026 (clone, `push --dry-run` to confirm
+write auth, then a real commit landing on `origin/main`).
+
+If a task ever reports `safe_git_commit.sh` itself failing (as opposed to
+finding nothing to commit), that's a different, worse problem — likely
+network egress or the embedded credential in `origin`'s remote URL, not the
+mount — and needs a human at a real terminal, not another retry:
 
 ```bash
 cd ~/Projects/FPL
-rm -f .git/index.lock
+find .git -maxdepth 1 -name '*.lock' -delete
+find .git/objects -name 'tmp_obj_*' -delete
 git status        # confirm what's actually staged before committing
 git add -A && git commit -m "..."
 git push
 ```
-
-If stray lock files keep recurring, `git gc --prune=now` afterward clears out
-any orphaned `.git/objects/*/tmp_obj_*` files left behind by the interrupted
-attempts — cosmetic clutter, not corruption, but worth a periodic clean.
+(`find -delete` rather than `rm -f` with a glob — an empty glob match is a
+hard zsh error that aborts an `&&`-chained command line before anything
+after it runs; `find` just does nothing if there's no match.)
 
 ## Kill criteria
 
@@ -291,6 +310,8 @@ attempts — cosmetic clutter, not corruption, but worth a periodic clean.
 
 ## Reference
 
+- `safe_git_commit.sh` — the only supported way these tasks commit and push;
+  see "Known issue" above for why. `bash safe_git_commit.sh "message"`.
 - `docs/data/intel_sweep_log.jsonl` — append-only (bites, resolutions,
   run_meta — first-write-stands) / mutable-by-design for `decision` records
   (latest wins) — the source of truth. `run_meta` is one record per daily
