@@ -17,25 +17,40 @@
 # WHAT THIS DOES INSTEAD. Clones this repo's own origin into a fresh
 # directory under /tmp - ordinary ephemeral sandbox disk, not the bridged
 # mount, so unlink/rename work exactly as normal. Copies over exactly the
-# files `git status --porcelain` reports as changed in THIS working tree,
-# commits and pushes from the clone, then discards it. This repo's actual
-# `.git/` is never written to for the commit itself - only read, to find
-# the origin URL and the list of changed files.
+# files that differ between THIS working tree and origin/main, commits and
+# pushes from the clone, then discards it. This repo's actual `.git/` is
+# only ever read (to get the origin URL and identity, and to fetch), never
+# written to for the commit itself.
 #
-# LIMITATIONS. Parses `git status --porcelain` with a simple awk - fine for
-# adds/modifies/deletes of plainly-named files (everything this repo's
-# scheduled tasks touch: ROLE_INTEL.md, docs/data/intel_sweep_log.jsonl,
-# docs/news.html and similar). Renames and filenames containing spaces are
-# NOT handled correctly - if you hit either, stage and commit by hand from
-# a real terminal instead of trusting this script.
+# WHY COMPARE AGAINST origin/main, NOT LOCAL git status. Every commit this
+# script makes goes straight to origin without ever advancing this working
+# tree's own local HEAD (doing that would need the same blocked rename-
+# over-existing this script exists to avoid, applied to .git/HEAD/.git/
+# index instead of .git/objects). That means local HEAD falls further
+# behind origin every time this script runs, and a plain `git status` in
+# this repo would keep reporting already-pushed files as "changed" forever.
+# Diffing against `origin/main` after a fresh `git fetch` gives the real
+# answer regardless of how stale local HEAD is.
+#
+# LIMITATIONS. Renames and filenames containing spaces are not specially
+# handled (a rename shows as a delete + an add, which is still correct, just
+# not space-efficient in the resulting commit). Fine for this repo, which
+# only ever adds/edits plainly-named markdown, JSON and HTML files here.
 set -euo pipefail
 cd "$(dirname "$0")"
 
 MSG="${1:?usage: safe_git_commit.sh \"commit message\"}"
 
-CHANGED=$(git status --porcelain | awk '{ $1=""; sub(/^ /,""); print }')
-if [ -z "$CHANGED" ]; then
-  echo "Nothing to commit."
+git fetch --quiet origin
+
+CANDIDATES=$(
+  { git diff --name-only origin/main --
+    git ls-files --others --exclude-standard
+  } | sort -u
+)
+
+if [ -z "$CANDIDATES" ]; then
+  echo "Nothing to commit (working tree already matches origin/main)."
   exit 0
 fi
 
@@ -62,14 +77,15 @@ while IFS= read -r f; do
   else
     rm -f "$CLONE/$f"
   fi
-done <<< "$CHANGED"
+done <<< "$CANDIDATES"
 
-(
-  cd "$CLONE"
-  git add -A
-  git commit -q -m "$MSG"
-  git push --quiet
-  echo "Pushed: $(git log --oneline -1)"
-)
-
+cd "$CLONE"
+git add -A
+if git diff --cached --quiet; then
+  echo "Nothing to commit (candidates matched origin/main byte-for-byte after all)."
+  exit 0
+fi
+git commit -q -m "$MSG"
+git push --quiet
+echo "Pushed: $(git log --oneline -1)"
 echo "Done — committed and pushed via scratch clone, this working tree's own .git was untouched."
