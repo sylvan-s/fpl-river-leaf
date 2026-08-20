@@ -1576,11 +1576,75 @@ convenience** — the current entries are honest precisely because a human wrote
 **Recommendation: don't.** Listed so the decision is recorded rather than
 re-litigated.
 
+**Superseded 20 Aug 2026 — narrowly, not overturned.** Sylvan asked for the
+*gathering and record-keeping* to be automated and made more frequent, plus a
+closed-loop reliability score per source. Built as **`fpl-daily-intel-sweep`**
++ `docs/data/intel_sweep_log.jsonl` + `score_source_reliability.py` — see
+`INTEL_SWEEP.md` for the full spec. **This is not the thing C3 rejected.**
+The falsifiability discipline is unchanged: every bite is dated, sourced and
+carries a falsifiable check. What's automated is the frequency (daily web
+sweep instead of weekly) and the scoring (a source's claims are now tracked
+to a resolved/confirmed/contradicted outcome and rolled up into an accuracy
+figure, gated at 5+ resolutions — same threshold `score_calibration()` uses).
+Replaces `fpl-pre-deadline-news-watch` (Friday-only ad hoc scan).
+
+**Tightened further, same day, on an explicit instruction.** The first build
+of this let the daily sweep promote well-corroborated bites straight into
+the machine-readable fences unattended. Sylvan overrode that: **community
+intel must never inform player-selection data automatically, at any
+corroboration level.** The daily sweep now only ever writes narrative
+`ROLE_INTEL.md` notes — corroboration is evidence for a human to weigh, not
+a trigger the pipeline can act on by itself. A second task,
+**`fpl-friday-intel-review`**, is the sole writer of the `setpieces`/
+`adjustments` fences, and only for bites Sylvan explicitly marks "accepted"
+in that weekly meeting, which also surfaces `build_intel_review.py`'s
+decision queue (each pending bite paired with its source's live reliability
+figure). This is a stronger, not weaker, version of the C3 principle: not
+just "a human wrote the entry" but "a human approved this specific entry,
+this specific week, having seen the source's track record."
+
 ### C4. The 5-GW fixture score proposal
 
 Received from dispatch, marked *do not enact*. Substantially overlaps
 `fixture_outlook`. **Re-read it after GW10** and take only what the existing tool
 lacks.
+
+### C5. Dashboard Q&A chatbot — NOT BUILT. No data gate — operational-readiness gate
+
+*Raised by Sylvan, 19 Aug 2026.* Let visitors to the public dashboard ask
+natural-language questions about squad choices — "why is Thiago captain",
+"why wasn't Mosquera bought" — and get an answer grounded in the actual
+reasoning rather than a generic one.
+
+**Feasibility.** Technically straightforward, but the dashboard is 100% static
+(GitHub Pages, no `.github/workflows`, no backend anywhere in this project),
+so the two things a chatbot needs — somewhere to hold an API key, somewhere to
+run inference — don't exist yet. The explainability corpus (`squad.json` +
+`TEAM_CHANGE_LOG.md` + `ROLE_INTEL.md` + `SELECTION_FRAMEWORK.md`) is ~15,000
+words — small enough to hand Claude whole on every question. **No vector DB
+or real retrieval needed at this scale.**
+
+**What it needs, minimum:**
+- A small serverless proxy (e.g. a Cloudflare Worker) to hold the Anthropic
+  API key server-side and make the model call — the one genuinely new piece
+  of infrastructure this project would gain.
+- A context-bundling build step alongside `build_dashboard.py`, assembling
+  the same source-of-truth files into one JSON the Worker sends with each
+  question.
+- A chat widget on the page itself — same pattern as the existing Chart.js
+  panels.
+
+**Why it's Tier C, not scheduled.** This is a public, unauthenticated page —
+Dylan and anyone else can hit it. Without a hard per-IP rate limit and a
+spend cap on the Anthropic account, cost exposure is open-ended, and this
+project has no ongoing per-request API cost today. **Gate: abuse controls
+(rate limiting + a monthly spend alert) in place before shipping — an
+operational readiness condition, not a calendar date or a backtest.**
+
+**Recommendation:** feasible, moderate effort (~a day for a working v1).
+Sequence behind anything with a live-money or live-decision stake. Revisit
+when there's spare capacity and the appetite to run a public-facing metered
+endpoint — not blocked on any other roadmap item, and not urgent.
 
 ---
 
