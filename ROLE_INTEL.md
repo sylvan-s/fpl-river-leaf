@@ -303,7 +303,7 @@ penalty of the season? A miss there, or a hint from Amorim/Carrick about a
 change of taker, would warrant a `stp`-adjacent look at his set-piece share —
 a straight miss with no taker change does not.
 
-### 9. Manchester City — new manager, Maresca replaces Guardiola — **structural context, not a single-player thesis**
+### 9. Maresca (MCI, £0.0m, MGR) — new Man City manager replaces Guardiola — **structural context, not a single-player thesis**
 
 **Logged 20 Aug 2026, daily sweep, pending Friday review.** Pep Guardiola
 left City after 10 years; Enzo Maresca (ex-Chelsea) has been permanent

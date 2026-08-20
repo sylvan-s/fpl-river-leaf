@@ -109,6 +109,33 @@ not "intel" in the falsifiable-hypothesis sense this pipeline logs.
    `setpieces` or `adjustments` fences, regardless of how well-corroborated a
    finding is.** That gate only opens in the Friday review, below.
 
+   **Header format matters — it's parsed, not just prose.** `build_intel_page.py`
+   renders `docs/news.html` (the public "Availability & intel" page) by
+   regex-matching each entry's heading: `### N. Name (TEAM, £price, POS) —
+   summary`. An entry that doesn't fit that shape (e.g. a team- or
+   manager-level finding with no single player/price/position) silently
+   fails to parse and never appears on the page — it just goes missing, with
+   no error. Give every entry, including structural ones like a manager
+   change, a plausible stand-in `(TEAM, £0.0m, ROLE)` — e.g.
+   `### 9. Maresca (MCI, £0.0m, MGR) — new Man City manager...` — rather than
+   dropping the parenthetical. If in doubt, run `python3 build_intel_page.py`
+   after step 3 and check its printed `intel:` count matches the number of
+   `### N.` headings in the file.
+
+   **Rebuild and republish the intel page — every day this step wrote
+   anything.** Run `python3 build_intel_page.py` (only that page, not the
+   full `publish_dashboard.sh` suite — the diagnostics/squad/relationships/
+   player/priors pages depend on the weekly priors snapshot and stay on the
+   Friday cadence). Then `node verify_pages.js` — it structurally checks
+   every page already in `docs/`, so it still covers `docs/news.html` even
+   though only that one file changed. If either step fails, do NOT commit
+   `docs/news.html` — leave it as the last known-good build and say so in
+   the reply; a broken build silently going live is worse than a stale one.
+   Before this was added (20 Aug 2026), the daily sweep only committed
+   `ROLE_INTEL.md` and the jsonl log — the live public page stayed frozen at
+   whatever the last Friday `fpl-weekly-brief` run published, so a whole
+   week of daily intel was invisible on the site until Friday.
+
 4. **Record run metadata, then commit — every day, even a quiet one.**
    Immediately before committing, append one `run_meta` line to
    `docs/data/intel_sweep_log.jsonl` (same append-only file, new `kind`,
@@ -134,9 +161,12 @@ not "intel" in the falsifiable-hypothesis sense this pipeline logs.
    rather than skip the record or guess — a visibly-wrong zero is easier
    to notice and fix than a silently missing record.
 
-   Then: `git add ROLE_INTEL.md docs/data/intel_sweep_log.jsonl && git
-   commit -m "Intel sweep <date>: <n> new bites, <n> resolved"`. The
-   commit now happens every run regardless of whether steps 1-3 found
+   Then: `git add ROLE_INTEL.md docs/data/intel_sweep_log.jsonl docs/news.html
+   && git commit -m "Intel sweep <date>: <n> new bites, <n> resolved"`.
+   `docs/news.html` is only staged if step 3's rebuild ran and both verify
+   steps passed — on a quiet day with no new intel there's nothing to
+   rebuild, so it's simply unchanged and `git add` no-ops on it harmlessly.
+   The commit now happens every run regardless of whether steps 1-3 found
    anything, since `run_meta` itself is always new — the commit message
    still says "0 new bites, 0 resolved" on a quiet day rather than
    claiming there's nothing to commit. Do not regenerate
@@ -267,6 +297,12 @@ attempts — cosmetic clutter, not corruption, but worth a periodic clean.
   run: `started_utc`/`finished_utc`/`duration_seconds` plus a token-usage
   breakdown pulled from that run's own transcript, logged even on days
   with zero bites — see step 4 above.
+- `docs/news.html` — the public "Availability & intel" page, built from
+  `ROLE_INTEL.md` by `build_intel_page.py`. Rebuilt and republished by
+  *both* `fpl-daily-intel-sweep` (step 3, that page only) and
+  `fpl-weekly-brief`/`publish_dashboard.sh` (the full page suite, Friday) —
+  the daily sweep keeps it current all week; the weekly run keeps it
+  bundled with the other pages that share the priors snapshot.
 - `score_source_reliability.py` — per-source scorer; `build_intel_review.py`
   — Friday decision-queue builder; both regenerate weekly, do not hand-edit
   their outputs
