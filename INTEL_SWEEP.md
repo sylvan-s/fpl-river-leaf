@@ -178,6 +178,34 @@ verify calls the same as sources that are simply incorrect.
 
 ---
 
+## Known issue — stray `.git/index.lock`
+
+Some sandboxed sessions running against this repo (this was first hit
+interactively on 20 Aug 2026) have left a stray, unremovable-from-that-session
+`.git/index.lock` behind after a git operation, which then blocks the next
+`git add`/`git commit` with `fatal: Unable to create '.git/index.lock': File
+exists.` It is not a real concurrent-process conflict — nothing else writes to
+this repo automatically except `fpl-daily-intel-sweep` and
+`fpl-friday-intel-review`, which never run at the same time as each other.
+
+Both of those tasks now self-heal once (`rm -f .git/index.lock`, retry the
+commit, give up and report honestly if it fails twice) rather than silently
+dropping a commit — see their `KNOWN ISSUE` step. If you ever see a task
+report a failed commit, the fix is the same one used a few times by hand
+already:
+
+```bash
+cd ~/Projects/FPL
+rm -f .git/index.lock
+git status        # confirm what's actually staged before committing
+git add -A && git commit -m "..."
+git push
+```
+
+If stray lock files keep recurring, `git gc --prune=now` afterward clears out
+any orphaned `.git/objects/*/tmp_obj_*` files left behind by the interrupted
+attempts — cosmetic clutter, not corruption, but worth a periodic clean.
+
 ## Kill criteria
 
 - **A source sits at <30% accuracy past the 5-resolved gate** — stop logging
