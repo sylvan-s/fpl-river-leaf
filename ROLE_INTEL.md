@@ -330,7 +330,20 @@ nailed at RB. Corroborating: Fantasy Football Scout (18 Aug) notes his
 Community Shield start was capped under an hour "as planned," consistent
 with managed minutes rather than a fixed berth. Sourcing here is scattered
 predicted-XI pieces, not a confirmed team sheet or press-conference quote —
-a flag to watch, not settled.
+a flag to watch, not settled. Evidence is mixed even within the day: a
+fresher predicted XI (20 Aug, naming City's actual GW1 opponent Bournemouth)
+had O'Reilly starting alongside Gvardiol, contradicting the 18 Aug
+Nunes/Ait-Nouri reports above — not enough to act on either way.
+
+**Key confirmation point, 21 Aug 2026.** Maresca's pre-Bournemouth press
+conference is Friday 21 Aug from 13:30 UK — a few hours ahead of the 18:30
+BST GW1 deadline, and after that morning's `fpl-friday-intel-review` (07:30
+UTC) — the first point real team-news signal, rather than scattered
+predicted XIs, is likely to surface. Discussed with Sylvan 20 Aug: holding
+off any swap until then given the free pre-season transfer window makes
+waiting close to costless. A supplementary intel sweep is scheduled for
+14:30 UK that day, after the presser, specifically to catch its fallout
+ahead of a 15:00 review.
 
 **Falsifiable check:** does O'Reilly start at right-back (or at all) in
 City's actual GW1 fixture? Source: `OReilly-MCI-stp-20260820-1`.?
