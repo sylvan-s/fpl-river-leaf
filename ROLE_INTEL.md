@@ -144,6 +144,20 @@ window, not changed here. `injury_report` itself still shows both simply
 "INJURED, unknown return date," so this is press reporting ahead of the
 API, same caveat as always.?
 
+**Real matchday evidence, plus a market signal, 21 Aug 2026 — daily
+sweep, pending Friday review.** Mosquera actually started Arsenal's 3-0
+Community Shield win over Man City (16 Aug) alongside Gabriel, with Ben
+White filling in at right-back rather than Mosquera — a real team sheet,
+not just reporting, corroborating the minutes-opening thesis. Separately,
+Arteta's 20 Aug presser confirmed Arsenal are "really active in the
+market" for Aston Villa's Ezri Konsa specifically because of "the
+long-term issue with Willy" — the club's own recruitment behaviour is
+independent evidence it expects Saliba's absence to run long, reinforcing
+rather than superseding the "window is longer, not shorter" finding
+logged yesterday. Logged as `Mosquera-ARS-stp-20260821-1`. Falsifiable
+check for GW1 itself: does Mosquera start the actual Coventry fixture
+tonight??
+
 ### 4. Ndiaye (EVE, £6.0m, MID) — penalties + shot volume
 
 **Thesis:** locked-in penalty duty plus underlying volume beats his £6.0m price.
@@ -347,6 +361,22 @@ ahead of a 15:00 review.
 
 **Falsifiable check:** does O'Reilly start at right-back (or at all) in
 City's actual GW1 fixture? Source: `OReilly-MCI-stp-20260820-1`.?
+
+### 11. Guimarães (ARS, £7.0m, MID) — GW1 fitness doubt, relevant to Rice's workload-sharing thesis — **NOT OWNED**
+
+**Logged 21 Aug 2026, daily sweep, pending Friday review.** Guimarães was
+substituted at half-time in the Community Shield with ice strapped to his
+thigh, and Arteta's 20 Aug presser would not confirm his involvement
+against Coventry tonight ("Let's see how he is... he's evolving really
+well"). Rice and Saka are both confirmed fit and available. Relevant to
+entry 7's Rice workload-sharing thesis: if Guimarães sits out GW1, Rice is
+likely to play a full workload this week rather than an immediately-shared
+one — a possible one-week lag on the thesis's onset, not a contradiction
+of it. Not owned, so no effect on the live squad. Source:
+`Guimaraes-ARS-injury-20260821-1`.
+
+**Falsifiable check:** does Guimarães start (or feature) for Arsenal vs
+Coventry tonight, and does Rice play close to 90 minutes if he doesn't??
 
 ---
 
