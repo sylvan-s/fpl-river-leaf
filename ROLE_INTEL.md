@@ -156,7 +156,16 @@ independent evidence it expects Saliba's absence to run long, reinforcing
 rather than superseding the "window is longer, not shorter" finding
 logged yesterday. Logged as `Mosquera-ARS-stp-20260821-1`. Falsifiable
 check for GW1 itself: does Mosquera start the actual Coventry fixture
-tonight??
+tonight?
+
+**CONFIRMED, 23 Aug 2026 — GW1 team sheet, daily sweep.** Mosquera
+started Arsenal's actual GW1 fixture, the 3-0 win over Coventry (21 Aug),
+partnering Gabriel at centre-back, with Ben White again covering
+right-back for Timber. Saliba remained out. Resolution logged against
+`Mosquera-ARS-stp-20260821-1`. Konsa was also introduced to fans
+pre-match and, per Arteta, is now in contention for next Monday's Villa
+trip — the defensive-cover picture (and Mosquera's minutes runway) stays
+live beyond just Saliba/Timber's return dates.
 
 ### 4. Ndiaye (EVE, £6.0m, MID) — penalties + shot volume
 
@@ -360,7 +369,18 @@ waiting close to costless. A supplementary intel sweep is scheduled for
 ahead of a 15:00 review.
 
 **Falsifiable check:** does O'Reilly start at right-back (or at all) in
-City's actual GW1 fixture? Source: `OReilly-MCI-stp-20260820-1`.?
+City's actual GW1 fixture? Source: `OReilly-MCI-stp-20260820-1`.
+
+**Still open, 23 Aug 2026 — daily sweep, ahead of kickoff.** City's GW1
+fixture vs Bournemouth kicks off 14:00 UK today (23 Aug) and has not yet
+been played as of this sweep, so the falsifiable check above remains
+unresolved. Freshest available signal: a 21 Aug predicted XI (CityXtra)
+has Matheus Nunes at right-back and O'Reilly starting in central
+midfield alongside Kovacic in a double pivot — not the back four at all —
+while noting Nunes has recovered from the knock that kept him out of the
+Community Shield and is available for selection (confirmed by Maresca's
+matchday-minus-one presser). Still a prediction, not a team sheet;
+carried forward for next sweep to resolve against the actual lineup.?
 
 ### 11. Guimarães (ARS, £7.0m, MID) — GW1 fitness doubt, relevant to Rice's workload-sharing thesis — **NOT OWNED**
 
@@ -376,7 +396,27 @@ of it. Not owned, so no effect on the live squad. Source:
 `Guimaraes-ARS-injury-20260821-1`.
 
 **Falsifiable check:** does Guimarães start (or feature) for Arsenal vs
-Coventry tonight, and does Rice play close to 90 minutes if he doesn't??
+Coventry tonight, and does Rice play close to 90 minutes if he doesn't?
+
+**CONFIRMED (part), 23 Aug 2026 — daily sweep.** Guimarães did not
+feature at all in the actual GW1 win over Coventry, still recovering from
+the Community Shield thigh/groin issue (Rice and Saka came in for
+Guimarães and Madueke). Rice started but was withdrawn after 67 minutes
+alongside Saka, "handed partial breathers" per Arteta — not close to a
+full 90, so the second half of the falsifiable check reads as a mild
+extra data point for the workload-sharing thesis (entry 7) even in
+Guimarães' continued absence. Resolution logged against
+`Guimaraes-ARS-injury-20260821-1`.
+
+**Timeline update, 23 Aug 2026 — daily sweep, pending Friday review.**
+Arteta's post-match comments give a materially shorter estimate than the
+open-ended "let's see how he is" from before kickoff: "We expect him not
+to be out for weeks... I don't expect that to be a big issue." If
+accurate, this narrows the window in which Rice's minutes run unshared to
+roughly 1-2 gameweeks rather than open-ended. Logged as
+`Guimaraes-ARS-injury-20260823-1`. Source: Fantasy Football Scout, "FPL
+notes: Bruno G injury latest, Tzolis sharp + Odegaard 'rhythm'," 22 Aug
+2026.?
 
 ---
 

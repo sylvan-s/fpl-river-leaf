@@ -1,5 +1,5 @@
 {
-  "generated_utc": "2026-08-20T13:26:35.591124+00:00",
+  "generated_utc": "2026-08-21T06:31:41.319268+00:00",
   "min_resolved_for_accuracy": 5,
   "sources": [
     {
@@ -53,6 +53,38 @@
     },
     {
       "source_name": "Yahoo Sports / Sports Mole (Arteta press conference)",
+      "source_tier": 3,
+      "n_bites": 1,
+      "n_confirmed": 0,
+      "n_contradicted": 0,
+      "n_expired": 0,
+      "n_superseded": 0,
+      "n_open": 1,
+      "categories": {
+        "injury": 1
+      },
+      "n_resolved": 0,
+      "accuracy": null,
+      "stale_rate": null
+    },
+    {
+      "source_name": "RoundtableSports (Arsenal), citing Arteta 20 Aug press conference and Community Shield lineup",
+      "source_tier": 3,
+      "n_bites": 1,
+      "n_confirmed": 0,
+      "n_contradicted": 0,
+      "n_expired": 0,
+      "n_superseded": 0,
+      "n_open": 1,
+      "categories": {
+        "rotation": 1
+      },
+      "n_resolved": 0,
+      "accuracy": null,
+      "stale_rate": null
+    },
+    {
+      "source_name": "RoundtableSports (Arsenal), citing Arteta 20 Aug press conference",
       "source_tier": 3,
       "n_bites": 1,
       "n_confirmed": 0,

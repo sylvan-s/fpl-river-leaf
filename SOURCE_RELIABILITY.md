@@ -1,6 +1,6 @@
 # Source reliability — generated, do not hand-edit
 
-Regenerate with `python3 score_source_reliability.py`. Source: `docs/data/intel_sweep_log.jsonl` (5 bites logged, 0 resolutions). Live gameweek: 1.
+Regenerate with `python3 score_source_reliability.py`. Source: `docs/data/intel_sweep_log.jsonl` (7 bites logged, 0 resolutions). Live gameweek: 1.
 
 **Accuracy only reported at 5+ resolved bites** (confirmed + contradicted) — below that, the percentage would be more noise than signal from two or three claims. Expired and superseded bites count toward `stale_rate` (the check never resolved either way) but not toward accuracy, since going stale is a different failure mode from being wrong.
 
@@ -10,6 +10,8 @@ Regenerate with `python3 score_source_reliability.py`. Source: `docs/data/intel_
 | Fantasy Football Scout | 3 | 1 | 0 | n=0, need 5 | — | 1 |
 | Yardbarker / Yahoo Sports (Man City predicted-lineup reports) + Fantasy Football Scout | 3 | 1 | 0 | n=0, need 5 | — | 1 |
 | Yahoo Sports / Sports Mole (Arteta press conference) | 3 | 1 | 0 | n=0, need 5 | — | 1 |
+| RoundtableSports (Arsenal), citing Arteta 20 Aug press conference and Community Shield lineup | 3 | 1 | 0 | n=0, need 5 | — | 1 |
+| RoundtableSports (Arsenal), citing Arteta 20 Aug press conference | 3 | 1 | 0 | n=0, need 5 | — | 1 |
 
 ## By category, per source
 
@@ -17,6 +19,8 @@ Regenerate with `python3 score_source_reliability.py`. Source: `docs/data/intel_
 - **Fantasy Football Scout** — setpiece: 1
 - **Yardbarker / Yahoo Sports (Man City predicted-lineup reports) + Fantasy Football Scout** — rotation: 1
 - **Yahoo Sports / Sports Mole (Arteta press conference)** — injury: 1
+- **RoundtableSports (Arsenal), citing Arteta 20 Aug press conference and Community Shield lineup** — rotation: 1
+- **RoundtableSports (Arsenal), citing Arteta 20 Aug press conference** — injury: 1
 
 ---
 

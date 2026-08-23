@@ -132,6 +132,10 @@ def load_log():
                         f"{LOG_PATH}:{lineno}: decision {decision!r} not one "
                         f"of {sorted(VALID_DECISIONS)}")
                 decisions[bid] = d              # LATEST decision wins — see docstring
+            elif kind == "run_meta":
+                # Daily-sweep run-metadata record (see INTEL_SWEEP.md step 4).
+                # One per day, first-write-stands, not used in scoring — skip.
+                pass
             else:
                 raise SystemExit(f"{LOG_PATH}:{lineno}: unknown kind {kind!r}")
     return bites, resolutions, decisions
