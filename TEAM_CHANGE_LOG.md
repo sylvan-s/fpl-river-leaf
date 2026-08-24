@@ -333,7 +333,40 @@ so the test is capable of failing.
 
 Everything logged here before the 9 Aug rebuild has been closed and removed —
 the players are gone and the reasoning no longer bears on the current squad.
-Two open items:
+Three open items:
+
+**GW2 — three options recorded, none actioned (Tue 25 Aug 2026, deadline Fri
+28 Aug 17:30 UTC).** Squad news: Sarr (CRY) DOUBTFUL 75%, groin — trained
+Monday per Sage, expected back. Rest of squad clean. Optimiser
+(`optimise_squad.py --fixtures --transfers 1`, window refreshed for GW2): best
+1-transfer move gains nothing above 0.01 xP/90 — explicit HOLD from the model
+itself. `captaincy_odds` (neutral): **Mbeumo** tops on E[pts] 5.41 / P(haul)
+13.0% / P(blank) 21.1% / DiffUp 8.2, narrowly ahead of B.Fernandes (5.30 /
+12.2% / 20.2%) — both benefit from Man Utd hosting Ipswich (promoted, treated
+as league-average — likely conservative in United's favour). Predictions
+logged for GW2 (Mbeumo, B.Fernandes, Thiago, João Pedro, Calvert-Lewin) before
+this entry, per the mandatory pre-deadline rule.
+
+  1. **Hold / Protect Rank** — no transfer. Captain Mbeumo. Cost 0.
+  2. **Value Transfer — de-risk Sarr** — Sarr → Dewsbury-Hall (EVE, £6.5m for
+     £6.5m). Edges Ødegaard at the same price and points (11 each, delta +0.71
+     v +0.69): Everton's GW2-5 run is better on both ends (ATT x 1.03 v
+     Arsenal 0.99, DEF x 0.94 v 1.04). Direct answer to taking Sarr's injury
+     doubt seriously — equal-priced, better fixtures, no speculation. Cost 0.
+  3. **Aggressive Play — compound move** — O.Dango → Sangaré (BRE, £6.5m →
+     £5.5m, frees £1.0m; 13 DefCon + 2 assists on debut, Scout's explicit BUY,
+     but zero 2025/26 PL minutes so he clears none of our gates — pure
+     speculation) **+** Sarr → Gakpo (LIV, £7.0m, only reachable once the
+     freed £1.0m stacks with Sarr's own £6.5m sale). Gakpo has an established
+     personal prior, clears the 12+ CBIRT floor reliably (box-to-box, not just
+     attacker), and sits on Liverpool's best DEF x in the league (0.72). Second
+     transfer this window costs **-4**. The Gakpo half is model-backed: the
+     Sangaré half is not.
+
+No option actioned yet — Sylvan is holding the decision open across the week.
+Revisit before Friday's deadline; update CURRENT STATE and CHANGE HISTORY the
+moment one is actioned, and re-set the captain regardless of which option is
+picked (captaincy is free until the deadline).
 
 **Palmer (CHE, £9.5m)** — logged 9 Aug alongside the Enzo→Sarr swap. **Not
 excluded by any gate**: 5.11 xP/90 (best midfielder in the pool, ahead of
