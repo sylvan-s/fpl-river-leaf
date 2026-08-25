@@ -418,6 +418,42 @@ roughly 1-2 gameweeks rather than open-ended. Logged as
 notes: Bruno G injury latest, Tzolis sharp + Odegaard 'rhythm'," 22 Aug
 2026.?
 
+### 12. Aston Villa (AVL, £0.0m, TEAM) — squad exodus + GW1 collapse — **structural context, not a single-player thesis, NOT CURRENTLY OWNED**
+
+**Logged 25 Aug 2026, raised by Sylvan in chat, pending Friday review.**
+Villa lost 4-0 at home to Brighton in GW1 — 0.31 xG from six shots, no
+recognised striker on the pitch (Buendía played as the most advanced
+attacker), and João Gomes sent off for violent conduct before half-time
+(bans him for the next three: Arsenal, Hull, Nottingham Forest). Confirmed
+summer sales: Morgan Rogers, Ezri Konsa, Youri Tielemans, Lucas Digne.
+Ollie Watkins and Emiliano Martínez — first-choice striker and keeper —
+were both left out of the GW1 squad entirely, amid unresolved exit
+speculation rather than injury; Emery declined to explain Watkins'
+absence directly. Sources: Fantasy Football Scout GW1 Scout Notes, Sports
+Mole's summer transfer tracker.
+
+**The 30% figure is Sylvan's own instructed estimate, not a sourced
+one** — same discipline as entry 7's Rice reduction: the sources above
+support the facts (sales, absences, scoreline), not the size of any
+resulting dip. Logged as `xgi90 mult 0.70` — at the guardrail's edge
+(0.5x–1.5x cap) but within it.
+
+**Team-wide, not one player — the adjustments fence has no team-wildcard
+syntax.** If accepted Friday, this needs one `xgi90 | mult | 0.70` row per
+AVL pool player individually (Cash, Mings, Pau Torres, Bogarde, Maatsen,
+Lindelöf, Buendía, Guessand, McGinn, Kamara, Onana, Watkins, Martínez,
+Ruggeri — contaminated-fence and sub-900-minute players excluded as
+usual), not a single fence entry. Currently no Villa player is in the
+squad, so this has no live-team effect either way yet.
+
+**Falsifiable check:** does Villa's attacking output stay depressed (xG
+per match materially below their 2025/26 rate) across the next 3-4
+fixtures — Arsenal, Hull, Nottingham Forest (all three without the
+suspended Gomes), then Brentford — rather than reverting toward pre-sale
+form as Watkins/Martínez's situations resolve and new signings (record
+buy Manzambi, João Gomes' namesake-free replacement roles, Garnacho on
+loan) bed in? Source: `AstonVilla-AVL-xgi90-20260825-1`.?
+
 ---
 
 ## Machine-readable set-piece overrides
