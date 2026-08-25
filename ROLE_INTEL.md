@@ -454,6 +454,34 @@ form as Watkins/Martínez's situations resolve and new signings (record
 buy Manzambi, João Gomes' namesake-free replacement roles, Garnacho on
 loan) bed in? Source: `AstonVilla-AVL-xgi90-20260825-1`.?
 
+**Defensive-solidity mirror, requested by Sylvan 25 Aug 2026 — logged
+narrative-only, NO MODEL EFFECT, and none is currently possible.** Same
+GW1 match, other half of the evidence: Villa conceded 4, "mistake after
+mistake" defensively, Pau Torres "particularly poor." Sylvan asked for the
+mirror of the attacking multiplier above — same 30% instructed magnitude,
+same caveat — applied to players FACING Villa, i.e. raising opponents'
+attacking expectations against Villa's defence rather than lowering
+Villa's own.
+
+This is an opponent-side effect, and **the adjustments fence has no lever
+for it.** Confirmed by reading `intel_adjust.py`: `MULT_FIELDS`/`SET_FIELDS`
+only mutate a matched player's own row (`xg90`/`xa90`/`xgi90`/`cbit90`/
+`cbirt90`/`stp`, keyed on player+team). "This team is a soft defensive
+opponent" isn't one of those fields — `fixture_difficulty`/`fixture_outlook`/
+`captaincy_odds`'s ATT x / DEF x / exp CS come purely from data (shrunk
+xG/xGC), with no ROLE_INTEL override hook at all. Applying it via Villa's
+own defenders' `cbit90` would be a category error — that field drives
+*their own* DC points, not their opponents' xG — so it was rejected rather
+than logged wrong. Presented as a three-way choice; Sylvan chose
+narrative-only. Building a real opponent-override mechanism remains
+possible but is a code change, not a data entry — not done here.
+
+**Falsifiable check:** do teams facing Villa over the next 3-4 fixtures
+(Arsenal, Hull, Nottingham Forest, Brentford) outperform their own
+season-average attacking rate specifically against Villa, consistent with
+a genuinely leaky defence rather than a one-off chaotic match played
+mostly with ten men? Source: `AstonVilla-AVL-defsolidity-20260825-1`.?
+
 ---
 
 ## Machine-readable set-piece overrides
