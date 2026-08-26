@@ -91,7 +91,7 @@ border-radius:9px;padding:9px 11px}
 
 <h1>River Leaf FC — squad</h1>
 <p class="squad-link"><a href="https://fantasy.premierleague.com/en/my-team" target="_blank" rel="noopener noreferrer">Open my team on fantasy.premierleague.com ↗</a></p>
-<p class="sub">GW1 · 3-4-3 · £100.0m + £0.0m bank · squad.json updated 2026-08-12T23:03:00Z · page generated 2026-08-26 21:30</p>
+<p class="sub">GW1 · 3-4-3 · £100.0m + £0.0m bank · squad.json updated 2026-08-12T23:03:00Z · page generated 2026-08-26 22:06</p>
 
 <p class="deadline-line"><b>Next deadline unknown</b> — no live snapshot cached yet. Ask Claude to run the <span class='mono'>entry_summary</span> MCP tool (fpl-research) to populate docs/data/entry_summary.json.</p>
 <div class="kpis"><div class="kpi"><div class="kv mono">£100.0m</div><div class="kl">Squad value</div><div class="kn">bank £0.0m</div></div><div class="kpi"><div class="kv mono">55.5</div><div class="kl">XI xP per 90</div><div class="kn">what the optimiser maximises</div></div><div class="kpi"><div class="kv mono">49.6</div><div class="kl">XI xP per gameweek</div><div class="kn">11% never played</div></div><div class="kpi"><div class="kv mono">4.0</div><div class="kl">Bench value</div><div class="kn">1.12 expected blanks</div></div><div class="kpi"><div class="kv mono">4/4</div><div class="kl">Chips left</div><div class="kn">set 1 expires GW19</div></div><div class="kpi"><div class="kv mono">—</div><div class="kl">Total points</div><div class="kn">no live snapshot cached yet</div></div></div>
@@ -221,8 +221,12 @@ border-radius:9px;padding:9px 11px}
   uncertainty — it's what already happened.</div>
 </div>
 <script>
-const RC = {"labels": ["Appearance", "Goal Involvement", "Clean Sheets", "Defensive Contribution", "Saves", "Bonus"], "colors": ["dim", "a", "c", "e", "b", "d"], "dedLabels": ["Goals Conceded", "Yellow Cards", "Red Cards", "Own Goals", "Penalties Missed"], "dedColors": ["#ff8787", "#fa5252", "#e03131", "#c92a2a", "#962020"], "bonusUnvalidated": false, "expected": {"values": [19.625, 16.2473, 6.9401, 2.0039, 0.5676, 5.8572], "deductions": [-1.6834, 0.0, 0.0, 0.0, 0.0], "total": 49.5576}, "actual": null};
-const RCC = {a:'#4ea3ff',b:'#ffc857',c:'#5fd38d',d:'#ff6b6b',e:'#c792ea',dim:'#8b98a5'};
+const RC = {"labels": ["Appearance", "Goal Involvement", "Clean Sheets", "Defensive Contribution", "Saves", "Bonus"], "colors": ["dim", "a", "c", "e", "b", "d"], "dedLabels": ["Goals Conceded", "Yellow Cards", "Own Goals", "Penalties Missed", "Red Cards"], "dedColors": ["#ffa8a8", "#ff8787", "#f03e3e", "#e03131", "#962020"], "bonusUnvalidated": false, "expected": {"values": [19.625, 16.2473, 6.9401, 2.0039, 0.5676, 5.8572], "deductions": [-1.6834, 0.0, 0.0, 0.0, 0.0], "total": 49.5576}, "actual": null};
+// Recoloured 26 Aug 2026 for readability: EARNED categories now live entirely
+// in a blue/green/gold/violet "cool" family, and RED is reserved exclusively
+// for the deductions row below — Bonus used to share a red-ish tone (#ff6b6b)
+// with the deductions bar, which read as "this earned points are also bad".
+const RCC = {a:'#4ea3ff',b:'#ffd43b',c:'#51cf66',d:'#ff922b',e:'#9775fa',dim:'#8b98a5'};
 const rcCss = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
 let rcMode = 'expected';
 const earnedDS = RC.labels.map((lab, i) => {
@@ -272,17 +276,28 @@ function rcRender(mode) {
   }
   routeChart.update();
 }
+// BOTH buttons are always real, clickable toggles (fixed 26 Aug 2026 — they
+// used to look permanently "stuck" on Expected). The old version set a real
+// HTML `disabled` attribute on Actual whenever no cached snapshot existed
+// yet, which silently swallowed the click before rcRender ever ran: no
+// visual change, no message, nothing — indistinguishable from a broken
+// button. rcRender('actual') already had a graceful empty-state branch (see
+// below) that zeroes the chart and explains why; the button just needs to
+// let the user reach it. Actual still gets a dashed, dimmed look when no
+// snapshot is cached, so its state is visible before you click, not just
+// after.
 document.getElementById('rcMode').innerHTML = ['expected', 'actual'].map(m => {
-  const disabled = m === 'actual' && !RC.actual;
+  const noData = m === 'actual' && !RC.actual;
   const on = m === rcMode;
-  return `<button data-m="${m}" ${disabled ? 'disabled' : ''} style="font-size:12px;padding:4px 10px;
-    border-radius:6px;cursor:${disabled ? 'not-allowed' : 'pointer'};border:1px solid var(--line);
-    opacity:${disabled ? 0.45 : 1};background:${on ? RCC.a : 'transparent'};color:${on ? '#fff' : 'var(--tx)'}">
+  return `<button data-m="${m}" style="font-size:12px;padding:4px 10px;
+    border-radius:6px;cursor:pointer;border:1px ${noData ? 'dashed' : 'solid'} var(--line);
+    opacity:${noData ? 0.6 : 1};background:${on ? RCC.a : 'transparent'};color:${on ? '#fff' : 'var(--tx)'}"
+    title="${noData ? 'No cached actual results yet — click to see why, or run cache_history + squad_actual_points via the fpl-research MCP then rebuild' : ''}">
     ${m === 'expected' ? 'Expected' : 'Actual'}</button>`;
 }).join('');
 document.getElementById('rcMode').addEventListener('click', e => {
   const m = e.target.dataset.m;
-  if (!m || (m === 'actual' && !RC.actual)) return;
+  if (!m) return;
   document.querySelectorAll('#rcMode button').forEach(btn => {
     const on = btn.dataset.m === m;
     btn.style.background = on ? RCC.a : 'transparent';
@@ -388,6 +403,7 @@ rcRender('expected');
   <div class="find bad">
     The two objectives choose <b>different elevens from the same fifteen</b>. Ranking on xP/90 ignores how often a player actually starts, so it can field a stronger-looking XI that plays less. This is roadmap item <b>A0.5</b>.
   </div>
+  <p class='tests'><b>Why they disagree this week.</b></p><ul style='margin:6px 0 0 18px;padding:0'><li><b>Sarr</b> (MID, CRY) &mdash; kept by xP/90, dropped by xP/GW. attacking fixture multiplier 0.82 (18% tougher than average over GW1&ndash;4), but only 75% start probability caps how much of that actually accumulates per gameweek. <span class='kn' style='display:inline'>flat xP 4.78 (before fixtures), delta -1.1 - only visible once gate 2 moved to a last-16 window. Unchanged since 9 Aug.</span></li><li><b>Justin</b> (DEF, LEE) &mdash; the reverse: xP/GW prefers him because he starts reliably (100%), even though his defensive fixture multiplier 1.16 (16% tougher than average over GW1&ndash;4). <span class='kn' style='display:inline'>First substitute. 100% starts, xP_adj 3.64 - the most valuable autosub in the squad. Unchanged since 9 Aug.</span></li></ul>
 </div>
 
 <div class="panel">
@@ -427,6 +443,34 @@ rcRender('expected');
 </div>
 
 <div class="panel">
+  <h2>Alternative 3 — two transfers</h2>
+  <p class="tests">The current fifteen against the <b>next-best forced double swap</b> —
+  same convention as Alternative 2, but the optimiser must change exactly two players.
+  Realistically prices in a <b>&minus;4 hit</b> on the assumption of 1 free transfer
+  banked (squad.json doesn't track banked transfers, so this is a stated assumption,
+  not a live count) — if you're actually sitting on 2 free transfers this week, the
+  hit column below doesn't apply and the swap is free.</p>
+  <table>
+    <thead><tr><th>&nbsp;</th><th>XI xP/90</th><th>XI xP/GW</th><th>Bench</th><th>Total /GW</th></tr></thead>
+    <tbody>
+      <tr><td>Current</td><td class="mono">55.45</td><td class="mono">49.56</td>
+          <td class="mono">4.04</td><td class="mono">53.60</td></tr>
+      <tr><td>Sarr · Virgil → Enzo · Mosquera</td>
+          <td class="mono">56.16</td><td class="mono">50.43</td>
+          <td class="mono">3.91</td><td class="mono">54.35</td></tr>
+      <tr><td><b>Change</b></td><td class="mono">+0.71</td>
+          <td class="mono">+0.87</td><td class="mono">-0.13</td>
+          <td class="mono"><b>+0.75</b></td></tr>
+    </tbody></table>
+  <div class="find bad">
+    <b>Recommendation: HOLD.</b>
+    Sarr · Virgil &rarr; Enzo · Mosquera moves Total /GW by +0.75, which over a 5-GW hold nets -0.3 pts after the assumed &minus;4 hit &mdash; too close to breakeven (or negative) to take the hit on. Keep the fifteen as is, or revisit as a free single transfer instead.
+  </div>
+  <div class="find"><b>Fixtures and news behind each name.</b>
+  <ul style="margin:8px 0 0 18px;padding:0"><li><b>OUT Sarr</b> (MID, CRY) &mdash; attacking fixture multiplier 0.82 (18% tougher than average over GW1&ndash;4), 75% start probability. <span class='kn' style='display:inline'>flat xP 4.78 (before fixtures), delta -1.1 - only visible once gate 2 moved to a last-16 window. Unchanged since 9 Aug.</span></li><li><b>OUT Virgil</b> (DEF, LIV) &mdash; defensive fixture multiplier 0.71 (29% easier than average over GW1&ndash;4), 100% start probability. <span class='kn' style='display:inline'>Liverpool's GW1-4 DEF x is 0.69, the best defensive fixture run in the league by a distance. 100% starts, xP_adj 4.48.</span></li><li><b>IN Enzo</b> (MID, CHE) &mdash; attacking fixture multiplier 0.92 (8% tougher than average over GW1&ndash;4), 94% start probability. <span class='kn' style='display:inline'>no logged ROLE_INTEL entry — this pick is driven by the underlying rate stats alone.</span></li><li><b>IN Mosquera</b> (DEF, ARS) &mdash; defensive fixture multiplier 1.12 (12% tougher than average over GW1&ndash;4), 85% start probability. <span class='kn' style='display:inline'>Saliba back-injury "rest mode", Timber "weeks away" - out for Cardiff/Villa/likely Chelsea, later than the 21 Aug date previously logged; minutes opening in the league's best defence; see entry 3 above</span></li></ul></div>
+</div>
+
+<div class="panel">
   <h2>Chip strategy — Set 1 (expires GW19 deadline, Sat 2 Jan 2027 13:30 GMT)</h2>
   <p class="tests">4 of 4 chips still available. all four unused. 18 gameweeks (GW1–18) to place four chips. Full
   reasoning and the weekly review log live in
@@ -439,6 +483,24 @@ rcRender('expected');
     <tbody><tr><td><b>Wildcard 1</b> <span class="tag ok">available</span></td><td class='mono'>GW6–9</td><td style='text-align:left'>Once ~6 GWs of 2026/27 xGI exist and the delta rule has real signal</td><td class='mono'>GW12</td></tr><tr><td><b>Bench Boost 1</b> <span class="tag ok">available</span></td><td class='mono'>1–2 GWs after WC1</td><td style='text-align:left'>Only after a bench has been deliberately built on the wildcard</td><td class='mono'>GW17</td></tr><tr><td><b>Triple Captain 1</b> <span class="tag ok">available</span></td><td class='mono'>GW10–16</td><td style='text-align:left'>Best available Thiago/Bruno home fixture vs bottom-six, or any confirmed DGW</td><td class='mono'>GW16</td></tr><tr><td><b>Free Hit 1</b> <span class="tag ok">available</span></td><td class='mono'>Held as insurance</td><td style='text-align:left'>Injury crisis, or a blank/fixture swing if one emerges</td><td class='mono'>GW18</td></tr></tbody></table>
   <div class="find"><b>Reviewed every week, not set once.</b>
   <ul style="margin:8px 0 0 18px;padding:0"><li>Has a double or blank gameweek appeared in the lookahead? → re-plan immediately</li><li>Is any chip inside 4 gameweeks of its backstop? → escalate to a decision</li><li>Has the squad changed enough to alter the WC1 case?</li><li>Is the bench now worth boosting?</li><li>`escalation_check` flags chip pressure from 6 gameweeks out — treat that as the alarm</li></ul></div>
+</div>
+
+<div class="panel">
+  <h2>Top 3 captaincy candidates — Gameweek 2</h2>
+  <p class="tests">From <span class="mono">captaincy_odds</span> (fpl-research MCP),
+  which models goals and assists as Poisson draws rather than a single point
+  estimate — E[pts] is the mean, but captaincy is not symmetric: P(haul) is what
+  gains rank, P(blank) is what loses it, and DiffUp (P(haul) &times; (1&minus;ownership))
+  is what a genuine differential bet is worth. Snapshot fetched
+  2026-08-26T21:02:53Z.</p>
+  <table>
+    <thead><tr><th>Player</th><th>Fixture</th><th>E[pts]</th><th>P(haul&ge;10)</th>
+    <th>P(blank&le;2)</th><th>Own%</th><th>DiffUp</th></tr></thead>
+    <tbody><tr><td><b>Gabriel</b></td><td class='mono'>ARS AVL (A)</td><td class='mono'>5.93</td><td class='mono'>8.5%</td><td class='mono'>17.8%</td><td class='mono'>29.3%</td><td class='mono'>6.0</td></tr><tr><td><b>João Pedro</b></td><td class='mono'>CHE BHA (H)</td><td class='mono'>4.77</td><td class='mono'>10.0%</td><td class='mono'>59.9%</td><td class='mono'>66.8%</td><td class='mono'>3.3</td></tr><tr><td><b>Thiago</b></td><td class='mono'>BRE LEE (A)</td><td class='mono'>4.04</td><td class='mono'>8.6%</td><td class='mono'>59.4%</td><td class='mono'>16.9%</td><td class='mono'>7.2</td></tr></tbody></table>
+  <div class="find ok"><b>The case for each.</b>
+  <ul style="margin:8px 0 0 18px;padding:0"><li><b>1. Gabriel</b> — Top expected points in the squad by a clear margin, and the second-lowest blank risk behind only Raya (17.8% vs 20.2%) — a rare combination of ceiling and floor. Arsenal's attack is in form and he adds set-piece/clean-sheet threat on top of goal involvement, so the away trip to a wounded Aston Villa (4-0 GW1 defeat, defensive changes still bedding in) doesn't undermine the case the way a tough away fixture normally would for a defender.</li><li><b>2. João Pedro</b> — Highest haul probability in the squad (10.0%, P(haul&gt;=10)) and the best ceiling among the forwards — confirmed first-choice #9 with a home fixture. The trade-off is ownership: at 66.8% owned, captaining him is close to rank-neutral if he hauls, since most of the league already has the same shirt on. The safer pick if you want upside without a differential bet.</li><li><b>3. Thiago</b> — Best differential score in the squad (DiffUp 7.2, highest P(haul) x (1-ownership) of anyone considered) at only 16.9% owned — a genuine rank-moving bet away at Leeds rather than a safe, crowded pick. Lower E[pts] and a higher blank risk than Gabriel or João Pedro, so this is the pick for chasing rank, not protecting it.</li></ul></div>
+  <p class='tests' style='margin-top:10px'><b>Also considered.</b> <b>Calvert-Lewin</b> — DiffUp 6.2, close behind Thiago, but lower E[pts] (3.98) and SUSP flag (1/5 toward a booking-related risk window) · <b>Raya</b> — Lowest P(blank) of anyone (20.2%) but caps out low on E[pts] (5.16) and DiffUp (0.1) — pure floor, no case for the armband over Gabriel</p>
+  <div class='find bad'>Point-in-time snapshot, not live-refreshed by this build script — refresh by re-running captaincy_odds via the fpl-research MCP (neutral/chase/protect) and rewriting this file, same pattern as entry_summary.json.<br>A name-matching issue was found when Sarr (Crystal Palace, this squad) was queried: captaincy_odds matched a different player (M.Sarr, Chelsea) instead. Sarr was excluded from this snapshot's candidate list as a result — not a captaincy contender either way, but the underlying names table has a resolvable ambiguity worth fixing.</div>
 </div>
 
 <footer>Built by <span class='mono'>build_squad_page.py</span> from <span class='mono'>squad.json</span>. Expected points come from FPL's own scoring table — nothing invented. Where a number is unreliable, the page says so.</footer>

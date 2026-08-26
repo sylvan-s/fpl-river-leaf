@@ -42,17 +42,23 @@ ROUTE_CATEGORIES = [
     ("bonus", "Bonus", "d"),
 ]
 
-# The deductions row added 26 Aug 2026, in shades of red (darkest = most
-# severe). goals_conceded is un-netted OUT of defensive_contribution above
-# for this chart specifically — see scoring.expected_gc_penalty()'s
-# docstring for why that's safe to do without touching the netted figure
-# every other caller of expected_points_scaled_breakdown() still relies on.
+# The deductions row added 26 Aug 2026, in shades of red ORDERED BY SEVERITY
+# (lightest = smallest single-event cost, darkest = largest) so the gradient
+# itself is readable without the legend: goals_conceded is the mildest but
+# most recurring hit (-1 per 2 conceded), yellow cards cost -1 per card, own
+# goals and penalty misses cost -2 each, and a red card costs -3, the single
+# worst event on the chart — recoloured 26 Aug 2026 for readability (see the
+# colour review noted in the module docstring). goals_conceded is un-netted
+# OUT of defensive_contribution above for this chart specifically — see
+# scoring.expected_gc_penalty()'s docstring for why that's safe to do without
+# touching the netted figure every other caller of
+# expected_points_scaled_breakdown() still relies on.
 DEDUCTION_CATEGORIES = [
-    ("goals_conceded", "Goals Conceded", "#ff8787"),
-    ("yellow_cards", "Yellow Cards", "#fa5252"),
-    ("red_cards", "Red Cards", "#e03131"),
-    ("own_goals", "Own Goals", "#c92a2a"),
-    ("penalties_missed", "Penalties Missed", "#962020"),
+    ("goals_conceded", "Goals Conceded", "#ffa8a8"),
+    ("yellow_cards", "Yellow Cards", "#ff8787"),
+    ("own_goals", "Own Goals", "#f03e3e"),
+    ("penalties_missed", "Penalties Missed", "#e03131"),
+    ("red_cards", "Red Cards", "#962020"),
 ]
 
 PRIORS_SNAPSHOT = os.path.join(HERE, "fpl_priors_2025_26_v2.json")
@@ -71,6 +77,7 @@ opt = _load("opt", "optimise_squad.py")
 sz = _load("sz", "size_bench_value.py")
 page_shell = _load("page_shell", "page_shell.py")
 squad_state = _load("squad_state", "squad_state.py")
+intel = _load("intel", "intel_adjust.py")
 
 try:
     import pulp
@@ -82,6 +89,7 @@ POS_ORDER = ["GKP", "DEF", "MID", "FWD"]
 ENTRY = 1041614
 LIVE_SNAPSHOT = os.path.join(HERE, "docs", "data", "entry_summary.json")
 MY_TEAM_URL = "https://fantasy.premierleague.com/en/my-team"
+CAPTAINCY_SNAPSHOT = os.path.join(HERE, "docs", "data", "captaincy_snapshot.json")
 
 
 def esc(s):
@@ -174,6 +182,60 @@ def actual_route_snapshot(xi_players=None):
     if not snap.get("gws") or "positive" not in snap or "deductions" not in snap:
         return None
     return snap
+
+
+def captaincy_snapshot():
+    """Top-3 captaincy candidates with rationale — same PURE READ pattern as
+    live_snapshot()/actual_route_snapshot(). captaincy_odds is a live MCP
+    tool (Poisson haul/blank modelling over the actual fixture list), not
+    something this offline build script can call itself, so a Claude session
+    runs it and a small aggregate gets written to CAPTAINCY_SNAPSHOT — same
+    reasoning as every other live number on this page. Unlike entry_summary/
+    squad_actual_points there is no dedicated MCP tool writing this file yet;
+    it is refreshed by hand from captaincy_odds's neutral/chase/protect output
+    (see the file's own `source` field). Returns None if never written."""
+    if not os.path.exists(CAPTAINCY_SNAPSHOT):
+        return None
+    try:
+        snap = json.load(open(CAPTAINCY_SNAPSHOT, encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if snap.get("entry") not in (None, ENTRY) or not snap.get("candidates"):
+        return None
+    return snap
+
+
+def _fixture_read(p):
+    """One-line plain-English read of a player's GW1-4 fixture multiplier —
+    ATT for MID/FWD (higher is easier), DEF for GKP/DEF (lower is easier).
+    Shared by the Alternative 1 and Alternative 3 explanations so the two
+    panels describe fixtures the same way rather than drifting into two
+    hand-written phrasings of the same number."""
+    if p["pos"] in ("MID", "FWD"):
+        x, tag, easier = p["att_x"], "attacking", p["att_x"] > 1.0
+    else:
+        x, tag, easier = p["def_x"], "defensive", p["def_x"] < 1.0
+    off = abs(x - 1.0) * 100
+    if off < 3:
+        read = "roughly neutral"
+    else:
+        read = f"{off:.0f}% {'easier' if easier else 'tougher'} than average"
+    return f"{tag} fixture multiplier {x:.2f} ({read} over GW1&ndash;4)"
+
+
+def _news_bite(name, team):
+    """The ROLE_INTEL.md `adjustments` fence 'why' for a player, if any —
+    shared lookup so the Alternative panels quote the same reasoning
+    captaincy_odds/build_squad.py already apply, rather than re-describing
+    it from scratch. Returns None if the player carries no logged entry,
+    which is itself informative (the pick is data-driven, not intel-driven)."""
+    try:
+        entries = intel.entries_for(name, team)
+    except Exception:
+        entries = []
+    if not entries:
+        return None
+    return " · ".join(e["why"] for e in entries)
 
 
 def contaminated():
@@ -343,6 +405,69 @@ def build():
     altgw = best_xi(mine, weight_by_start=True)
     same = {p["name"] for p in alt90} == {p["name"] for p in altgw}
 
+    # --- Alternative 1's fixture/news explanation, added 26 Aug 2026 --------
+    # WHY the two objectives pick differently (or don't), not just THAT they
+    # do — reuses _fixture_read()/_news_bite() so this and Alternative 3
+    # describe fixtures and intel the same way rather than two hand-written
+    # phrasings of the same underlying numbers.
+    def _alt1_explain():
+        n90 = {p["name"] for p in alt90}
+        ngw = {p["name"] for p in altgw}
+        by90, bygw = {p["name"]: p for p in alt90}, {p["name"]: p for p in altgw}
+        only90, onlygw = sorted(n90 - ngw), sorted(ngw - n90)
+        if not only90 and not onlygw:
+            outfield = [p for p in mine if p["pos"] != "GKP"]
+            spread = max(abs(p["att_x"] - 1.0) if p["pos"] in ("MID", "FWD")
+                         else abs(p["def_x"] - 1.0) for p in outfield)
+            return (f"<p class='tests'>Over GW1&ndash;4 the biggest fixture swing "
+                     f"anywhere in the fifteen is only {spread*100:.0f}% away from "
+                     f"neutral, and no one's start probability is depressed enough "
+                     f"right now to cross the line either. Neither lever is currently "
+                     f"strong enough to move a player over the threshold that would "
+                     f"split the two objectives &mdash; if a fixture run gets "
+                     f"materially tougher or a news bite drops a start probability, "
+                     f"expect this row to change.</p>")
+        lines = []
+        for name in only90:
+            p = by90[name]
+            news = _news_bite(p["name"], p["team"]) or sel.get(name, "")
+            lines.append(
+                f"<li><b>{esc(name)}</b> ({p['pos']}, {p['team']}) &mdash; kept by "
+                f"xP/90, dropped by xP/GW. {_fixture_read(p)}, but only "
+                f"{p['stp']*100:.0f}% start probability caps how much of that "
+                f"actually accumulates per gameweek."
+                + (f" <span class='kn' style='display:inline'>{esc(news)}</span>" if news else "")
+                + "</li>")
+        for name in onlygw:
+            p = bygw[name]
+            news = _news_bite(p["name"], p["team"]) or sel.get(name, "")
+            lines.append(
+                f"<li><b>{esc(name)}</b> ({p['pos']}, {p['team']}) &mdash; the "
+                f"reverse: xP/GW prefers him because he starts reliably "
+                f"({p['stp']*100:.0f}%), even though his {_fixture_read(p)}."
+                + (f" <span class='kn' style='display:inline'>{esc(news)}</span>" if news else "")
+                + "</li>")
+        return (f"<p class='tests'><b>Why they disagree this week.</b></p>"
+                f"<ul style='margin:6px 0 0 18px;padding:0'>{''.join(lines)}</ul>")
+    alt1_explain_html = _alt1_explain()
+
+    # --- Alternative 3: best forced TWO-player move, added 26 Aug 2026 ------
+    # Same force=True convention Alternative 2 already uses (see
+    # opt.optimise_transfers' own docstring) — always returns a real forced
+    # double swap so the page can show what a genuine two-for-two looks like,
+    # even when the honest call is a smaller move or a hold. HIT COST
+    # ASSUMPTION: squad.json does not track banked free transfers, so this
+    # prices the swap assuming 1 free transfer available (optimise_transfers'
+    # own default) — stated explicitly below rather than left implicit.
+    res2 = opt.optimise_transfers(pool, state.name_set, state.bank, 2,
+                                   allow_haaland=False, force=True)
+    t2_xi, t2_bench, t2_hits = res2
+    t2_out = sorted(state.name_set - {p["name"] for p in t2_xi + t2_bench})
+    t2_in = sorted({p["name"] for p in t2_xi + t2_bench} - state.name_set)
+    t2_b, _t2r, _t2d = sz.bench_value(t2_xi, t2_bench)
+    t2_90 = sum(p["score"] for p in t2_xi)
+    t2_gw = sum(p["stp"] * p["score"] for p in t2_xi)
+
     # force=True: always return the best SINGLE swap, even if its impact is
     # small or negative, rather than letting the solver hand back the current
     # squad unchanged. The table should show "what's the next-best move if
@@ -364,6 +489,37 @@ def build():
     MIN_GAIN = 0.01
     t_gain = t_90 - xi90
     t_hold = t_gain < MIN_GAIN
+
+    # Alternative 3's own hold/move call — same "read the last column, not
+    # the first" discipline as Alternative 2 (Total /GW, over a 5-GW hold,
+    # net of the hit) since two transfers realistically means a hit unless a
+    # second free transfer happens to be banked.
+    t2_total_change = (t2_gw + t2_b) - (xigw + bench_pts)
+    t2_net_5gw = t2_total_change * 5 - t2_hits
+    t2_worth = t2_net_5gw > 0
+
+    def _t2_explain():
+        lines = []
+        for name in t2_out:
+            p = by[name]
+            news = _news_bite(p["name"], p["team"]) or sel.get(name, "")
+            lines.append(
+                f"<li><b>OUT {esc(name)}</b> ({p['pos']}, {p['team']}) &mdash; "
+                f"{_fixture_read(p)}, {p['stp']*100:.0f}% start probability."
+                + (f" <span class='kn' style='display:inline'>{esc(news)}</span>" if news else "")
+                + "</li>")
+        for name in t2_in:
+            p = by[name]
+            news = _news_bite(p["name"], p["team"]) or ""
+            lines.append(
+                f"<li><b>IN {esc(name)}</b> ({p['pos']}, {p['team']}) &mdash; "
+                f"{_fixture_read(p)}, {p['stp']*100:.0f}% start probability."
+                + (f" <span class='kn' style='display:inline'>{esc(news)}</span>" if news else
+                   " <span class='kn' style='display:inline'>no logged ROLE_INTEL entry — "
+                   "this pick is driven by the underlying rate stats alone.</span>")
+                + "</li>")
+        return "".join(lines)
+    t2_explain_html = _t2_explain()
 
     # --- the no-Haaland preference, repriced on every run -------------------
     # TEAM_CHANGE_LOG.md's "STANDING PREFERENCES" section carries the dated
@@ -456,6 +612,7 @@ def build():
      "Ranking on xP/90 ignores how often a player actually starts, so it can field "
      "a stronger-looking XI that plays less. This is roadmap item <b>A0.5</b>."}
   </div>
+  {alt1_explain_html}
 </div>
 
 <div class="panel">
@@ -497,6 +654,41 @@ def build():
   <div class="find">Read the last column, not the first. Mixing an XI measured per 90
   with a bench measured per gameweek produced a confident, entirely false answer once
   already — the two must share a unit before they are added.</div>
+</div>
+
+<div class="panel">
+  <h2>Alternative 3 — two transfers</h2>
+  <p class="tests">The current fifteen against the <b>next-best forced double swap</b> —
+  same convention as Alternative 2, but the optimiser must change exactly two players.
+  Realistically prices in a <b>&minus;4 hit</b> on the assumption of 1 free transfer
+  banked (squad.json doesn't track banked transfers, so this is a stated assumption,
+  not a live count) — if you're actually sitting on 2 free transfers this week, the
+  hit column below doesn't apply and the swap is free.</p>
+  <table>
+    <thead><tr><th>&nbsp;</th><th>XI xP/90</th><th>XI xP/GW</th><th>Bench</th><th>Total /GW</th></tr></thead>
+    <tbody>
+      <tr><td>Current</td><td class="mono">{xi90:.2f}</td><td class="mono">{xigw:.2f}</td>
+          <td class="mono">{bench_pts:.2f}</td><td class="mono">{xigw+bench_pts:.2f}</td></tr>
+      <tr><td>{esc(' · '.join(t2_out))} → {esc(' · '.join(t2_in))}</td>
+          <td class="mono">{t2_90:.2f}</td><td class="mono">{t2_gw:.2f}</td>
+          <td class="mono">{t2_b:.2f}</td><td class="mono">{t2_gw+t2_b:.2f}</td></tr>
+      <tr><td><b>Change</b></td><td class="mono">{t2_90-xi90:+.2f}</td>
+          <td class="mono">{t2_gw-xigw:+.2f}</td><td class="mono">{t2_b-bench_pts:+.2f}</td>
+          <td class="mono"><b>{t2_total_change:+.2f}</b></td></tr>
+    </tbody></table>
+  <div class="find {'ok' if t2_worth else 'bad'}">
+    <b>Recommendation: {'worth considering' if t2_worth else 'HOLD'}.</b>
+    {f"{esc(' · '.join(t2_out))} &rarr; {esc(' · '.join(t2_in))} moves Total /GW by "
+     f"{t2_total_change:+.2f}, which over a 5-GW hold nets {t2_net_5gw:+.1f} pts after "
+     f"the assumed &minus;{t2_hits} hit &mdash; a real edge, not just noise."
+     if t2_worth else
+     f"{esc(' · '.join(t2_out))} &rarr; {esc(' · '.join(t2_in))} moves Total /GW by "
+     f"{t2_total_change:+.2f}, which over a 5-GW hold nets {t2_net_5gw:+.1f} pts after "
+     f"the assumed &minus;{t2_hits} hit &mdash; too close to breakeven (or negative) to "
+     f"take the hit on. Keep the fifteen as is, or revisit as a free single transfer instead."}
+  </div>
+  <div class="find"><b>Fixtures and news behind each name.</b>
+  <ul style="margin:8px 0 0 18px;padding:0">{t2_explain_html}</ul></div>
 </div>"""
 
     chip_html = ""
@@ -527,6 +719,62 @@ def build():
     <tbody>{chip_rows}</tbody></table>
   <div class="find"><b>Reviewed every week, not set once.</b>
   <ul style="margin:8px 0 0 18px;padding:0">{checklist_html}</ul></div>
+</div>"""
+
+    # --- Top 3 captaincy candidates, added 26 Aug 2026 ----------------------
+    # captaincy_odds is a live MCP tool (Poisson haul/blank modelling against
+    # the real fixture list) — this offline build script can't call it
+    # itself, so this panel reads a small hand-refreshed snapshot instead,
+    # same PURE READ discipline as live_snapshot()/actual_route_snapshot().
+    # See captaincy_snapshot()'s docstring for the refresh path.
+    cap_snap = captaincy_snapshot()
+    cap_html = ""
+    if cap_snap:
+        def cap_row(c):
+            return (f"<tr><td><b>{esc(c['name'])}</b></td>"
+                    f"<td class='mono'>{esc(c['team'])} {esc(c['opponent'])}</td>"
+                    f"<td class='mono'>{c['e_pts']:.2f}</td>"
+                    f"<td class='mono'>{c['p_haul']:.1f}%</td>"
+                    f"<td class='mono'>{c['p_blank']:.1f}%</td>"
+                    f"<td class='mono'>{c['own_pct']:.1f}%</td>"
+                    f"<td class='mono'>{c['diffup']:.1f}</td></tr>")
+        cap_rows = "".join(cap_row(c) for c in cap_snap["candidates"])
+        cap_rationale = "".join(
+            f"<li><b>{i+1}. {esc(c['name'])}</b> — {esc(c['rationale'])}</li>"
+            for i, c in enumerate(cap_snap["candidates"]))
+        also = cap_snap.get("also_considered") or []
+        also_html = ("<p class='tests' style='margin-top:10px'><b>Also considered.</b> "
+                     + " · ".join(f"<b>{esc(a['name'])}</b> — {esc(a['note'])}" for a in also)
+                     + "</p>") if also else ""
+        caveats = cap_snap.get("caveats") or []
+        caveats_html = ("<div class='find bad'>" +
+                        "<br>".join(esc(c) for c in caveats) + "</div>") if caveats else ""
+        cap_html = f"""
+<div class="panel">
+  <h2>Top 3 captaincy candidates — Gameweek {cap_snap.get('next_gw', '?')}</h2>
+  <p class="tests">From <span class="mono">captaincy_odds</span> (fpl-research MCP),
+  which models goals and assists as Poisson draws rather than a single point
+  estimate — E[pts] is the mean, but captaincy is not symmetric: P(haul) is what
+  gains rank, P(blank) is what loses it, and DiffUp (P(haul) &times; (1&minus;ownership))
+  is what a genuine differential bet is worth. Snapshot fetched
+  {esc(cap_snap.get('fetched_utc', 'unknown time'))}.</p>
+  <table>
+    <thead><tr><th>Player</th><th>Fixture</th><th>E[pts]</th><th>P(haul&ge;10)</th>
+    <th>P(blank&le;2)</th><th>Own%</th><th>DiffUp</th></tr></thead>
+    <tbody>{cap_rows}</tbody></table>
+  <div class="find ok"><b>The case for each.</b>
+  <ul style="margin:8px 0 0 18px;padding:0">{cap_rationale}</ul></div>
+  {also_html}
+  {caveats_html}
+</div>"""
+    else:
+        cap_html = """
+<div class="panel">
+  <h2>Top 3 captaincy candidates</h2>
+  <p class="tests">No cached captaincy snapshot yet. Ask Claude to run
+  <span class="mono">captaincy_odds</span> (fpl-research MCP, neutral/chase/protect
+  modes) over the current XI and save the result to
+  <span class="mono">docs/data/captaincy_snapshot.json</span>, then rebuild.</p>
 </div>"""
 
     # --- "where the points come from" chart (ADR 0001) ---------------------
@@ -598,7 +846,11 @@ def build():
 </div>
 <script>
 const RC = {route_payload};
-const RCC = {{a:'#4ea3ff',b:'#ffc857',c:'#5fd38d',d:'#ff6b6b',e:'#c792ea',dim:'#8b98a5'}};
+// Recoloured 26 Aug 2026 for readability: EARNED categories now live entirely
+// in a blue/green/gold/violet "cool" family, and RED is reserved exclusively
+// for the deductions row below — Bonus used to share a red-ish tone (#ff6b6b)
+// with the deductions bar, which read as "this earned points are also bad".
+const RCC = {{a:'#4ea3ff',b:'#ffd43b',c:'#51cf66',d:'#ff922b',e:'#9775fa',dim:'#8b98a5'}};
 const rcCss = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
 let rcMode = 'expected';
 const earnedDS = RC.labels.map((lab, i) => {{
@@ -648,17 +900,28 @@ function rcRender(mode) {{
   }}
   routeChart.update();
 }}
+// BOTH buttons are always real, clickable toggles (fixed 26 Aug 2026 — they
+// used to look permanently "stuck" on Expected). The old version set a real
+// HTML `disabled` attribute on Actual whenever no cached snapshot existed
+// yet, which silently swallowed the click before rcRender ever ran: no
+// visual change, no message, nothing — indistinguishable from a broken
+// button. rcRender('actual') already had a graceful empty-state branch (see
+// below) that zeroes the chart and explains why; the button just needs to
+// let the user reach it. Actual still gets a dashed, dimmed look when no
+// snapshot is cached, so its state is visible before you click, not just
+// after.
 document.getElementById('rcMode').innerHTML = ['expected', 'actual'].map(m => {{
-  const disabled = m === 'actual' && !RC.actual;
+  const noData = m === 'actual' && !RC.actual;
   const on = m === rcMode;
-  return `<button data-m="${{m}}" ${{disabled ? 'disabled' : ''}} style="font-size:12px;padding:4px 10px;
-    border-radius:6px;cursor:${{disabled ? 'not-allowed' : 'pointer'}};border:1px solid var(--line);
-    opacity:${{disabled ? 0.45 : 1}};background:${{on ? RCC.a : 'transparent'}};color:${{on ? '#fff' : 'var(--tx)'}}">
+  return `<button data-m="${{m}}" style="font-size:12px;padding:4px 10px;
+    border-radius:6px;cursor:pointer;border:1px ${{noData ? 'dashed' : 'solid'}} var(--line);
+    opacity:${{noData ? 0.6 : 1}};background:${{on ? RCC.a : 'transparent'}};color:${{on ? '#fff' : 'var(--tx)'}}"
+    title="${{noData ? 'No cached actual results yet — click to see why, or run cache_history + squad_actual_points via the fpl-research MCP then rebuild' : ''}}">
     ${{m === 'expected' ? 'Expected' : 'Actual'}}</button>`;
 }}).join('');
 document.getElementById('rcMode').addEventListener('click', e => {{
   const m = e.target.dataset.m;
-  if (!m || (m === 'actual' && !RC.actual)) return;
+  if (!m) return;
   document.querySelectorAll('#rcMode button').forEach(btn => {{
     const on = btn.dataset.m === m;
     btn.style.background = on ? RCC.a : 'transparent';
@@ -783,6 +1046,7 @@ rcRender('expected');
 
 {alt_html}
 {chip_html}
+{cap_html}
 """
 
     extra_css = """

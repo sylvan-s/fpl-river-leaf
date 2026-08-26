@@ -1,0 +1,58 @@
+{
+  "entry": 1041614,
+  "next_gw": 2,
+  "fetched_utc": "2026-08-26T21:02:53Z",
+  "source": "captaincy_odds (fpl-research MCP), neutral+chase+protect modes, with_intel=True, shrunk=True",
+  "candidates": [
+    {
+      "rank": 1,
+      "name": "Gabriel",
+      "team": "ARS",
+      "pos": "DEF",
+      "opponent": "AVL (A)",
+      "e_pts": 5.93,
+      "p_haul": 8.5,
+      "p_blank": 17.8,
+      "own_pct": 29.3,
+      "diffup": 6.0,
+      "sd": 2.75,
+      "rationale": "Top expected points in the squad by a clear margin, and the second-lowest blank risk behind only Raya (17.8% vs 20.2%) — a rare combination of ceiling and floor. Arsenal's attack is in form and he adds set-piece/clean-sheet threat on top of goal involvement, so the away trip to a wounded Aston Villa (4-0 GW1 defeat, defensive changes still bedding in) doesn't undermine the case the way a tough away fixture normally would for a defender."
+    },
+    {
+      "rank": 2,
+      "name": "João Pedro",
+      "team": "CHE",
+      "pos": "FWD",
+      "opponent": "BHA (H)",
+      "e_pts": 4.77,
+      "p_haul": 10.0,
+      "p_blank": 59.9,
+      "own_pct": 66.8,
+      "diffup": 3.3,
+      "sd": 3.78,
+      "rationale": "Highest haul probability in the squad (10.0%, P(haul>=10)) and the best ceiling among the forwards — confirmed first-choice #9 with a home fixture. The trade-off is ownership: at 66.8% owned, captaining him is close to rank-neutral if he hauls, since most of the league already has the same shirt on. The safer pick if you want upside without a differential bet."
+    },
+    {
+      "rank": 3,
+      "name": "Thiago",
+      "team": "BRE",
+      "pos": "FWD",
+      "opponent": "LEE (A)",
+      "e_pts": 4.04,
+      "p_haul": 8.6,
+      "p_blank": 59.4,
+      "own_pct": 16.9,
+      "diffup": 7.2,
+      "sd": 2.88,
+      "rationale": "Best differential score in the squad (DiffUp 7.2, highest P(haul) x (1-ownership) of anyone considered) at only 16.9% owned — a genuine rank-moving bet away at Leeds rather than a safe, crowded pick. Lower E[pts] and a higher blank risk than Gabriel or João Pedro, so this is the pick for chasing rank, not protecting it."
+    }
+  ],
+  "also_considered": [
+    {"name": "Calvert-Lewin", "note": "DiffUp 6.2, close behind Thiago, but lower E[pts] (3.98) and SUSP flag (1/5 toward a booking-related risk window)"},
+    {"name": "Raya", "note": "Lowest P(blank) of anyone (20.2%) but caps out low on E[pts] (5.16) and DiffUp (0.1) — pure floor, no case for the armband over Gabriel"}
+  ],
+  "caveats": [
+    "Point-in-time snapshot, not live-refreshed by this build script — refresh by re-running captaincy_odds via the fpl-research MCP (neutral/chase/protect) and rewriting this file, same pattern as entry_summary.json.",
+    "A name-matching issue was found when Sarr (Crystal Palace, this squad) was queried: captaincy_odds matched a different player (M.Sarr, Chelsea) instead. Sarr was excluded from this snapshot's candidate list as a result — not a captaincy contender either way, but the underlying names table has a resolvable ambiguity worth fixing."
+  ]
+}
