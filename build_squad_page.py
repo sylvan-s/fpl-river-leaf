@@ -64,7 +64,9 @@ except ImportError:
 
 OUT = os.environ.get("FPL_SQUAD_OUT") or os.path.join(HERE, "docs", "index.html")
 POS_ORDER = ["GKP", "DEF", "MID", "FWD"]
-DEADLINE = dt.datetime(2026, 8, 21, 17, 30, tzinfo=dt.timezone.utc)
+ENTRY = 1041614
+LIVE_SNAPSHOT = os.path.join(HERE, "docs", "data", "entry_summary.json")
+MY_TEAM_URL = "https://fantasy.premierleague.com/en/my-team"
 
 
 def esc(s):
@@ -75,6 +77,71 @@ def md_bold(s):
     """`**text**` -> `<b>text</b>` for the short prose snippets pulled out of
     TEAM_CHANGE_LOG.md - that file is markdown, this page is not."""
     return re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", esc(s))
+
+
+def _http_get(url):
+    import httpx
+    r = httpx.get(url, timeout=20, headers={"User-Agent": "fpl-river-leaf-dashboard/1.0"})
+    r.raise_for_status()
+    return r.json()
+
+
+def live_snapshot(entry=ENTRY):
+    """Actual FPL total points (cumulated for the squad) and the next real
+    deadline, fetched live from the FPL API. Everything else on this page
+    works fully offline from squad.json + the local pool files — this is the
+    one panel that needs the network, so it fails soft: on any error it falls
+    back to the last successful fetch cached at LIVE_SNAPSHOT, marked stale,
+    rather than taking the whole page down. Same "NEEDS NETWORK, cache what
+    you last got" pattern as build_prediction_tracker.py."""
+    try:
+        boot = _http_get("https://fantasy.premierleague.com/api/bootstrap-static/")
+        hist = _http_get(f"https://fantasy.premierleague.com/api/entry/{entry}/history/")
+        current = hist.get("current", [])
+        total_points = current[-1]["total_points"] if current else 0
+        gws_played = len(current)
+        deadline_event = (next((e for e in boot["events"] if e.get("is_next")), None)
+                           or next((e for e in boot["events"] if e.get("is_current")), None))
+        snap = {
+            "total_points": total_points,
+            "gws_played": gws_played,
+            "avg_per_gw": round(total_points / gws_played, 1) if gws_played else 0.0,
+            "next_gw": deadline_event["id"] if deadline_event else None,
+            "next_deadline_utc": deadline_event["deadline_time"] if deadline_event else None,
+            "fetched_utc": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+            "stale": False,
+        }
+        os.makedirs(os.path.dirname(LIVE_SNAPSHOT), exist_ok=True)
+        json.dump(snap, open(LIVE_SNAPSHOT, "w", encoding="utf-8"), indent=2)
+        return snap
+    except Exception:
+        if os.path.exists(LIVE_SNAPSHOT):
+            snap = json.load(open(LIVE_SNAPSHOT, encoding="utf-8"))
+            snap["stale"] = True
+            return snap
+        return None
+
+
+def deadline_line(live):
+    """Bold banner above the stat boxes: when the next team-choice lockdown
+    actually is, in place of the old static 'Deadline' stat box (which went
+    stale the moment GW1's deadline passed)."""
+    if not live or not live.get("next_deadline_utc"):
+        return ("<b>Next deadline unknown</b> — live fetch failed and no cached "
+                "snapshot exists yet. Run this build with network access once "
+                f"to populate {os.path.relpath(LIVE_SNAPSHOT, HERE)}.")
+    d = dt.datetime.fromisoformat(live["next_deadline_utc"].replace("Z", "+00:00"))
+    now = dt.datetime.now(dt.timezone.utc)
+    remaining = d - now
+    if remaining.total_seconds() > 0:
+        away = f"{remaining.days}d {remaining.seconds // 3600}h away"
+    else:
+        away = "deadline has passed"
+    stale = (' <span class="tag bad">cached — live fetch failed, showing the '
+              f'last successful pull ({live["fetched_utc"]})</span>'
+              if live.get("stale") else "")
+    return (f"<b>Next team-choice lockdown: Gameweek {live['next_gw']} — "
+            f"{d:%a %d %b %Y, %H:%M} UTC ({away})</b>{stale}")
 
 
 def contaminated():
@@ -215,7 +282,8 @@ def build():
 
     bench_pts, bench_rows, blank_dist = sz.bench_value(declared_xi, declared_bench)
     exp_blanks = sum(j * q for j, q in enumerate(blank_dist))
-    days = (DEADLINE - dt.datetime.now(dt.timezone.utc)).total_seconds() / 86400
+    live = live_snapshot()
+    dl_line = deadline_line(live)
 
     # --- alternatives -----------------------------------------------------
     alt90 = best_xi(mine, weight_by_start=False)
@@ -285,6 +353,8 @@ def build():
                 f'<div class="kl">{label}</div>{n}</div>')
 
     chips1 = state.chips_remaining("set1")
+    total_pts_note = (f"{live['avg_per_gw']:.1f} avg/GW · {live['gws_played']} GW played"
+                       if live else "live fetch unavailable")
     kpis = "".join([
         kpi("Squad value", f"£{state.value:.1f}m", f"bank £{state.bank:.1f}m"),
         kpi("XI xP per 90", f"{xi90:.1f}", "what the optimiser maximises"),
@@ -292,7 +362,7 @@ def build():
             f"{(1-xigw/xi90)*100:.0f}% never played"),
         kpi("Bench value", f"{bench_pts:.1f}", f"{exp_blanks:.2f} expected blanks"),
         kpi("Chips left", f"{len(chips1)}/4", "set 1 expires GW19"),
-        kpi("Deadline", f"{days:.0f}d", "GW1 · Fri 21 Aug 17:30 UTC"),
+        kpi("Total points", f"{live['total_points']}" if live else "—", total_pts_note),
     ])
 
     contam_mine = [p for p in state.players if p["name"] in contam]
@@ -482,6 +552,7 @@ new Chart(document.getElementById('routeChart'), {{
 </script>"""
 
     body = f"""
+<p class="deadline-line">{dl_line}</p>
 <div class="kpis">{kpis}</div>
 {contam_html}
 <div class="panel">
@@ -600,6 +671,10 @@ new Chart(document.getElementById('routeChart'), {{
 <style>
 .archetype td,.archetype th{text-align:left;vertical-align:top;padding:8px 10px;border-bottom:1px solid var(--line)}
 .archetype td:first-child,.archetype th:first-child{white-space:nowrap;width:48px}
+.squad-link{margin:-6px 0 10px}
+.squad-link a{font-size:13px;color:var(--dim);text-decoration:none;border-bottom:1px dotted var(--dim)}
+.squad-link a:hover{color:var(--tx);border-bottom-color:var(--tx)}
+.deadline-line{font-size:14px;margin:0 0 14px}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
 .kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
 .kv{font-size:22px;font-weight:700} .kl{font-size:12px;color:var(--dim);margin-top:2px}
@@ -616,8 +691,9 @@ border-radius:9px;padding:9px 11px}
 @media(max-width:700px){.pc{flex:1 1 100%;max-width:none}}
 </style>"""
 
+    page_title = "River Leaf FC — squad"
     html = page_shell.shell(
-        title="River Leaf FC — squad",
+        title=page_title,
         active="squad",
         subtitle=f"GW{state.gameweek} · {esc(state.formation)} · £{state.value:.1f}m "
                  f"+ £{state.bank:.1f}m bank · squad.json updated {state.updated_utc} · "
@@ -627,6 +703,10 @@ border-radius:9px;padding:9px 11px}
                "<span class='mono'>squad.json</span>. Expected points come from FPL's own "
                "scoring table — nothing invented. Where a number is unreliable, the page says so.")
     html = html.replace("</head>", extra_css + "\n</head>")
+    html = html.replace(
+        f"<h1>{page_title}</h1>",
+        f'<h1>{page_title}</h1>\n<p class="squad-link"><a href="{MY_TEAM_URL}" '
+        f'target="_blank" rel="noopener noreferrer">Open my team on fantasy.premierleague.com ↗</a></p>')
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     open(OUT, "w", encoding="utf-8").write(html)
