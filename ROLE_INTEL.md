@@ -68,6 +68,19 @@ GW1 team news shows who actually takes the first live penalty — a suggested
 1.15 is logged in the sweep log (`Szoboszlai-LIV-xg90-20260820-1`) pending
 that review, not applied here.?
 
+**RESOLVED, 26 Aug 2026 — daily sweep, GW1 penalty taken.** Szoboszlai, not
+Isak, took and scored Liverpool's actual first competitive penalty of the
+season — a stoppage-time spot-kick in the 2-2 draw at Newcastle (21 Aug) —
+contradicting the 20 Aug FFS-reported Isak-first order above. Resolution
+logged against `Szoboszlai-LIV-xg90-20260820-1` as `contradicted`. Not fully
+closed, though: post-match coverage still frames the duty as multi-person
+rather than sole-nailed, naming Mac Allister (11/12 career) and Gakpo (9/10)
+as other options Liverpool's camp regards as "very good" even after
+Szoboszlai's successful kick — Szoboszlai's own 18/20 (90%) remains the
+strongest record of the three. Logged as `Szoboszlai-LIV-xg90-20260826-1`,
+pending Friday review; no change to the existing `mult 1.35` fence entry on
+this evidence.?
+
 ### 2. Elliott Anderson (MCI, £6.5m, MID) — budget enabler, elevated creative role
 
 **Thesis:** absorbs heavy minutes with an elevated creative role, out-projecting
@@ -342,6 +355,15 @@ summer 2026 with that in mind.
 differ from Guardiola's final-season patterns (formation, who plays the
 Rodri role, fullback usage)? Source: `Maresca-MCI-managerchange-20260820-1`.?
 
+**CONFIRMED, 26 Aug 2026 — daily sweep, GW1 lineup evidence.** Maresca's
+actual GW1 XI vs Bournemouth (23 Aug) does materially differ from
+Guardiola-era patterns: Abdukodir Khusanov (not a specialist right-back)
+started at RB, O'Reilly was repurposed into central midfield rather than
+his usual full-back role, and Elliot Anderson was deployed in the deep
+No.6 role vacated by Rodri's departure. Resolution logged against
+`Maresca-MCI-managerchange-20260820-1`. Sources: mancity.com, Sports Mole,
+Yahoo Sports GW1 lineup coverage.
+
 ### 10. O'Reilly (MCI, £6.5m, DEF) — right-back competition risk — **ALREADY OWNED**
 
 **Logged 20 Aug 2026, daily sweep, pending Friday review.** O'Reilly is in
@@ -382,6 +404,15 @@ Community Shield and is available for selection (confirmed by Maresca's
 matchday-minus-one presser). Still a prediction, not a team sheet;
 carried forward for next sweep to resolve against the actual lineup.?
 
+**CONFIRMED, 26 Aug 2026 — daily sweep, actual GW1 team sheet.** Neither
+prediction was quite right: City's actual right-back vs Bournemouth (23
+Aug) was Abdukodir Khusanov, not Nunes or Ait-Nouri. O'Reilly did start,
+but in central midfield alongside Anderson, not at right-back — the
+core competition-risk thesis (not nailed at RB) is confirmed even though
+the specific replacement guessed on 20-21 Aug was wrong. Resolution
+logged against `OReilly-MCI-stp-20260820-1`. Sources: Sports Mole,
+mancity.com confirmed lineups.
+
 ### 11. Guimarães (ARS, £7.0m, MID) — GW1 fitness doubt, relevant to Rice's workload-sharing thesis — **NOT OWNED**
 
 **Logged 21 Aug 2026, daily sweep, pending Friday review.** Guimarães was
@@ -417,6 +448,16 @@ roughly 1-2 gameweeks rather than open-ended. Logged as
 `Guimaraes-ARS-injury-20260823-1`. Source: Fantasy Football Scout, "FPL
 notes: Bruno G injury latest, Tzolis sharp + Odegaard 'rhythm'," 22 Aug
 2026.?
+
+**Timeline firms up further, 26 Aug 2026 — daily sweep, pending Friday
+review.** Reporting now pencils a potential return date of 31 Aug —
+Arsenal's actual GW2 fixture, away at Aston Villa — citing the 10-day gap
+since the Coventry win as recovery time. If accurate, Rice's
+unshared-workload window (entry 7) would close after only one full
+gameweek rather than the 1-2 GW estimate logged 23 Aug. Not yet a
+falsifiable resolution — he still has to actually be in the squad.
+Logged as `Guimaraes-ARS-injury-20260826-1`. Source: Read Arsenal F.C. /
+SI.com, citing Arteta press comments.?
 
 ### 12. Aston Villa (AVL, £0.0m, TEAM) — squad exodus + GW1 collapse — **structural context, not a single-player thesis, NOT CURRENTLY OWNED**
 
@@ -481,6 +522,36 @@ possible but is a code change, not a data entry — not done here.
 season-average attacking rate specifically against Villa, consistent with
 a genuinely leaky defence rather than a one-off chaotic match played
 mostly with ten men? Source: `AstonVilla-AVL-defsolidity-20260825-1`.?
+
+**Update, 26 Aug 2026 — daily sweep, pending Friday review, ahead of the
+GW2 Arsenal fixture (31 Aug).** Some pull-back on the exit speculation
+this entry logged: Villa have rejected four Al Hilal bids for Watkins
+this week and Emery now says he is "happy to stay." Villa have also
+signed a new goalkeeper, Zion Suzuki — framed by Emery as depth/
+competition rather than a direct Martínez replacement, but still a fresh
+signal given Martínez's own unresolved situation. Specific defender
+return timelines, relevant to how much of the GW1 picture is
+personnel-availability-driven rather than settled: Matty Cash out
+"3-4 weeks", Tyrone Mings needs "some days more." Logged as
+`AstonVilla-AVL-transfers-20260826-1`. Source: ESPN / Yahoo Sports,
+citing Emery press comments.?
+
+### 13. Sarr (CRY, £6.5m, MID) — groin injury, doubtful for GW2 — **ALREADY OWNED**
+
+**Logged 26 Aug 2026, daily sweep, pending Friday review.** Sarr (live XI)
+missed Crystal Palace's GW1 defeat to Everton with a groin injury, having
+not trained for two days beforehand; manager Pierre Sage said he was
+getting treatment and expected back in training the following Monday.
+Separately, reports linked him with a move to Galatasaray, which Sage
+denied, saying the club wants to keep him (three years left on contract).
+`injury_report` now shows him DOUBTFUL, 75% chance of playing, ahead of
+the GW2 deadline (Fri 28 Aug 17:30 UTC). Sources: Fantasy Football Scout,
+"FPL notes: Garner's fitness, Sarr latest + Ndiaye's threat," 24 Aug 2026;
+Hayters (Pierre Sage press comments).
+
+**Falsifiable check:** does Sarr start (or feature) for Crystal Palace in
+GW2, and does his 75% odds firm up or drop as the deadline approaches?
+Source: `Sarr-CRY-injury-20260826-1`.?
 
 ---
 
