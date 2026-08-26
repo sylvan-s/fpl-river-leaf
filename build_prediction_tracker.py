@@ -468,10 +468,11 @@ def build():
         else:
             empty_state = f"Live fetch failed ({e}) and no saved tracker state exists yet."
 
+    metric_labels = {m["key"]: m["label"] for m in METRICS + DC_METRICS}
+    metric_labels["stp"] = "Start rate"
     payload = dict(finished=finished, weeks=weeks, snapshot=snapshot, empty_state=empty_state,
                     generated=f"{dt.datetime.now():%Y-%m-%d %H:%M}",
-                    metric_labels={m["key"]: m["label"] for m in METRICS + DC_METRICS}
-                                   | {"stp": "Start rate"})
+                    metric_labels=metric_labels)
 
     body = '<div id="app"></div>'
     script = f"""
