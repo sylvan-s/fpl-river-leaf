@@ -837,12 +837,43 @@ this-week blank signal.** Only `BANNED` — the status flag — moves P(blank) n
 *Not modelled: second-yellow reds, which need per-match data this file does not
 fetch.*
 
-#### A0.2 Start-rate shrinkage — NOT BUILT. Gate: ~GW6
+#### A0.2 Start-rate shrinkage — OBSERVATION BUILT, ACTIVATION gated ~GW6
 
-`start_rate` is a **binomial rate**, so the existing D1–D3 shrinkage machinery
-applies unchanged — no new statistical apparatus, just pointed at a new metric.
+*Status corrected 26 Aug 2026.* This was marked NOT BUILT, full stop — wrong.
+`build_prediction_tracker.py` (→ `docs/priors.html`) already has a working,
+properly-derived binomial shrinkage for start-rate (`_estimate_k_binomial()`,
+method-of-moments on `p(1-p)/n` sampling variance, NOT a borrowed xG-family
+constant — a genuinely different formula from `_estimate_k()`, contrary to
+this entry's original claim that "no new statistical apparatus" was needed).
+It has been scoring itself, walk-forward, since the page was built — GW1's
+run will be the first real data point once it's next run with network access.
+
+**What's actually still gated at GW6 is ACTIVATION, not the statistics.**
+`build_squad.py`/`optimise_squad.py` still read only the frozen 2025/26
+`stp`, unaffected by any of this — that gate, and the reasoning for it
+(A0.2's validation design needs GW1-5 fitted against GW6-10 actuals before
+trusting it for real selection), is unchanged. See the 26 Aug 2026 entry
+below for the observe-now/activate-later split agreed that day.
+
 Outputs a shrunk P(start) and E[mins | start] to replace the current crude
-`starts / est_games`.
+`starts / est_games` — still true as the eventual GW6 activation target,
+now via `docs/data/priors_player_snapshot.json` rather than new code.
+
+**Added 26 Aug 2026 — the player-level gap.** The tracker's panels 1-2 only
+ever answered a POOL-level question ("does shrinkage beat raw/prior, on
+average, across every player") via RMSE — there was no way to look up one
+player's actual prior/raw/shrunk numbers. Panel 3 and
+`docs/data/priors_player_snapshot.json` close that: same machinery
+(`_estimate_k`/`_estimate_k_binomial`/baselines), re-derived from the full
+season-to-date `cum` rather than the walk-forward's held-out view (there is
+nothing to hold out for a live snapshot — it's not a scored prediction).
+Sortable/searchable table, flags any (player, metric) still on a fallback k.
+Prompted by Sylvan questioning why start-rate would be the first live-data
+metric wired up at all, when in-game per-90 stats (already shrunk live
+inside `fpl_research_mcp.py`'s screens) carry more information per gameweek
+than a single win/lose start bit — right, and it turned out this dashboard
+already had BOTH built, just not exposed per-player. **Still not consumed by
+`build_squad.py`** — this is the observation layer, not the GW6 activation.
 
 #### A0.3 Club rotation index — NOT BUILT. Gate: ~GW8 (needs 6–8 GWs)
 

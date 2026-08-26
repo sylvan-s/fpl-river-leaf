@@ -41,16 +41,34 @@ then event/{gw}/live/ once per newly-finished gameweek (cheap: one call per
 GW, not per player). Run this wherever publish_dashboard.sh normally runs, on
 a machine with real internet access, not an offline sandbox.
 
-PERSISTENCE, TWO LAYERS.
+PERSISTENCE, THREE LAYERS.
   live_gw_cache.json      raw per-gameweek FPL stats, keyed by gameweek. Only
                           FINISHED gameweeks are ever written — a live
                           gameweek is still changing, and caching a partial
                           row as final would poison every week after it, the
                           same rule fpl_research_mcp.py's cache follows.
                           Bulky, gitignored, fully regenerable from the API.
-  prediction_tracker.json the small derived walk-forward scoreboard this page
-                          renders from. Committed, so the season's track
-                          record survives even if the raw cache is cleared.
+  prediction_tracker.json the small derived walk-forward scoreboard panels 1
+                          and 2 render from — POOL-LEVEL (RMSE, mean weight),
+                          answers "does shrinkage work". Committed, so the
+                          season's track record survives even if the raw
+                          cache is cleared.
+  docs/data/priors_player_snapshot.json
+                          ADDED 26 Aug 2026. PLAYER-LEVEL: prior/raw/shrunk/
+                          weight for every scored player, as of the most
+                          recently finished gameweek — panel 3 renders from
+                          this. Re-derived fresh each run from `cum` (full
+                          season-to-date, not walk-forward held-out — this is
+                          "what does the estimate look like right now", not a
+                          scored prediction, so nothing needs holding out).
+                          Answers "how much has THIS player's own data moved
+                          the needle" rather than the pool-level question the
+                          other two files answer. Not yet consumed by
+                          build_squad.py/optimise_squad.py — see A0.2/A0.5 in
+                          METHODOLOGY_ALTERNATIVES.md for why that stays
+                          gated at GW6, and the 26 Aug 2026 entry there for
+                          why this file exists ahead of that gate anyway
+                          (observe now, activate later).
 
 EMPTY-SEASON STATE. If bootstrap-static reports zero finished gameweeks (true
 as of this file's creation — GW1 hasn't happened yet), the page renders a
@@ -63,6 +81,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 PRIORS_SNAP = os.path.join(HERE, "fpl_priors_2025_26_v2.json")
 LIVE_CACHE = os.path.join(HERE, "live_gw_cache.json")
 TRACKER = os.path.join(HERE, "prediction_tracker.json")
+SNAPSHOT = os.path.join(HERE, "docs", "data", "priors_player_snapshot.json")
 OUT = os.environ.get("FPL_PRIORS_OUT") or os.path.join(HERE, "docs", "priors.html")
 
 MIN_MINS_PRIOR = 900     # this project's standard "trust a season rate" gate
@@ -348,12 +367,77 @@ def walk_forward(boot, cache, finished, baselines):
                                      if (key, p) in k_by_pos))
             for key, b in buckets.items()
         }
-    return weeks
+    return weeks, cum
+
+
+# ============================================================ LIVE SNAPSHOT =
+def player_snapshot(cum, id_pos, id_name, baselines):
+    """PER-PLAYER prior/raw/shrunk, as of the most recent finished gameweek —
+    the table panel 1/2 don't give you. Those two answer "does shrinkage work,
+    on average, across the pool" (RMSE) and "how much is the pool leaning on
+    its own data" (mean weight); neither lets you look up one player. This
+    does, using the SAME machinery (own _estimate_k / _estimate_k_binomial,
+    same baselines), just re-derived from the FULL season-to-date `cum`
+    (every finished gameweek) rather than the walk-forward's held-out
+    through-gw-minus-one view — this is "what does the estimate look like
+    right now", not a scored prediction, so there is nothing to hold out.
+
+    Returns a flat list of rows, one per (player, metric) with n90/apps > 0.
+    """
+    pool_now = {mk["key"]: defaultdict(list) for mk in METRICS + DC_METRICS}
+    pool_now["stp"] = defaultdict(list)
+    prepared = []
+    for pid_s, c in cum.items():
+        pid = int(pid_s)
+        pos = id_pos.get(pid)
+        base = baselines.get(pid_s)
+        if pos is None or base is None or c["mins"] <= 0:
+            continue
+        n90, apps = c["mins"] / 90.0, c["apps"]
+        prepared.append((pid_s, pos, base, n90, apps, c))
+        for mk in METRICS + DC_METRICS:
+            if pos in mk["positions"]:
+                pool_now[mk["key"]][pos].append((c[mk["short"]] / n90, n90))
+        if apps > 0:
+            pool_now["stp"][pos].append((c["starts"] / apps, apps))
+
+    k_by_pos = {}
+    for mk in METRICS + DC_METRICS:
+        for pos in mk["positions"]:
+            k_by_pos[(mk["key"], pos)] = _estimate_k(pool_now[mk["key"]].get(pos, []), mk["dispersion"])
+    for pos in ("GKP", "DEF", "MID", "FWD"):
+        k_by_pos[("stp", pos)] = _estimate_k_binomial(pool_now["stp"].get(pos, []))
+
+    rows = []
+    for pid_s, pos, base, n90, apps, c in prepared:
+        name = id_name.get(int(pid_s), pid_s)
+        for mk in METRICS + DC_METRICS:
+            if pos not in mk["positions"]:
+                continue
+            short, key = mk["short"], mk["key"]
+            b = base["rates"][short]
+            k, deg = k_by_pos[(key, pos)]
+            raw = c[short] / n90
+            shrunk = (n90 * raw + k * b) / (n90 + k)
+            rows.append(dict(name=name, pos=pos, metric=key, prior=round(b, 3),
+                              raw=round(raw, 3), shrunk=round(shrunk, 3),
+                              weight=round(n90 / (n90 + k), 3), n=round(n90, 1),
+                              base_src=base["source"], degenerate=deg))
+        if apps > 0:
+            k, deg = k_by_pos[("stp", pos)]
+            b = base["stp"]
+            raw = c["starts"] / apps
+            shrunk = (apps * raw + k * b) / (apps + k)
+            rows.append(dict(name=name, pos=pos, metric="stp", prior=round(b, 3),
+                              raw=round(raw, 3), shrunk=round(shrunk, 3),
+                              weight=round(apps / (apps + k), 3), n=apps,
+                              base_src=base["source"], degenerate=deg))
+    return rows
 
 
 def build():
     empty_state = None
-    weeks, finished = {}, []
+    weeks, finished, snapshot = {}, [], []
     try:
         boot = _bootstrap()
         cache, finished, new = update_live_cache(boot)
@@ -361,22 +445,30 @@ def build():
             empty_state = "The 2026/27 season has not started yet — no finished gameweeks to score against."
         else:
             baselines = build_baselines()
-            weeks = walk_forward(boot, cache, finished, baselines)
+            weeks, cum = walk_forward(boot, cache, finished, baselines)
+            id_pos = {el["id"]: POS.get(el["element_type"]) for el in boot["elements"]}
+            id_name = {el["id"]: el["web_name"] for el in boot["elements"]}
+            snapshot = player_snapshot(cum, id_pos, id_name, baselines)
             json.dump(dict(updated_utc=f"{dt.datetime.utcnow():%Y-%m-%dT%H:%M:%SZ}", weeks=weeks),
                       open(TRACKER, "w", encoding="utf-8"), indent=1)
+            json.dump(dict(updated_utc=f"{dt.datetime.utcnow():%Y-%m-%dT%H:%M:%SZ}",
+                            through_gw=finished[-1], rows=snapshot),
+                      open(SNAPSHOT, "w", encoding="utf-8"))
     except Exception as e:
         # Network is unavailable in some environments this build runs in
         # (see module docstring) — fall back to whatever was last persisted
         # rather than crashing the whole dashboard publish.
         saved = json.load(open(TRACKER, encoding="utf-8")) if os.path.exists(TRACKER) else {}
         weeks = saved.get("weeks", {})
+        snap_saved = json.load(open(SNAPSHOT, encoding="utf-8")) if os.path.exists(SNAPSHOT) else {}
+        snapshot = snap_saved.get("rows", [])
         if weeks:
             finished = sorted(int(k) for k in weeks)
             empty_state = f"Live fetch failed ({e}); showing last saved tracker state."
         else:
             empty_state = f"Live fetch failed ({e}) and no saved tracker state exists yet."
 
-    payload = dict(finished=finished, weeks=weeks, empty_state=empty_state,
+    payload = dict(finished=finished, weeks=weeks, snapshot=snapshot, empty_state=empty_state,
                     generated=f"{dt.datetime.now():%Y-%m-%d %H:%M}",
                     metric_labels={m["key"]: m["label"] for m in METRICS + DC_METRICS}
                                    | {"stp": "Start rate"})
@@ -477,6 +569,36 @@ if (DATA.empty_state) {{
        a trustworthy variance read yet. Expect the fallback tag to clear metric by metric as the
        season goes on, not all at once.`
     : `Every metric has a properly-derived (non-fallback) k as of GW${{latest}}.`;
+
+  /* ---------- 3. per player \\u2014 look one up ---------- */
+  panel('p3', '3 \\u00b7 One player: prior vs raw vs shrunk, right now',
+   `As of GW${{latest}}. PRIOR is last season\\'s rate (or a positional fallback for a mover/newcomer).
+    RAW is this player\\'s own 2026/27 rate so far. SHRUNK is the blend the live screens actually use.
+    WEIGHT is the same n90/(n90+k) as panel 2, but per player \\u2014 low weight means the shrunk
+    column is still mostly the prior talking, whatever raw currently says. Sorted by weight
+    (highest first): the players whose own data has earned the most trust so far.`,
+   `<input id="pq" type="text" placeholder="Filter by name\\u2026" autocomplete="off"
+      style="width:100%;box-sizing:border-box;padding:6px 8px;margin:6px 0;
+      background:${{css('--panel')}};color:inherit;border:1px solid ${{css('--grid')}};border-radius:4px;">
+    <div style="max-height:480px;overflow:auto">
+    <table><thead><tr><th>player</th><th>pos</th><th>metric</th><th>prior</th><th>raw</th>
+      <th>shrunk</th><th>weight</th><th>n</th><th>base</th></tr></thead>
+      <tbody id="pBody"></tbody></table></div>`);
+  const SNAP = (DATA.snapshot || []).slice().sort((a,b) => b.weight - a.weight);
+  function renderSnap(filter) {{
+    const q = (filter||'').toLowerCase();
+    const rows = (q ? SNAP.filter(r => r.name.toLowerCase().includes(q)) : SNAP).slice(0, 400);
+    document.getElementById('pBody').innerHTML = rows.map(r => `<tr>
+      <td>${{r.name}}</td><td class="mono">${{r.pos}}</td>
+      <td class="mono">${{DATA.metric_labels[r.metric]||r.metric}}</td>
+      <td class="mono">${{f3(r.prior)}}</td><td class="mono">${{f3(r.raw)}}</td>
+      <td class="mono">${{f3(r.shrunk)}}</td>
+      <td class="mono">${{f3(r.weight)}}${{r.degenerate?' <span class="tag bad">fallback k</span>':''}}</td>
+      <td class="mono">${{f3(r.n)}}</td><td class="mono">${{r.base_src}}</td></tr>`).join('')
+      || '<tr><td colspan="9">No match.</td></tr>';
+  }}
+  renderSnap('');
+  document.getElementById('pq').addEventListener('input', e => renderSnap(e.target.value));
 }}
 </script>"""
 
@@ -509,3 +631,6 @@ if __name__ == "__main__":
             w = payload["weeks"][str(latest)][k]
             print(f"  {label:16s} n={w['n']:4d}  RMSE raw {w['rmse_raw']}  base {w['rmse_base']}  "
                   f"shrunk {w['rmse_shrunk']}  weight {w['mean_weight']}")
+        n_deg = sum(1 for r in payload["snapshot"] if r["degenerate"])
+        print(f"  player snapshot: {len(payload['snapshot'])} (player, metric) rows written to "
+              f"{SNAPSHOT}  ({n_deg} still on a fallback k)")
