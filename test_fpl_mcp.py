@@ -366,6 +366,47 @@ check("pre-season stores nothing and says so",
 m._get = _orig_get
 m._DB_PATH = _REAL_DB
 
+print("\n== player_gw schema migration (26 Aug 2026 card/own-goal/pen-miss columns) ==")
+_mig_db = _os2.path.join(_tf.mkdtemp(), "old_schema.sqlite")
+_OLD_COLS = (  # the pre-26-Aug-2026 column set, deliberately hand-copied here
+    "minutes", "total_points", "goals_scored", "assists", "bonus", "bps",
+    "expected_goals", "expected_assists", "expected_goal_involvements",
+    "expected_goals_conceded", "clean_sheets", "goals_conceded", "saves",
+    "clearances_blocks_interceptions", "tackles", "recoveries", "starts",
+    "was_home", "opponent_team",
+)
+_conn = _sq.connect(_mig_db)
+_old_cols_sql = ",\n    ".join(f"{c} REAL" for c in _OLD_COLS)
+_conn.execute(f"""
+    CREATE TABLE player_gw (
+        player_id INTEGER NOT NULL, round INTEGER NOT NULL,
+        {_old_cols_sql}, fetched_utc TEXT, PRIMARY KEY (player_id, round))""")
+_conn.execute("""
+    CREATE TABLE player_sync (
+        player_id INTEGER PRIMARY KEY, synced_to INTEGER NOT NULL, fetched_utc TEXT)""")
+_conn.execute("INSERT INTO player_gw (player_id, round, minutes, total_points) VALUES (1, 1, 90, 6)")
+_conn.execute("INSERT INTO player_sync VALUES (1, 3, '2026-08-01T00:00:00Z')")
+_conn.commit()
+_conn.close()
+
+m._DB_PATH = _mig_db
+_conn = m._db()                              # triggers the migration
+check("new columns added to an old-schema database",
+      {"yellow_cards", "red_cards", "own_goals", "penalties_missed"}
+      <= {r[1] for r in _conn.execute("PRAGMA table_info(player_gw)")})
+check("pre-existing row survives the ALTER, new columns NULL",
+      _conn.execute("SELECT minutes, total_points, yellow_cards FROM player_gw "
+                    "WHERE player_id=1 AND round=1").fetchone() == (90.0, 6.0, None))
+check("player_sync cleared so the next fetch backfills the new columns",
+      _conn.execute("SELECT COUNT(*) FROM player_sync").fetchone()[0] == 0)
+_conn.close()
+
+_conn2 = m._db()                             # re-run: nothing missing now
+check("re-running the migration a second time is a no-op (idempotent)",
+      _conn2.execute("SELECT COUNT(*) FROM player_gw").fetchone()[0] == 1)
+_conn2.close()
+m._DB_PATH = _REAL_DB
+
 print("\n== entry history cache (actual FPL points) ==")
 m._DB_PATH = _os2.path.join(_tf.mkdtemp(), "test_entry_cache.sqlite")
 _ENTRY_CALLS = {"n": 0}

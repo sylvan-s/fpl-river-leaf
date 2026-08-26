@@ -42,6 +42,21 @@ ROUTE_CATEGORIES = [
     ("bonus", "Bonus", "d"),
 ]
 
+# The deductions row added 26 Aug 2026, in shades of red (darkest = most
+# severe). goals_conceded is un-netted OUT of defensive_contribution above
+# for this chart specifically — see scoring.expected_gc_penalty()'s
+# docstring for why that's safe to do without touching the netted figure
+# every other caller of expected_points_scaled_breakdown() still relies on.
+DEDUCTION_CATEGORIES = [
+    ("goals_conceded", "Goals Conceded", "#ff8787"),
+    ("yellow_cards", "Yellow Cards", "#fa5252"),
+    ("red_cards", "Red Cards", "#e03131"),
+    ("own_goals", "Own Goals", "#c92a2a"),
+    ("penalties_missed", "Penalties Missed", "#962020"),
+]
+
+PRIORS_SNAPSHOT = os.path.join(HERE, "fpl_priors_2025_26_v2.json")
+
 
 def _load(mod, fn):
     spec = importlib.util.spec_from_file_location(mod, os.path.join(HERE, fn))
@@ -121,6 +136,114 @@ def deadline_line(live):
            f'{live["fetched_utc"]})</span>' if live.get("fetched_utc") else "")
     return (f"<b>Next team-choice lockdown: Gameweek {live['next_gw']} — "
             f"{d:%a %d %b %Y, %H:%M} UTC ({away})</b>{age}")
+
+
+def _local_gw_db_path():
+    """Where fpl_research_mcp.py's player_gw SQLite cache lives, resolved the
+    same way that file's own _default_db_path() does — duplicated rather
+    than imported, because importing fpl_research_mcp.py would pull in the
+    `mcp` server SDK as a hard dependency of this build script, which must
+    keep building even somewhere that package isn't installed (this is a
+    READ path only, so there's nothing to gain from sharing the actual
+    connection code, just the two candidate locations). Returns None if
+    neither exists — the caller fails soft, same as everywhere else on this
+    page that depends on data outside squad.json."""
+    env = os.environ.get("FPL_MCP_DB")
+    for candidate in (env, os.path.expanduser("~/.fpl-mcp/fpl_history_cache.sqlite"),
+                       os.path.join(HERE, "fpl_history_cache.sqlite")):
+        if candidate and os.path.exists(candidate):
+            return candidate
+    return None
+
+
+_ACTUAL_POS_KEYS = ("appearance", "goal_involvement", "clean_sheets",
+                     "defensive_contribution", "saves", "bonus")
+_ACTUAL_DED_KEYS = ("goals_conceded", "yellow_cards", "red_cards",
+                     "own_goals", "penalties_missed")
+
+
+def actual_route_snapshot(xi_players):
+    """Real per-gameweek average points for the CURRENT XI, split into the
+    same six positive categories as the xP route chart plus a parallel
+    deductions total — for the squad page's Expected/Actual toggle (added
+    26 Aug 2026).
+
+    Reads fpl_research_mcp.py's player_gw SQLite cache DIRECTLY (read-only,
+    offline — no MCP call from this script, matching every other build_*.py
+    page's offline contract). Resolves each XI player's FPL element id from
+    the frozen prior-season snapshot rather than a live lookup: ids are
+    stable season to season regardless of which club a player is
+    contaminated-prior-flagged against (that flag is about STATS belonging
+    to the wrong club, not about the id itself), so the frozen snapshot is a
+    safe, purely local join key here even though build_squad.py's contaminated-
+    prior exclusion would rightly refuse to trust its RATE STATS.
+
+    Fails soft — returns None (not an empty/zeroed snapshot, so the caller
+    can tell "no data" from "a real zero") if: the local cache doesn't exist
+    yet, the priors snapshot is missing, none of the XI resolve to an id, or
+    none of those ids have any cached rows yet (e.g. before the first
+    cache_history run, or before this feature's card/own-goal/pen-miss
+    columns have been backfilled — see fpl_research_mcp.py's player_gw
+    migration note)."""
+    db_path = _local_gw_db_path()
+    if not db_path:
+        return None
+    try:
+        snap = json.load(open(PRIORS_SNAPSHOT, encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    id_by_name = {p.get("web_name"): pid for pid, p in snap.get("players", {}).items()}
+
+    ids = {}
+    for p in xi_players:
+        pid = id_by_name.get(p["name"])
+        if pid is not None:
+            ids[int(pid)] = p["pos"]
+    if not ids:
+        return None
+
+    import sqlite3
+    cols = ("minutes", "goals_scored", "assists", "clean_sheets", "goals_conceded",
+            "saves", "bonus", "clearances_blocks_interceptions", "tackles", "recoveries",
+            "yellow_cards", "red_cards", "own_goals", "penalties_missed")
+    try:
+        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+        placeholders = ",".join("?" * len(ids))
+        rows = conn.execute(
+            f"SELECT player_id, round, {','.join(cols)} FROM player_gw "
+            f"WHERE player_id IN ({placeholders})", list(ids)).fetchall()
+        conn.close()
+    except sqlite3.Error:
+        return None
+    if not rows:
+        return None
+
+    by_gw = {}
+    for r in rows:
+        pid, rnd, rest = r[0], r[1], r[2:]
+        row = dict(zip(cols, rest))
+        pos_pts, ded_pts = scoring.actual_points_breakdown(row, ids[pid])
+        acc = by_gw.setdefault(rnd, ({k: 0.0 for k in _ACTUAL_POS_KEYS},
+                                      {k: 0.0 for k in _ACTUAL_DED_KEYS}))
+        for k in _ACTUAL_POS_KEYS:
+            acc[0][k] += pos_pts[k]
+        for k in _ACTUAL_DED_KEYS:
+            acc[1][k] += ded_pts[k]
+
+    n_gw = len(by_gw)
+    totals_pos = {k: 0.0 for k in _ACTUAL_POS_KEYS}
+    totals_ded = {k: 0.0 for k in _ACTUAL_DED_KEYS}
+    for pos_pts, ded_pts in by_gw.values():
+        for k in _ACTUAL_POS_KEYS:
+            totals_pos[k] += pos_pts[k]
+        for k in _ACTUAL_DED_KEYS:
+            totals_ded[k] += ded_pts[k]
+
+    return {
+        "gws": sorted(by_gw),
+        "positive": {k: v / n_gw for k, v in totals_pos.items()},
+        "deductions": {k: v / n_gw for k, v in totals_ded.items()},
+    }
 
 
 def contaminated():
@@ -242,12 +365,14 @@ def build():
     # already used to produce p["score"] (== p["xp_adj"]) for this player, so
     # this is a re-decomposition of that number, not an independent estimate.
     route_totals = {k: 0.0 for k, _, _ in ROUTE_CATEGORIES}
+    route_gc_penalty = 0.0
     for p in declared_xi:
         terms = scoring.expected_points_scaled_breakdown(
             p, p["att_x"], p["def_x"], scale_workload=fa.SCALE_WORKLOAD,
             empirical=bs.USE_EMPIRICAL_DC)
         for k in route_totals:
             route_totals[k] += p["stp"] * terms[k]
+        route_gc_penalty += p["stp"] * scoring.expected_gc_penalty(p, p["def_x"])
     route_sum = sum(route_totals.values())
     # Fail loudly, not silently — DASHBOARD_PLAN.md's page-3 rule, applied
     # here too. If this drifts, scoring.py's breakdown has fallen out of sync
@@ -258,6 +383,25 @@ def build():
         f"({xigw:.4f}) — see docs/adr/0001-xi-scoring-route-composition-chart.md")
     bonus_k = declared_xi[0].get("bonus_k") if declared_xi else None
     bonus_unvalidated = bonus_k in scoring.BONUS_FALLBACK_KS
+
+    # --- Expected/Actual deductions chart (added 26 Aug 2026) --------------
+    # DISPLAY-ONLY un-netting: route_totals/route_sum above stay exactly as
+    # they were (still reconciled to xigw by the assert above) — this is a
+    # separate, cosmetic re-split of the same numbers for the chart, using
+    # scoring.expected_gc_penalty() to recover the piece
+    # expected_points_scaled_breakdown() deliberately nets into
+    # "defensive_contribution" (ADR 0001). The model has no cards/penalty-
+    # miss forecast at the individual level, so those three deduction
+    # categories are always 0 on the Expected side — real, not omitted.
+    route_display_positive = dict(route_totals)
+    route_display_positive["defensive_contribution"] -= route_gc_penalty
+    route_display_deductions = {k: 0.0 for k, _, _ in DEDUCTION_CATEGORIES}
+    route_display_deductions["goals_conceded"] = route_gc_penalty
+
+    # Real per-GW average for the same XI, same six-plus-five categories —
+    # None if the local player_gw cache isn't warm yet (see
+    # actual_route_snapshot()'s docstring for every way that can happen).
+    actual_snap = actual_route_snapshot(declared_xi)
 
     bench_pts, bench_rows, blank_dist = sz.bench_value(declared_xi, declared_bench)
     exp_blanks = sum(j * q for j, q in enumerate(blank_dist))
@@ -458,19 +602,38 @@ def build():
     # --- "where the points come from" chart (ADR 0001) ---------------------
     # The one inline script on this page, deliberately — see the module
     # docstring. Everything else here is server-rendered HTML.
+    #
+    # EXPECTED/ACTUAL TOGGLE + EARNED/DEDUCTED SPLIT, added 26 Aug 2026. Two
+    # bases sharing one chart shape (six earned categories, five deduction
+    # categories) so switching the toggle only changes the numbers, never
+    # the layout. "expected" is always present (it's this build's own xP);
+    # "actual" is null when the local player_gw cache isn't warm yet — see
+    # actual_route_snapshot()'s docstring — and the page says so rather than
+    # rendering an empty or fabricated chart.
     route_payload = json.dumps({
         "labels": [label for _, label, _ in ROUTE_CATEGORIES],
-        "values": [round(route_totals[k], 4) for k, _, _ in ROUTE_CATEGORIES],
         "colors": [pal for _, _, pal in ROUTE_CATEGORIES],
+        "dedLabels": [label for _, label, _ in DEDUCTION_CATEGORIES],
+        "dedColors": [hexc for _, _, hexc in DEDUCTION_CATEGORIES],
         "bonusUnvalidated": bonus_unvalidated,
-        "total": round(xigw, 4),
+        "expected": {
+            "values": [round(route_display_positive[k], 4) for k, _, _ in ROUTE_CATEGORIES],
+            "deductions": [round(route_display_deductions[k], 4) for k, _, _ in DEDUCTION_CATEGORIES],
+            "total": round(xigw, 4),
+        },
+        "actual": ({
+            "values": [round(actual_snap["positive"][k], 4) for k, _, _ in ROUTE_CATEGORIES],
+            "deductions": [round(actual_snap["deductions"][k], 4) for k, _, _ in DEDUCTION_CATEGORIES],
+            "total": round(sum(actual_snap["positive"].values()) + sum(actual_snap["deductions"].values()), 4),
+            "gws": actual_snap["gws"],
+        } if actual_snap else None),
     })
     bonus_note = (f"""<div class="find bad"><b>Bonus is flagged, not just plotted.</b>
       This build's bonus shrinkage constant (k={bonus_k:.1f}) is one of scoring.py's
       fallback/clamp values, not one fitted from observed variance — the code's own
       comment says to treat <span class="mono">xbonus90</span> as unvalidated until
-      investigated. The Bonus segment below is dashed for exactly that reason: it is
-      a real number, not a trusted one.</div>"""
+      investigated. The Bonus segment below is dashed for exactly that reason, in
+      Expected mode only: it is a real number, not a trusted one.</div>"""
                   if bonus_unvalidated else
                   f"""<div class="find ok">Bonus shrinkage constant this build:
       k={bonus_k:.1f}, fitted from observed variance rather than a fallback/clamp
@@ -480,54 +643,100 @@ def build():
   <h2>Where the points come from</h2>
   <p class="tests">A human-in-the-loop risk read, not an optimiser constraint —
   see <span class="mono">docs/adr/0001-xi-scoring-route-composition-chart.md</span>.
-  <span class="mono">xP_adj</span> blends goals, assists, clean sheets, defensive
-  actions and bonus into one number per player; this unblends the XI's
-  {xigw:.1f} xP/GW back into the six routes that produce it, start-weighted the
-  same way, so the segments below sum to that figure exactly.</p>
+  <b>Expected</b> unblends this build's xP_adj into the six routes that produce it
+  and a goals-conceded deduction, start-weighted so Expected's earned row sums to
+  the XI's {xigw:.1f} xP/GW exactly. <b>Actual</b> is the same XI's real results
+  this season, averaged per gameweek — the same six categories, plus cards, own
+  goals and penalty misses the model doesn't attempt to forecast. Toggle between
+  them below; the shape never changes, only the numbers.</p>
+  <div style="display:flex;align-items:center;gap:10px;margin:0 0 10px">
+    <span style="font-size:13px;color:var(--dim)">Basis</span>
+    <span id="rcMode" style="display:flex;gap:6px"></span>
+    <span id="rcNote" class="mono" style="font-size:12px;color:var(--dim)"></span>
+  </div>
   <div class="wrap tiny"><canvas id="routeChart"></canvas></div>
   {bonus_note}
   <div class="find">Composition only, not a risk measure — showing where the
-  points come from doesn't yet say how sure the model is about each route.
-  Goal Involvement and Defensive Contribution carry a Gamma-Poisson dispersion
-  estimate, Clean Sheets a nonlinear transform of Poisson uncertainty, and
-  Bonus a differently-derived shrinkage constant that can itself go unvalidated
-  (above) — three incompatible uncertainty models, not one confidence scale
-  yet. Per-route confidence intervals are deferred to a future gated roadmap
-  item rather than faked here.</div>
+  points come from doesn't yet say how sure the model is about each Expected
+  route. Goal Involvement and Defensive Contribution carry a Gamma-Poisson
+  dispersion estimate, Clean Sheets a nonlinear transform of Poisson
+  uncertainty, and Bonus a differently-derived shrinkage constant that can
+  itself go unvalidated (above) — three incompatible uncertainty models, not
+  one confidence scale yet. Per-route confidence intervals are deferred to a
+  future gated roadmap item rather than faked here. Actual carries no such
+  uncertainty — it's what already happened.</div>
 </div>
 <script>
 const RC = {route_payload};
 const RCC = {{a:'#4ea3ff',b:'#ffc857',c:'#5fd38d',d:'#ff6b6b',e:'#c792ea',dim:'#8b98a5'}};
 const rcCss = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
-new Chart(document.getElementById('routeChart'), {{
+let rcMode = 'expected';
+const earnedDS = RC.labels.map((lab, i) => {{
+  const flagged = lab === 'Bonus' && RC.bonusUnvalidated;
+  return {{
+    label: lab, data: [0, 0], backgroundColor: RCC[RC.colors[i]],
+    borderColor: flagged ? '#ff6b6b' : RCC[RC.colors[i]],
+    borderWidth: flagged ? 2 : 0, borderDash: flagged ? [4, 3] : [],
+  }};
+}});
+const dedDS = RC.dedLabels.map((lab, i) => ({{
+  label: lab, data: [0, 0], backgroundColor: RC.dedColors[i], borderWidth: 0,
+}}));
+const routeChart = new Chart(document.getElementById('routeChart'), {{
   type: 'bar',
-  data: {{
-    labels: ['XI, this gameweek'],
-    datasets: RC.labels.map((lab, i) => {{
-      const flagged = lab === 'Bonus' && RC.bonusUnvalidated;
-      return {{
-        label: lab, data: [RC.values[i]], backgroundColor: RCC[RC.colors[i]],
-        borderColor: flagged ? '#ff6b6b' : RCC[RC.colors[i]],
-        borderWidth: flagged ? 2 : 0, borderDash: flagged ? [4, 3] : [],
-      }};
-    }}),
-  }},
+  data: {{ labels: ['Points earned', 'Points deducted'], datasets: [...earnedDS, ...dedDS] }},
   options: {{
     indexAxis: 'y', responsive: true, maintainAspectRatio: false,
     scales: {{
-      x: {{ stacked: true, min: 0, title: {{ display: true, text: 'xP per gameweek' }},
+      x: {{ stacked: true, min: 0, title: {{ display: true, text: 'points per gameweek' }},
             grid: {{ color: rcCss('--grid') }} }},
       y: {{ stacked: true, grid: {{ display: false }} }},
     }},
     plugins: {{
       legend: {{ position: 'bottom' }},
-      tooltip: {{ callbacks: {{ label: cx =>
-        `${{cx.dataset.label}}: ${{cx.raw.toFixed(2)}} xP` +
-        (cx.dataset.label === 'Bonus' && RC.bonusUnvalidated
-          ? '  (unvalidated shrinkage — ADR 0001)' : '') }} }},
+      tooltip: {{ callbacks: {{ label: cx => {{
+        const flagged = rcMode === 'expected' && cx.dataset.label === 'Bonus' && RC.bonusUnvalidated;
+        return `${{cx.dataset.label}}: ${{cx.raw.toFixed(2)}} pts` + (flagged ? '  (unvalidated shrinkage — ADR 0001)' : '');
+      }} }} }},
     }},
   }},
 }});
+function rcRender(mode) {{
+  rcMode = mode;
+  const d = RC[mode];
+  const note = document.getElementById('rcNote');
+  if (!d) {{
+    earnedDS.forEach(ds => ds.data = [0, 0]);
+    dedDS.forEach(ds => ds.data = [0, 0]);
+    note.textContent = 'no cached actual results yet — run cache_history via the fpl-research MCP, then rebuild';
+  }} else {{
+    earnedDS.forEach((ds, i) => ds.data = [d.values[i], 0]);
+    dedDS.forEach((ds, i) => ds.data = [0, Math.abs(d.deductions[i])]);
+    note.textContent = mode === 'actual'
+      ? `${{d.total.toFixed(2)}} pts/GW avg over ${{d.gws.length}} finished gameweek(s): GW${{d.gws.join(', GW')}}`
+      : `${{d.total.toFixed(2)}} xP/GW (this build)`;
+  }}
+  routeChart.update();
+}}
+document.getElementById('rcMode').innerHTML = ['expected', 'actual'].map(m => {{
+  const disabled = m === 'actual' && !RC.actual;
+  const on = m === rcMode;
+  return `<button data-m="${{m}}" ${{disabled ? 'disabled' : ''}} style="font-size:12px;padding:4px 10px;
+    border-radius:6px;cursor:${{disabled ? 'not-allowed' : 'pointer'}};border:1px solid var(--line);
+    opacity:${{disabled ? 0.45 : 1}};background:${{on ? RCC.a : 'transparent'}};color:${{on ? '#fff' : 'var(--tx)'}}">
+    ${{m === 'expected' ? 'Expected' : 'Actual'}}</button>`;
+}}).join('');
+document.getElementById('rcMode').addEventListener('click', e => {{
+  const m = e.target.dataset.m;
+  if (!m || (m === 'actual' && !RC.actual)) return;
+  document.querySelectorAll('#rcMode button').forEach(btn => {{
+    const on = btn.dataset.m === m;
+    btn.style.background = on ? RCC.a : 'transparent';
+    btn.style.color = on ? '#fff' : 'var(--tx)';
+  }});
+  rcRender(m);
+}});
+rcRender('expected');
 </script>"""
 
     body = f"""

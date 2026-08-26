@@ -640,6 +640,10 @@ _GW_COLS = (
     "expected_goals_conceded", "clean_sheets", "goals_conceded", "saves",
     "clearances_blocks_interceptions", "tackles", "recoveries", "starts",
     "was_home", "opponent_team",
+    # added 26 Aug 2026 for the squad page's actual-points deductions bar —
+    # see the migration note in _db() for how an existing database picks
+    # these up on already-cached gameweeks.
+    "yellow_cards", "red_cards", "own_goals", "penalties_missed",
 )
 
 # entry_gw is the per-MANAGER counterpart to player_gw: one row per entry per
@@ -684,6 +688,28 @@ def _db():
             fetched_utc TEXT,
             PRIMARY KEY (entry_id, event)
         )""")
+
+    # MIGRATION for a database created before a column was added to
+    # _GW_COLS (e.g. the 26 Aug 2026 card/own-goal/penalty-miss addition for
+    # the squad page's actual-points deductions bar). CREATE TABLE IF NOT
+    # EXISTS above is a no-op on a table that already exists, so an older
+    # database needs its new column(s) ALTERed in explicitly. That alone
+    # leaves already-cached rows with NULL in the new column forever, since
+    # a round already marked synced in player_sync is never re-fetched (see
+    # _player_history()) — so clear player_sync too, exactly once, the run
+    # a column actually gets added. The next cache_history(refresh=True)
+    # then re-pulls every player and backfills the new field for
+    # gameweeks already on disk. A database created fresh from today's
+    # _GW_COLS already has every column from the CREATE TABLE above, so
+    # `missing` is empty and this whole block is a cheap PRAGMA-only no-op
+    # on every call after the one that actually needed it.
+    have = {row[1] for row in conn.execute("PRAGMA table_info(player_gw)")}
+    missing = [c for c in _GW_COLS if c not in have]
+    if missing:
+        for c in missing:
+            conn.execute(f"ALTER TABLE player_gw ADD COLUMN {c} REAL")
+        conn.execute("DELETE FROM player_sync")
+
     conn.commit()
     return conn
 
@@ -871,7 +897,11 @@ def _player_history(player_id: int, force: bool = False) -> list[dict]:
         "per player, so the first pass is slow (1-3 min) and every later analysis "
         "is instant. Only FINISHED gameweeks are stored - a live gameweek is still "
         "changing and caching it as final would poison downstream analysis. Run "
-        "with refresh=False to just see cache status."
+        "with refresh=False to just see cache status. Stores minutes, goals, "
+        "assists, clean sheets, defensive actions, cards, own goals and penalty "
+        "misses per player per gameweek - the squad page's Expected/Actual "
+        "points-breakdown toggle reads this table directly (offline, no MCP call "
+        "of its own) once it's warm."
     )
 )
 def cache_history(refresh: bool = True, max_players: int = 700,

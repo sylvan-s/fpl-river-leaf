@@ -91,7 +91,7 @@ border-radius:9px;padding:9px 11px}
 
 <h1>River Leaf FC — squad</h1>
 <p class="squad-link"><a href="https://fantasy.premierleague.com/en/my-team" target="_blank" rel="noopener noreferrer">Open my team on fantasy.premierleague.com ↗</a></p>
-<p class="sub">GW1 · 3-4-3 · £100.0m + £0.0m bank · squad.json updated 2026-08-12T23:03:00Z · page generated 2026-08-26 15:19</p>
+<p class="sub">GW1 · 3-4-3 · £100.0m + £0.0m bank · squad.json updated 2026-08-12T23:03:00Z · page generated 2026-08-26 20:36</p>
 
 <p class="deadline-line"><b>Next deadline unknown</b> — no live snapshot cached yet. Ask Claude to run the <span class='mono'>entry_summary</span> MCP tool (fpl-research) to populate docs/data/entry_summary.json.</p>
 <div class="kpis"><div class="kpi"><div class="kv mono">£100.0m</div><div class="kl">Squad value</div><div class="kn">bank £0.0m</div></div><div class="kpi"><div class="kv mono">55.5</div><div class="kl">XI xP per 90</div><div class="kn">what the optimiser maximises</div></div><div class="kpi"><div class="kv mono">49.6</div><div class="kl">XI xP per gameweek</div><div class="kn">11% never played</div></div><div class="kpi"><div class="kv mono">4.0</div><div class="kl">Bench value</div><div class="kn">1.12 expected blanks</div></div><div class="kpi"><div class="kv mono">4/4</div><div class="kl">Chips left</div><div class="kn">set 1 expires GW19</div></div><div class="kpi"><div class="kv mono">—</div><div class="kl">Total points</div><div class="kn">no live snapshot cached yet</div></div></div>
@@ -195,56 +195,102 @@ border-radius:9px;padding:9px 11px}
   <h2>Where the points come from</h2>
   <p class="tests">A human-in-the-loop risk read, not an optimiser constraint —
   see <span class="mono">docs/adr/0001-xi-scoring-route-composition-chart.md</span>.
-  <span class="mono">xP_adj</span> blends goals, assists, clean sheets, defensive
-  actions and bonus into one number per player; this unblends the XI's
-  49.6 xP/GW back into the six routes that produce it, start-weighted the
-  same way, so the segments below sum to that figure exactly.</p>
+  <b>Expected</b> unblends this build's xP_adj into the six routes that produce it
+  and a goals-conceded deduction, start-weighted so Expected's earned row sums to
+  the XI's 49.6 xP/GW exactly. <b>Actual</b> is the same XI's real results
+  this season, averaged per gameweek — the same six categories, plus cards, own
+  goals and penalty misses the model doesn't attempt to forecast. Toggle between
+  them below; the shape never changes, only the numbers.</p>
+  <div style="display:flex;align-items:center;gap:10px;margin:0 0 10px">
+    <span style="font-size:13px;color:var(--dim)">Basis</span>
+    <span id="rcMode" style="display:flex;gap:6px"></span>
+    <span id="rcNote" class="mono" style="font-size:12px;color:var(--dim)"></span>
+  </div>
   <div class="wrap tiny"><canvas id="routeChart"></canvas></div>
   <div class="find ok">Bonus shrinkage constant this build:
       k=8.3, fitted from observed variance rather than a fallback/clamp
       value — no flag needed on the segment below.</div>
   <div class="find">Composition only, not a risk measure — showing where the
-  points come from doesn't yet say how sure the model is about each route.
-  Goal Involvement and Defensive Contribution carry a Gamma-Poisson dispersion
-  estimate, Clean Sheets a nonlinear transform of Poisson uncertainty, and
-  Bonus a differently-derived shrinkage constant that can itself go unvalidated
-  (above) — three incompatible uncertainty models, not one confidence scale
-  yet. Per-route confidence intervals are deferred to a future gated roadmap
-  item rather than faked here.</div>
+  points come from doesn't yet say how sure the model is about each Expected
+  route. Goal Involvement and Defensive Contribution carry a Gamma-Poisson
+  dispersion estimate, Clean Sheets a nonlinear transform of Poisson
+  uncertainty, and Bonus a differently-derived shrinkage constant that can
+  itself go unvalidated (above) — three incompatible uncertainty models, not
+  one confidence scale yet. Per-route confidence intervals are deferred to a
+  future gated roadmap item rather than faked here. Actual carries no such
+  uncertainty — it's what already happened.</div>
 </div>
 <script>
-const RC = {"labels": ["Appearance", "Goal Involvement", "Clean Sheets", "Defensive Contribution", "Saves", "Bonus"], "values": [19.625, 16.2473, 6.9401, 0.3205, 0.5676, 5.8572], "colors": ["dim", "a", "c", "e", "b", "d"], "bonusUnvalidated": false, "total": 49.5576};
+const RC = {"labels": ["Appearance", "Goal Involvement", "Clean Sheets", "Defensive Contribution", "Saves", "Bonus"], "colors": ["dim", "a", "c", "e", "b", "d"], "dedLabels": ["Goals Conceded", "Yellow Cards", "Red Cards", "Own Goals", "Penalties Missed"], "dedColors": ["#ff8787", "#fa5252", "#e03131", "#c92a2a", "#962020"], "bonusUnvalidated": false, "expected": {"values": [19.625, 16.2473, 6.9401, 2.0039, 0.5676, 5.8572], "deductions": [-1.6834, 0.0, 0.0, 0.0, 0.0], "total": 49.5576}, "actual": null};
 const RCC = {a:'#4ea3ff',b:'#ffc857',c:'#5fd38d',d:'#ff6b6b',e:'#c792ea',dim:'#8b98a5'};
 const rcCss = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
-new Chart(document.getElementById('routeChart'), {
+let rcMode = 'expected';
+const earnedDS = RC.labels.map((lab, i) => {
+  const flagged = lab === 'Bonus' && RC.bonusUnvalidated;
+  return {
+    label: lab, data: [0, 0], backgroundColor: RCC[RC.colors[i]],
+    borderColor: flagged ? '#ff6b6b' : RCC[RC.colors[i]],
+    borderWidth: flagged ? 2 : 0, borderDash: flagged ? [4, 3] : [],
+  };
+});
+const dedDS = RC.dedLabels.map((lab, i) => ({
+  label: lab, data: [0, 0], backgroundColor: RC.dedColors[i], borderWidth: 0,
+}));
+const routeChart = new Chart(document.getElementById('routeChart'), {
   type: 'bar',
-  data: {
-    labels: ['XI, this gameweek'],
-    datasets: RC.labels.map((lab, i) => {
-      const flagged = lab === 'Bonus' && RC.bonusUnvalidated;
-      return {
-        label: lab, data: [RC.values[i]], backgroundColor: RCC[RC.colors[i]],
-        borderColor: flagged ? '#ff6b6b' : RCC[RC.colors[i]],
-        borderWidth: flagged ? 2 : 0, borderDash: flagged ? [4, 3] : [],
-      };
-    }),
-  },
+  data: { labels: ['Points earned', 'Points deducted'], datasets: [...earnedDS, ...dedDS] },
   options: {
     indexAxis: 'y', responsive: true, maintainAspectRatio: false,
     scales: {
-      x: { stacked: true, min: 0, title: { display: true, text: 'xP per gameweek' },
+      x: { stacked: true, min: 0, title: { display: true, text: 'points per gameweek' },
             grid: { color: rcCss('--grid') } },
       y: { stacked: true, grid: { display: false } },
     },
     plugins: {
       legend: { position: 'bottom' },
-      tooltip: { callbacks: { label: cx =>
-        `${cx.dataset.label}: ${cx.raw.toFixed(2)} xP` +
-        (cx.dataset.label === 'Bonus' && RC.bonusUnvalidated
-          ? '  (unvalidated shrinkage — ADR 0001)' : '') } },
+      tooltip: { callbacks: { label: cx => {
+        const flagged = rcMode === 'expected' && cx.dataset.label === 'Bonus' && RC.bonusUnvalidated;
+        return `${cx.dataset.label}: ${cx.raw.toFixed(2)} pts` + (flagged ? '  (unvalidated shrinkage — ADR 0001)' : '');
+      } } },
     },
   },
 });
+function rcRender(mode) {
+  rcMode = mode;
+  const d = RC[mode];
+  const note = document.getElementById('rcNote');
+  if (!d) {
+    earnedDS.forEach(ds => ds.data = [0, 0]);
+    dedDS.forEach(ds => ds.data = [0, 0]);
+    note.textContent = 'no cached actual results yet — run cache_history via the fpl-research MCP, then rebuild';
+  } else {
+    earnedDS.forEach((ds, i) => ds.data = [d.values[i], 0]);
+    dedDS.forEach((ds, i) => ds.data = [0, Math.abs(d.deductions[i])]);
+    note.textContent = mode === 'actual'
+      ? `${d.total.toFixed(2)} pts/GW avg over ${d.gws.length} finished gameweek(s): GW${d.gws.join(', GW')}`
+      : `${d.total.toFixed(2)} xP/GW (this build)`;
+  }
+  routeChart.update();
+}
+document.getElementById('rcMode').innerHTML = ['expected', 'actual'].map(m => {
+  const disabled = m === 'actual' && !RC.actual;
+  const on = m === rcMode;
+  return `<button data-m="${m}" ${disabled ? 'disabled' : ''} style="font-size:12px;padding:4px 10px;
+    border-radius:6px;cursor:${disabled ? 'not-allowed' : 'pointer'};border:1px solid var(--line);
+    opacity:${disabled ? 0.45 : 1};background:${on ? RCC.a : 'transparent'};color:${on ? '#fff' : 'var(--tx)'}">
+    ${m === 'expected' ? 'Expected' : 'Actual'}</button>`;
+}).join('');
+document.getElementById('rcMode').addEventListener('click', e => {
+  const m = e.target.dataset.m;
+  if (!m || (m === 'actual' && !RC.actual)) return;
+  document.querySelectorAll('#rcMode button').forEach(btn => {
+    const on = btn.dataset.m === m;
+    btn.style.background = on ? RCC.a : 'transparent';
+    btn.style.color = on ? '#fff' : 'var(--tx)';
+  });
+  rcRender(m);
+});
+rcRender('expected');
 </script>
 
 <div class="panel">

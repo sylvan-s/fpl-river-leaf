@@ -53,6 +53,15 @@ APPEARANCE = 2                   # 60+ minutes
 SAVES_PER_POINT = 3
 GC_PER_MINUS = 2                 # -1 per 2 goals conceded (GKP and DEF only)
 
+# ---- deduction point values (not modelled in expected_points() - these are
+# rare, largely unforecastable events, not something an xP model should
+# pretend to predict at the individual level. Used only by
+# actual_points_breakdown() below, against REAL results.) ---------------------
+YELLOW_CARD = -1
+RED_CARD = -3
+OWN_GOAL = -2
+PENALTY_MISS = -2
+
 # ---- bonus (roadmap A1, added 12 Aug 2026) -----------------------------------
 BONUS_DISPERSION = 1.0
 CBI_HEAVY_THRESH = 6.0           # CBI(not CBIT)/90 above which a defender counts as "CBI-heavy"
@@ -294,6 +303,22 @@ def expected_points_scaled_breakdown(r, att_x, def_x, scale_workload=True, empir
     }
 
 
+def expected_gc_penalty(r, def_x):
+    """The goals-conceded penalty in isolation (GKP/DEF only, always <= 0) -
+    the piece expected_points_scaled_breakdown() nets into
+    "defensive_contribution" rather than returning standalone (see that
+    function's docstring / ADR 0001 for why). Same formula, factored out so
+    a caller that DOES want it split out (the squad page's Expected/Actual
+    deductions bar, added 26 Aug 2026, matching the actual side's own
+    standalone `goals_conceded` deduction) can recover it and un-net
+    "defensive_contribution" back to its pure DC-points-only figure, without
+    a second, drifting copy of the opponent-scaling formula
+    (r["xgc90"] * def_x) living in build_squad_page.py."""
+    if r["pos"] not in ("GKP", "DEF"):
+        return 0.0
+    return -((r["xgc90"] * def_x) / GC_PER_MINUS)
+
+
 def expected_points_scaled(r, att_x, def_x, scale_workload=True, empirical=True):
     """Same scoring table as expected_points(), inputs scaled by opponent
     strength. One implementation for both fixture_adjust.py's xP_adj and the
@@ -304,3 +329,63 @@ def expected_points_scaled(r, att_x, def_x, scale_workload=True, empirical=True)
     """
     return sum(expected_points_scaled_breakdown(
         r, att_x, def_x, scale_workload=scale_workload, empirical=empirical).values())
+
+
+def actual_points_breakdown(row, pos):
+    """REAL FPL points actually awarded for one player in one finished
+    gameweek, split into the same six positive categories as
+    expected_points_scaled_breakdown() — plus a parallel deductions dict,
+    which the expected side deliberately doesn't have (see YELLOW_CARD etc.
+    above: an xP model has no business forecasting card/penalty-miss risk at
+    the individual level, but a completed match has an answer, not a guess).
+
+    Added 26 Aug 2026 for the squad page's "Where the points come from"
+    Expected/Actual toggle. Uses the SAME point-value constants as
+    expected_points()/expected_points_scaled_breakdown() (GOAL, ASSIST, CS,
+    DC_PTS, DC_THRESH_POS, APPEARANCE, SAVES_PER_POINT, GC_PER_MINUS) so
+    actual and expected are reconcilable on one scale, never independently
+    re-derived — same discipline this module's docstring describes for the
+    four formerly-duplicated copies of expected_points() itself.
+
+    `row` is one player_gw row from fpl_research_mcp.py's SQLite cache:
+    minutes, goals_scored, assists, clean_sheets, goals_conceded, saves,
+    bonus, clearances_blocks_interceptions, tackles, recoveries,
+    yellow_cards, red_cards, own_goals, penalties_missed. Defensive
+    contribution is recomputed from the raw CBI/tackles/recoveries counts
+    against DC_THRESH_POS — the same threshold this project's own DC screens
+    and dc_hit_rates.json (roadmap A4) use — rather than trusted off any
+    single FPL-computed field, so this can never silently disagree with the
+    rest of the pipeline about what counts as "cleared the line". Real FPL
+    scoring is a discrete threshold (2 pts or 0, not a probability), unlike
+    the expected side's p_threshold() estimate.
+
+    Missing/None fields are treated as 0 — a still-partial cache row (e.g.
+    the new card/penalty-miss columns before their first backfill, see
+    fpl_research_mcp.py's player_gw migration note) degrades to "no
+    deduction recorded" rather than raising.
+    """
+    def _n(key):
+        return row.get(key) or 0
+
+    mins = _n("minutes")
+    appearance = 2.0 if mins >= 60 else (1.0 if mins > 0 else 0.0)
+    dc_metric = (_n("clearances_blocks_interceptions") + _n("tackles")) if pos == "DEF" \
+        else (_n("clearances_blocks_interceptions") + _n("tackles") + _n("recoveries"))
+    dc_hit = dc_metric >= DC_THRESH_POS[pos]
+
+    positive = {
+        "appearance": appearance,
+        "goal_involvement": GOAL[pos] * _n("goals_scored") + ASSIST * _n("assists"),
+        "clean_sheets": float(CS[pos]) if (CS[pos] and _n("clean_sheets")) else 0.0,
+        "defensive_contribution": float(DC_PTS) if dc_hit else 0.0,
+        "saves": float(_n("saves") // SAVES_PER_POINT) if pos == "GKP" else 0.0,
+        "bonus": float(_n("bonus")),
+    }
+    deductions = {
+        "goals_conceded": -float(_n("goals_conceded") // GC_PER_MINUS) if pos in ("GKP", "DEF") else 0.0,
+        "yellow_cards": YELLOW_CARD * _n("yellow_cards"),
+        "red_cards": RED_CARD * _n("red_cards"),
+        "own_goals": OWN_GOAL * _n("own_goals"),
+        "penalties_missed": PENALTY_MISS * _n("penalties_missed"),
+    }
+    return positive, deductions
