@@ -427,6 +427,22 @@ logged as `OReilly-MCI-cbit90-20260826-1` for the Friday review to size,
 same as the Rice/Villa instructed-estimate precedent, if you want to put
 a number on it.?
 
+**Sized, 26 Aug 2026 — instructed estimate, pending Friday review.**
+Sylvan reviewed the modelled xP impact directly via `scoring.
+expected_points()` and instructed a paired hypothetical: `cbit90 mult
+0.8` (-20% defensive contribution) alongside `xgi90 mult 1.2` (+20%
+attacking involvement), kept scored as DEF. Net effect on his raw xP/90:
+**4.636 -> 4.831 (+0.195)** — positive, because his baseline P(clearing
+the 10.0 CBIT/90 DEF threshold) is already only ~7% under the empirical
+hit-rate model (DC points were just 0.14 of his 4.64 total even before
+the cut), while DEF's 6-points-per-goal rate makes the attacking-side
+gain worth more than the defensive-side loss. Logged as
+`OReilly-MCI-cbit90-20260826-2` (cbit90) and
+`OReilly-MCI-xgi90-20260826-1` (xgi90) — **both magnitudes are Sylvan's
+own instructed estimates, not sourced figures**, same discipline as the
+Rice/Villa entries. Not applied to the live fence; Friday review still
+decides accept/reject/defer on both.?
+
 ### 11. Guimarães (ARS, £7.0m, MID) — GW1 fitness doubt, relevant to Rice's workload-sharing thesis — **NOT OWNED**
 
 **Logged 21 Aug 2026, daily sweep, pending Friday review.** Guimarães was
