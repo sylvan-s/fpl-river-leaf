@@ -79,47 +79,26 @@ def md_bold(s):
     return re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", esc(s))
 
 
-def _http_get(url):
-    import httpx
-    r = httpx.get(url, timeout=20, headers={"User-Agent": "fpl-river-leaf-dashboard/1.0"})
-    r.raise_for_status()
-    return r.json()
-
-
 def live_snapshot(entry=ENTRY):
     """Actual FPL total points (cumulated for the squad) and the next real
-    deadline, fetched live from the FPL API. Everything else on this page
-    works fully offline from squad.json + the local pool files — this is the
-    one panel that needs the network, so it fails soft: on any error it falls
-    back to the last successful fetch cached at LIVE_SNAPSHOT, marked stale,
-    rather than taking the whole page down. Same "NEEDS NETWORK, cache what
-    you last got" pattern as build_prediction_tracker.py."""
-    try:
-        boot = _http_get("https://fantasy.premierleague.com/api/bootstrap-static/")
-        hist = _http_get(f"https://fantasy.premierleague.com/api/entry/{entry}/history/")
-        current = hist.get("current", [])
-        total_points = current[-1]["total_points"] if current else 0
-        gws_played = len(current)
-        deadline_event = (next((e for e in boot["events"] if e.get("is_next")), None)
-                           or next((e for e in boot["events"] if e.get("is_current")), None))
-        snap = {
-            "total_points": total_points,
-            "gws_played": gws_played,
-            "avg_per_gw": round(total_points / gws_played, 1) if gws_played else 0.0,
-            "next_gw": deadline_event["id"] if deadline_event else None,
-            "next_deadline_utc": deadline_event["deadline_time"] if deadline_event else None,
-            "fetched_utc": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
-            "stale": False,
-        }
-        os.makedirs(os.path.dirname(LIVE_SNAPSHOT), exist_ok=True)
-        json.dump(snap, open(LIVE_SNAPSHOT, "w", encoding="utf-8"), indent=2)
-        return snap
-    except Exception:
-        if os.path.exists(LIVE_SNAPSHOT):
-            snap = json.load(open(LIVE_SNAPSHOT, encoding="utf-8"))
-            snap["stale"] = True
-            return snap
+    deadline. PURE READ — like every build_*.py page except
+    build_prediction_tracker.py, this script makes no network call of its
+    own. LIVE_SNAPSHOT is written by fpl_research_mcp.py's `entry_summary`
+    MCP tool, which has real network access in every Claude session
+    (interactive or scheduled) the way this sandboxed build script does not —
+    see docs/adr for the fuller reasoning. Call `entry_summary` (or run the
+    weekly/daily FPL skills, which call it) to refresh the file; this
+    function just reads whatever is there, or returns None if it never has
+    been."""
+    if not os.path.exists(LIVE_SNAPSHOT):
         return None
+    try:
+        snap = json.load(open(LIVE_SNAPSHOT, encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
+    if snap.get("entry") not in (None, entry):
+        return None          # snapshot belongs to a different entry — don't misreport it
+    return snap
 
 
 def deadline_line(live):
@@ -127,9 +106,10 @@ def deadline_line(live):
     actually is, in place of the old static 'Deadline' stat box (which went
     stale the moment GW1's deadline passed)."""
     if not live or not live.get("next_deadline_utc"):
-        return ("<b>Next deadline unknown</b> — live fetch failed and no cached "
-                "snapshot exists yet. Run this build with network access once "
-                f"to populate {os.path.relpath(LIVE_SNAPSHOT, HERE)}.")
+        return ("<b>Next deadline unknown</b> — no live snapshot cached yet. "
+                "Ask Claude to run the <span class='mono'>entry_summary</span> "
+                "MCP tool (fpl-research) to populate "
+                f"{os.path.relpath(LIVE_SNAPSHOT, HERE)}.")
     d = dt.datetime.fromisoformat(live["next_deadline_utc"].replace("Z", "+00:00"))
     now = dt.datetime.now(dt.timezone.utc)
     remaining = d - now
@@ -137,11 +117,10 @@ def deadline_line(live):
         away = f"{remaining.days}d {remaining.seconds // 3600}h away"
     else:
         away = "deadline has passed"
-    stale = (' <span class="tag bad">cached — live fetch failed, showing the '
-              f'last successful pull ({live["fetched_utc"]})</span>'
-              if live.get("stale") else "")
+    age = (f' <span class="kn" style="display:inline">(snapshot fetched '
+           f'{live["fetched_utc"]})</span>' if live.get("fetched_utc") else "")
     return (f"<b>Next team-choice lockdown: Gameweek {live['next_gw']} — "
-            f"{d:%a %d %b %Y, %H:%M} UTC ({away})</b>{stale}")
+            f"{d:%a %d %b %Y, %H:%M} UTC ({away})</b>{age}")
 
 
 def contaminated():
@@ -354,7 +333,7 @@ def build():
 
     chips1 = state.chips_remaining("set1")
     total_pts_note = (f"{live['avg_per_gw']:.1f} avg/GW · {live['gws_played']} GW played"
-                       if live else "live fetch unavailable")
+                       if live else "no live snapshot cached yet")
     kpis = "".join([
         kpi("Squad value", f"£{state.value:.1f}m", f"bank £{state.bank:.1f}m"),
         kpi("XI xP per 90", f"{xi90:.1f}", "what the optimiser maximises"),

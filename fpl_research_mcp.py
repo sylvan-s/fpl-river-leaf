@@ -642,6 +642,17 @@ _GW_COLS = (
     "was_home", "opponent_team",
 )
 
+# entry_gw is the per-MANAGER counterpart to player_gw: one row per entry per
+# finished gameweek, from /entry/{id}/event/{gw}/picks/'s `entry_history`
+# object. total_points there is FPL's OWN cumulative total after that
+# gameweek (captain doubling and autosubs already applied) - not something
+# recomputed from player_gw, which only has raw per-player stats and no idea
+# who was captained or benched in any past gameweek.
+_ENTRY_GW_COLS = (
+    "points", "total_points", "bank", "value",
+    "event_transfers", "event_transfers_cost", "points_on_bench", "overall_rank",
+)
+
 
 def _db():
     import sqlite3
@@ -663,6 +674,15 @@ def _db():
             player_id   INTEGER PRIMARY KEY,
             synced_to   INTEGER NOT NULL,
             fetched_utc TEXT
+        )""")
+    ecols = ",\n            ".join(f"{c} REAL" for c in _ENTRY_GW_COLS)
+    conn.execute(f"""
+        CREATE TABLE IF NOT EXISTS entry_gw (
+            entry_id  INTEGER NOT NULL,
+            event     INTEGER NOT NULL,
+            {ecols},
+            fetched_utc TEXT,
+            PRIMARY KEY (entry_id, event)
         )""")
     conn.commit()
     return conn
@@ -949,6 +969,126 @@ def cache_history(refresh: bool = True, max_players: int = 700,
         "Later analyses over these gameweeks now cost no API calls. Re-run after "
         "each gameweek finishes to keep it current.",
     ]
+    return "\n".join(out)
+
+
+# ------------------------------------------------------------- entry history --
+_ENTRY_SNAPSHOT_PATH = _os.path.join(_PRIORS_DIR, "docs", "data", "entry_summary.json")
+
+
+def _entry_history(entry: int = ENTRY_ID) -> tuple[list[dict], list[int]]:
+    """Per-gameweek ACTUAL points for one manager's entry, cached in entry_gw.
+
+    Same shape of fix as _player_history(): only finished gameweeks are ever
+    persisted (a live gameweek's total is still moving), and a gameweek
+    already cached is never re-fetched. Unlike player_gw there is no separate
+    sync table - an entry only ever has up to 38 rows, so a plain
+    `SELECT MAX(event)` is cheap enough not to need one.
+
+    Returns (rows ordered by event, event ids that failed to fetch this call -
+    typically a transient API hiccup, not something to persist as a gap).
+    """
+    fin = sorted(_finished_rounds())
+    conn = _db()
+    try:
+        have = {r[0] for r in conn.execute(
+            "SELECT event FROM entry_gw WHERE entry_id=?", (entry,))}
+        missing = [gw for gw in fin if gw not in have]
+        errors: list[int] = []
+        if missing:
+            now = _dt.datetime.now(_dt.timezone.utc).isoformat()
+            for gw in missing:
+                try:
+                    data = _get(f"/entry/{entry}/event/{gw}/picks/", ttl=3600)
+                except httpx.HTTPStatusError:
+                    errors.append(gw)
+                    continue
+                eh = data.get("entry_history", {})
+                if not eh:
+                    errors.append(gw)
+                    continue
+                row = [entry, gw] + [eh.get(c) for c in _ENTRY_GW_COLS] + [now]
+                conn.execute(
+                    f"INSERT OR REPLACE INTO entry_gw "
+                    f"(entry_id,event,{','.join(_ENTRY_GW_COLS)},fetched_utc) "
+                    f"VALUES ({','.join('?' * (len(_ENTRY_GW_COLS) + 3))})", row)
+            conn.commit()
+        cur = conn.execute(
+            f"SELECT event,{','.join(_ENTRY_GW_COLS)} FROM entry_gw "
+            f"WHERE entry_id=? ORDER BY event", (entry,))
+        rows = [dict(zip(("event",) + _ENTRY_GW_COLS, r)) for r in cur.fetchall()]
+        return rows, errors
+    finally:
+        conn.close()
+
+
+def _write_dashboard_snapshot(snap: dict) -> None:
+    """Best-effort JSON write for build_squad_page.py to read OFFLINE - that
+    script (like every build_*.py page except build_prediction_tracker.py)
+    is a pure function of local files and makes no network calls of its own.
+    This is the one place that bridges live data into that contract. Wrapped
+    in try/except because writing the dashboard snapshot is a bonus, not the
+    job entry_summary() exists to do - a filesystem hiccup here must not stop
+    the tool from returning the actual answer to whoever called it."""
+    try:
+        _os.makedirs(_os.path.dirname(_ENTRY_SNAPSHOT_PATH), exist_ok=True)
+        import json
+        with open(_ENTRY_SNAPSHOT_PATH, "w", encoding="utf-8") as fh:
+            json.dump(snap, fh, indent=2)
+    except Exception:
+        pass
+
+
+@mcp.tool(
+    description=(
+        "Actual cumulative FPL points for the entry (total to date, average per "
+        "gameweek) plus the next deadline. Fetches only newly-finished gameweeks "
+        "not already cached in entry_gw - cheap, safe to call often, unlike "
+        "cache_history's ~700-call player refresh. Also refreshes "
+        "docs/data/entry_summary.json so the squad dashboard page can show this "
+        "offline without its own network call."
+    )
+)
+def entry_summary(entry: int = ENTRY_ID) -> str:
+    rows, errors = _entry_history(entry)
+    ev = _next_event()
+    next_gw = ev["id"] if ev else None
+    next_deadline = ev["deadline_time"] if ev else None
+
+    if not rows:
+        msg = f"No finished-gameweek history cached yet for entry {entry}."
+        if errors:
+            msg += f" {len(errors)} gameweek(s) failed to fetch: {errors}."
+        return msg
+
+    total = rows[-1]["total_points"]
+    gws = len(rows)
+    avg = total / gws if gws else 0.0
+    snap = {
+        "entry": entry,
+        "total_points": total,
+        "gws_played": gws,
+        "avg_per_gw": round(avg, 1),
+        "next_gw": next_gw,
+        "next_deadline_utc": next_deadline,
+        "fetched_utc": _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds"),
+    }
+    _write_dashboard_snapshot(snap)
+
+    out = [
+        f"Entry {entry} - {gws} finished gameweek(s) cached (GW{rows[0]['event']}-{rows[-1]['event']})",
+        f"Total points {total:.0f}  |  average {avg:.1f} per gameweek",
+    ]
+    if ev:
+        dl = _dt.datetime.fromisoformat(next_deadline.replace("Z", "+00:00"))
+        now = _dt.datetime.now(_dt.timezone.utc)
+        delta = dl - now
+        when = (f"{delta.days}d {int(delta.total_seconds() % 86400 // 3600)}h away"
+                if delta.total_seconds() > 0 else "DEADLINE PASSED")
+        out.append(f"Next deadline: GW{next_gw} - {dl:%a %d %b %Y %H:%M} UTC ({when})")
+    if errors:
+        out.append(f"{len(errors)} gameweek(s) failed to fetch and were skipped: {errors}")
+    out.append(f"dashboard snapshot written: {_os.path.relpath(_ENTRY_SNAPSHOT_PATH, _PRIORS_DIR)}")
     return "\n".join(out)
 
 

@@ -366,6 +366,82 @@ check("pre-season stores nothing and says so",
 m._get = _orig_get
 m._DB_PATH = _REAL_DB
 
+print("\n== entry history cache (actual FPL points) ==")
+m._DB_PATH = _os2.path.join(_tf.mkdtemp(), "test_entry_cache.sqlite")
+_ENTRY_CALLS = {"n": 0}
+_orig_get2 = m._get
+
+
+def _entry_counting_get(path, ttl=900):
+    if "/event/" in path and "/picks/" in path:
+        _ENTRY_CALLS["n"] += 1
+        gw = int(path.split("/event/")[1].split("/picks")[0])
+        return {"entry_history": {
+            "event": gw, "points": 40 + gw,
+            "total_points": sum(40 + g for g in range(1, gw + 1)),
+            "bank": 0, "value": 1000, "event_transfers": 0,
+            "event_transfers_cost": 0, "points_on_bench": 5,
+            "overall_rank": 100000 - gw * 10}}
+    return _orig_get2(path, ttl)
+
+
+m._get = _entry_counting_get
+
+_cseed(3)                                   # GW1-3 final, GW4-5 live (reuses seed above)
+_rows, _errs = m._entry_history(9999)
+check("first read costs one API call per finished GW", _ENTRY_CALLS["n"] == 3)
+check("no fetch errors", _errs == [])
+check("returns rows for finished GWs only", [r["event"] for r in _rows] == [1, 2, 3])
+check("total_points is FPL's own cumulative figure, not recomputed here",
+      _rows[-1]["total_points"] == sum(40 + g for g in range(1, 4)))
+
+_before = _ENTRY_CALLS["n"]
+_rows2, _ = m._entry_history(9999)
+check("second read served from SQLite, no API call", _ENTRY_CALLS["n"] == _before)
+check("still three rows", len(_rows2) == 3)
+
+_con = _sq.connect(m._DB_PATH)
+_r = [x[0] for x in _con.execute(
+    "SELECT DISTINCT event FROM entry_gw WHERE entry_id=9999 ORDER BY event")]
+check("live gameweeks are NEVER persisted for entries either", _r == [1, 2, 3], str(_r))
+_con.close()
+
+_cseed(4)                                   # GW4 now final
+_before = _ENTRY_CALLS["n"]
+_rows3, _ = m._entry_history(9999)
+check("re-fetches once a newer gameweek is final", _ENTRY_CALLS["n"] == _before + 1)
+check("four rows now cached", len(_rows3) == 4)
+
+_snap_path = _os2.path.join(_tf.mkdtemp(), "entry_summary.json")
+_orig_snapshot_path = m._ENTRY_SNAPSHOT_PATH
+m._ENTRY_SNAPSHOT_PATH = _snap_path
+_txt = m.entry_summary(9999)
+check("reports total points", f"Total points {_rows3[-1]['total_points']:.0f}" in _txt)
+check("reports average per gameweek", "average" in _txt.lower())
+check("reports the next deadline", "Next deadline" in _txt)
+
+import json as _json3
+check("writes the dashboard snapshot file", _os2.path.exists(_snap_path))
+_snap = _json3.load(open(_snap_path))
+check("snapshot total matches cached total", _snap["total_points"] == _rows3[-1]["total_points"])
+check("snapshot gws_played matches row count", _snap["gws_played"] == len(_rows3))
+check("snapshot avg is total/gws",
+      abs(_snap["avg_per_gw"] - _rows3[-1]["total_points"] / len(_rows3)) < 0.05)
+check("snapshot carries the next gameweek id", _snap["next_gw"] == 5)
+
+_cseed(0)                                   # pre-season: nothing final, nothing to summarise
+if _os2.path.exists(_snap_path):
+    _os2.remove(_snap_path)
+m._DB_PATH = _os2.path.join(_tf.mkdtemp(), "test_entry_cache_empty.sqlite")
+_txt2 = m.entry_summary(9999)
+check("pre-season entry_summary says nothing cached yet",
+      "no finished-gameweek" in _txt2.lower())
+check("pre-season does not write a snapshot", not _os2.path.exists(_snap_path))
+
+m._ENTRY_SNAPSHOT_PATH = _orig_snapshot_path
+m._get = _orig_get2
+m._DB_PATH = _REAL_DB
+
 print("\n== availability and suspension risk ==")
 # Minutes are the dominant source of blanks. These two mechanisms are distinct
 # and the tests exist mainly to stop them being conflated again.
