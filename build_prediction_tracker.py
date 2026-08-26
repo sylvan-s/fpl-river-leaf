@@ -408,6 +408,12 @@ def player_snapshot(cum, id_pos, id_name, baselines):
     for pos in ("GKP", "DEF", "MID", "FWD"):
         k_by_pos[("stp", pos)] = _estimate_k_binomial(pool_now["stp"].get(pos, []))
 
+    def _ratio(shrunk, prior):
+        """shrunk/prior — how the current view compares to the original one.
+        None (not 0 or inf) when prior is ~0: "infinitely better than a
+        baseline of zero" is not a number worth sorting on."""
+        return round(shrunk / prior, 3) if abs(prior) > 1e-9 else None
+
     rows = []
     for pid_s, pos, base, n90, apps, c in prepared:
         name = id_name.get(int(pid_s), pid_s)
@@ -421,6 +427,7 @@ def player_snapshot(cum, id_pos, id_name, baselines):
             shrunk = (n90 * raw + k * b) / (n90 + k)
             rows.append(dict(name=name, pos=pos, metric=key, prior=round(b, 3),
                               raw=round(raw, 3), shrunk=round(shrunk, 3),
+                              ratio=_ratio(shrunk, b),
                               weight=round(n90 / (n90 + k), 3), n=round(n90, 1),
                               base_src=base["source"], degenerate=deg))
         if apps > 0:
@@ -430,6 +437,7 @@ def player_snapshot(cum, id_pos, id_name, baselines):
             shrunk = (apps * raw + k * b) / (apps + k)
             rows.append(dict(name=name, pos=pos, metric="stp", prior=round(b, 3),
                               raw=round(raw, 3), shrunk=round(shrunk, 3),
+                              ratio=_ratio(shrunk, b),
                               weight=round(apps / (apps + k), 3), n=apps,
                               base_src=base["source"], degenerate=deg))
     return rows
@@ -573,31 +581,74 @@ if (DATA.empty_state) {{
 
   /* ---------- 3. per player \\u2014 look one up ---------- */
   panel('p3', '3 \\u00b7 One player: prior vs raw vs shrunk, right now',
-   `As of GW${{latest}}. PRIOR is last season\\'s rate (or a positional fallback for a mover/newcomer).
-    RAW is this player\\'s own 2026/27 rate so far. SHRUNK is the blend the live screens actually use.
-    WEIGHT is the same n90/(n90+k) as panel 2, but per player \\u2014 low weight means the shrunk
-    column is still mostly the prior talking, whatever raw currently says. Sorted by weight
-    (highest first): the players whose own data has earned the most trust so far.`,
+   `As of GW${{latest}}. Click any column header to sort by it (click again to reverse); starts
+    sorted by WEIGHT, highest first. <b>PRIOR</b> = last season\\'s rate, or a positional fallback
+    for a mover/newcomer (see BASE). <b>RAW</b> = this player\\'s own 2026/27 rate so far \\u2014
+    unstable on a handful of matches, shown for reference. <b>SHRUNK</b> = the blend the live
+    screens actually use; this is the number that matters. <b>SHRUNK/PRIOR</b> = shrunk divided by
+    prior \\u2014 the quickest way to spot who is tracking meaningfully above (green, >1) or below
+    (red, <1) the original pre-season view, once weight has moved enough for it to mean anything.
+    <b>WEIGHT</b> = n90/(n90+k) (or apps/(apps+k) for start rate) \\u2014 the share of SHRUNK coming
+    from this player\\'s own data rather than the prior; 0 = pure prior, 1 = pure raw. Low weight
+    means don\\'t read much into SHRUNK/PRIOR yet, however extreme it looks. <b>N</b> = 90s played
+    (or appearances, for start rate) backing RAW \\u2014 the sample size WEIGHT is built from.
+    <b>BASE</b> = where PRIOR came from: <span class="mono">own</span> (this player\\'s own 900+-min
+    2025/26 rate) or <span class="mono">pos</span> (a positional fallback \\u2014 less trustworthy,
+    typical for a newcomer or a mover the contaminated-prior check excluded).`,
    `<input id="pq" type="text" placeholder="Filter by name\\u2026" autocomplete="off"
       style="width:100%;box-sizing:border-box;padding:6px 8px;margin:6px 0;
       background:${{css('--panel')}};color:inherit;border:1px solid ${{css('--grid')}};border-radius:4px;">
     <div style="max-height:480px;overflow:auto">
-    <table><thead><tr><th>player</th><th>pos</th><th>metric</th><th>prior</th><th>raw</th>
-      <th>shrunk</th><th>weight</th><th>n</th><th>base</th></tr></thead>
+    <table><thead><tr id="pHead"></tr></thead>
       <tbody id="pBody"></tbody></table></div>`);
-  const SNAP = (DATA.snapshot || []).slice().sort((a,b) => b.weight - a.weight);
+  const SNAP_COLS = [
+    {{key:'name',    label:'player', type:'str'}},
+    {{key:'pos',     label:'pos',    type:'str'}},
+    {{key:'metric',  label:'metric', type:'str',
+      fmt: r => DATA.metric_labels[r.metric] || r.metric}},
+    {{key:'prior',   label:'prior',  type:'num'}},
+    {{key:'raw',     label:'raw',    type:'num'}},
+    {{key:'shrunk',  label:'shrunk', type:'num'}},
+    {{key:'ratio',   label:'shrunk/prior', type:'num',
+      fmt: r => r.ratio===null ? '\\u2014'
+        : `<span style="color:${{r.ratio>1.02?css('--c'):r.ratio<0.98?css('--d'):'inherit'}}">`
+          +`${{r.ratio.toFixed(2)}}\\u00d7</span>`}},
+    {{key:'weight',  label:'weight', type:'num',
+      fmt: r => f3(r.weight) + (r.degenerate ? ' <span class="tag bad">fallback k</span>' : '')}},
+    {{key:'n',       label:'n',      type:'num'}},
+    {{key:'base_src',label:'base',   type:'str'}},
+  ];
+  let sortKey = 'weight', sortDir = -1;   // -1 = desc (matches the old default)
+  document.getElementById('pHead').innerHTML = SNAP_COLS.map(c =>
+    `<th data-key="${{c.key}}" style="cursor:pointer;user-select:none">${{c.label}}`
+    + `<span class="sortmark" data-key="${{c.key}}"></span></th>`).join('');
+  function markSort() {{
+    document.querySelectorAll('#pHead .sortmark').forEach(el => {{
+      el.textContent = el.dataset.key === sortKey ? (sortDir === 1 ? ' \\u25b2' : ' \\u25bc') : '';
+    }});
+  }}
+  const SNAP = (DATA.snapshot || []).slice();
   function renderSnap(filter) {{
     const q = (filter||'').toLowerCase();
-    const rows = (q ? SNAP.filter(r => r.name.toLowerCase().includes(q)) : SNAP).slice(0, 400);
-    document.getElementById('pBody').innerHTML = rows.map(r => `<tr>
-      <td>${{r.name}}</td><td class="mono">${{r.pos}}</td>
-      <td class="mono">${{DATA.metric_labels[r.metric]||r.metric}}</td>
-      <td class="mono">${{f3(r.prior)}}</td><td class="mono">${{f3(r.raw)}}</td>
-      <td class="mono">${{f3(r.shrunk)}}</td>
-      <td class="mono">${{f3(r.weight)}}${{r.degenerate?' <span class="tag bad">fallback k</span>':''}}</td>
-      <td class="mono">${{f3(r.n)}}</td><td class="mono">${{r.base_src}}</td></tr>`).join('')
-      || '<tr><td colspan="9">No match.</td></tr>';
+    const col = SNAP_COLS.find(c => c.key === sortKey);
+    const rows = (q ? SNAP.filter(r => r.name.toLowerCase().includes(q)) : SNAP).slice().sort((a,b) => {{
+      let av = a[sortKey], bv = b[sortKey];
+      if (col.type === 'num') {{ av = av===null?-Infinity:av; bv = bv===null?-Infinity:bv; return sortDir*(av-bv); }}
+      return sortDir*String(av).localeCompare(String(bv));
+    }}).slice(0, 400);
+    document.getElementById('pBody').innerHTML = rows.map(r => '<tr>' + SNAP_COLS.map(c =>
+      `<td class="${{c.key==='name'?'':'mono'}}">`
+      + `${{c.fmt ? c.fmt(r) : (c.type==='num' ? f3(r[c.key]) : (r[c.key]??'\\u2014'))}}</td>`).join('')
+      + '</tr>').join('') || `<tr><td colspan="${{SNAP_COLS.length}}">No match.</td></tr>`;
+    markSort();
   }}
+  document.getElementById('pHead').addEventListener('click', e => {{
+    const th = e.target.closest('th'); if (!th) return;
+    const key = th.dataset.key;
+    sortDir = (key === sortKey) ? -sortDir : -1;
+    sortKey = key;
+    renderSnap(document.getElementById('pq').value);
+  }});
   renderSnap('');
   document.getElementById('pq').addEventListener('input', e => renderSnap(e.target.value));
 }}
