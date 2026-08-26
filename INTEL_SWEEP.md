@@ -291,6 +291,36 @@ git push
 hard zsh error that aborts an `&&`-chained command line before anything
 after it runs; `find` just does nothing if there's no match.)
 
+### Corollary — Sylvan should not need to run git himself either
+
+**Found 26 Aug 2026, the hard way.** A separate, related pain from the mount
+issue above: some scripts (`build_prediction_tracker.py`, anything else
+that hits the live FPL API directly) need REAL network access this
+sandbox does not have, so they can only be run on Sylvan's own machine.
+The mistake was then also asking him to `git add`/`commit`/`push` the
+result himself. That fails almost every time, for a reason that has
+nothing to do with his machine: every Cowork-session commit lands via
+`safe_git_commit.sh`'s scratch clone, which pushes straight to origin
+without ever touching Sylvan's LOCAL `.git` HEAD. His local branch
+silently falls further behind origin every time a session commits this
+way, so the next time HE runs `git pull`/`push` from a real terminal, it
+collides with a HEAD that's several commits stale — the exact
+non-fast-forward / "would be overwritten by merge" errors hit repeatedly
+build_prediction_tracker.py that day, none of them a real conflict, all
+of them this same drift.
+
+**Fix: never ask Sylvan to run git.** The connected-folder mount means any
+session can already see a file the instant it's written to disk, whether
+or not a network script produced it. So the pattern is: ask Sylvan to run
+ONLY the one command that needs his machine's internet access (e.g.
+`python3 build_prediction_tracker.py`), nothing else — then commit and
+push the result the normal way, `bash safe_git_commit.sh "<message>"`,
+from inside the session. If his local branch is later found stale from
+an EARLIER instance of this mistake, `git fetch origin && git reset
+--mixed origin/main` in his terminal repoints his local HEAD to match
+origin without touching any file on disk — safe precisely because the
+mount already keeps his working tree current.
+
 ## Kill criteria
 
 - **A source sits at <30% accuracy past the 5-resolved gate** — stop logging
