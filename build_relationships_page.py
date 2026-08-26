@@ -205,9 +205,9 @@ def _squad_replay():
             total += lineup[cap_name]["pts"]
         scores.append(total)
 
-    bins = [0] * 9  # 0-9, 10-19, ..., 80-89
+    bins = [0] * 18  # 0-4, 5-9, ..., 85-89
     for s in scores:
-        bins[min(8, max(0, s) // 10)] += 1
+        bins[min(17, max(0, s) // 5)] += 1
     n = len(scores)
     mean = sum(scores) / n
     variance = sum((s - mean) ** 2 for s in scores) / (n - 1)
@@ -251,8 +251,8 @@ function panel(id, title, tests, body){{
   document.getElementById('app').appendChild(d); return d;
 }}
 
-/* ---------- 2. threshold cliff (moved from Player analysis, 11 Aug 2026) ---------- */
-panel('p2','2 · The threshold cliff: does the season average predict clearing the line?',
+/* ---------- 1. threshold cliff (moved from Player analysis, 11 Aug 2026) ---------- */
+panel('p2','1 · The threshold cliff: does the season average predict clearing the line?',
  'The 2pt DC bonus is a per-match threshold, not a rate. Plots each player\\'s season CBIT/90 average against how often they ACTUALLY cleared 10+ CBIT in a given 2025/26 match &mdash; a uniform 10+ line for every position, not each position\\'s own DC rule, so the three are directly comparable.',
  `<div style="display:flex;align-items:center;gap:14px;margin:0 0 14px;flex-wrap:wrap">
     <span style="font-size:13px;color:var(--dim)">Position</span>
@@ -332,37 +332,9 @@ document.getElementById('p2pos').addEventListener('click', e=>{{
 }});
 p2Upd('DEF');
 
-/* ---------- 6. shrinkage (moved from Player analysis, 11 Aug 2026) ---------- */
-const rowsK = DATA.kpanel.map(k=>`<tr><td>${{k.label}}</td><td class="mono">${{k.n}}</td>
- <td class="mono">${{k.total.toFixed(5)}}</td><td class="mono">${{k.samp.toFixed(5)}}</td>
- <td class="mono">${{f3(k.between)}}</td>
- <td class="mono">${{k.k_before.toFixed(1)}} ${{k.deg_before?'<span class="tag bad">fallback</span>':''}}</td>
- <td class="mono">${{k.k_after.toFixed(1)}} ${{k.deg_after?'<span class="tag bad">fallback</span>':'<span class="tag ok">derived</span>'}}</td></tr>`).join('');
-panel('p6','6 · Shrinkage: is k derived, or quietly defaulted?',
- 'The panel that found a live bug. k is in units of 90s, so k = 60 means 60 matches before a player&rsquo;s own data carries half the weight. A season is 38.',
- `<table><thead><tr><th>pool</th><th>n</th><th>total var</th><th>sampling var</th>
-   <th>between</th><th>k before</th><th>k after fix</th></tr></thead><tbody>${{rowsK}}</tbody></table>
-  <div class="wrap short" style="margin-top:16px"><canvas id="c5"></canvas></div>
-  <div class="find bad"><b>Bug found and fixed, 8 Aug 2026.</b> The Poisson noise model
-  (<span class="mono">rate/n90</span>) is right for counts but wrong for xGI, which is a sum of
-  ~0.11 per-shot probabilities, not whole events. It drove between-player variance
-  <b>negative</b> for forwards and pinned k to its cap. Every attacker would have stayed
-  frozen on his prior all season. Fixed with a per-metric dispersion factor.</div>
-  <div class="find ok"><b>GKP still shows a fallback, and that is correct.</b> Keepers genuinely
-  do not differ on xGI, so shrinking hard is the right answer. The fallback fires where it should
-  &mdash; it no longer fires where it should not.</div>`);
-const xs = Array.from({{length:39}},(_,i)=>i);
-new Chart(c5,{{type:'line',data:{{labels:xs,datasets:DATA.kpanel.map((k,i)=>({{
-  label:`${{k.label}} (k=${{k.k_after.toFixed(1)}})`,
-  data:xs.map(n=>n/(n+k.k_after)),borderColor:[C.a,C.e,C.c,C.d][i],
-  pointRadius:0,borderWidth:2,tension:.25}}))}},
- options:{{plugins:{{title:{{display:true,text:'weight on a player\\'s OWN data as matches accumulate',color:css('--tx')}}}},
-  scales:{{x:{{title:{{display:true,text:'matches played (season = 38)'}},grid:{{color:css('--grid')}}}},
-          y:{{min:0,max:1,title:{{display:true,text:'weight on own data'}},grid:{{color:css('--grid')}}}}}}}}}});
-
-/* ---------- 7. weekly points distribution by position (added 25 Aug 2026) ---------- */
+/* ---------- 2. weekly points distribution by position (added 25 Aug 2026) ---------- */
 const PD = DATA.posdist, PDQ = PD.qualifiers, PDS = PD.stats;
-panel('p7','7 \\u00b7 Weekly points distribution: is it really bimodal, and does it differ by position?',
+panel('p7','2 \\u00b7 Weekly points distribution: is it really bimodal, and does it differ by position?',
  `Every 2025/26 archive player who finished with more than 150 season points
   (DEF ${{PDQ.DEF.length}}, MID ${{PDQ.MID.length}}, FWD ${{PDQ.FWD.length}} qualifiers),
   every one of their individual gameweek scores pooled by position. Kruskal-Wallis tests whether
@@ -409,9 +381,9 @@ new Chart(c7,{{type:'line',data:{{labels:PDxs,datasets:[
  scales:{{x:{{title:{{display:true,text:'points in a gameweek'}},grid:{{color:css('--grid')}}}},
          y:{{title:{{display:true,text:'proportion of gameweeks'}},grid:{{color:css('--grid')}}}}}}}}}});
 
-/* ---------- 8. your squad, replayed across last season (added 25 Aug 2026) ---------- */
+/* ---------- 3. your squad, replayed across last season (added 25 Aug 2026) ---------- */
 const SR = DATA.squad_replay;
-panel('p8',`8 \\u00b7 Your squad, replayed across 2025/26`,
+panel('p8',`3 \\u00b7 Your squad, replayed across 2025/26`,
  `The CURRENT squad.json XI (formation ${{SR.formation||'?'}}), bench order, captain
   (${{SR.captain}}) and vice (${{SR.vice}}) &mdash; unchanged &mdash; against every REAL
   2025/26 gameweek. Autosubs apply on 0 minutes (bench priority order, formation-legal swaps
@@ -437,11 +409,11 @@ panel('p8',`8 \\u00b7 Your squad, replayed across 2025/26`,
   <div class="wrap"><canvas id="c8"></canvas></div>
   ${{SR.missing.length?`<div class="find bad"><b>Unmatched squad players (excluded from the
    replay, not silently zeroed):</b> ${{SR.missing.join(', ')}}</div>`:''}}`);
-new Chart(c8,{{type:'bar',data:{{labels:['0-9','10-19','20-29','30-39','40-49','50-59','60-69','70-79','80-89'],
- datasets:[{{label:'gameweeks',data:SR.bins,backgroundColor:C.a,borderRadius:4}}]}},
+new Chart(c8,{{type:'bar',data:{{labels:['0-4','5-9','10-14','15-19','20-24','25-29','30-34','35-39','40-44','45-49','50-54','55-59','60-64','65-69','70-74','75-79','80-84','85-89'],
+ datasets:[{{label:'% of gameweeks',data:SR.bins.map(b=>b/SR.scores.length*100),backgroundColor:C.a,borderRadius:4}}]}},
  options:{{plugins:{{legend:{{display:false}}}},
   scales:{{x:{{title:{{display:true,text:'points scored that gameweek'}},grid:{{display:false}}}},
-          y:{{title:{{display:true,text:'number of gameweeks (of 38)'}},grid:{{color:css('--grid')}}}}}}}}}});
+          y:{{title:{{display:true,text:'% of gameweeks'}},grid:{{color:css('--grid')}}}}}}}}}});
 </script>"""
 
     html = page_shell.shell(
@@ -453,8 +425,8 @@ new Chart(c8,{{type:'bar',data:{{labels:['0-9','10-19','20-29','30-39','40-49','
         body=body,
         footer="Built by <span class='mono'>build_relationships_page.py</span>, reading "
                "the same payload <span class='mono'>build_dashboard.py</span> computes for "
-               "Player analysis. Panels moved here 11 Aug 2026: the threshold cliff and "
-               "shrinkage diagnostics test the SHAPE of a relationship, not a squad decision.")
+               "Player analysis. Panel 1 moved here 11 Aug 2026: the threshold cliff tests "
+               "the SHAPE of a relationship, not a squad decision.")
     html = html.replace("</body>", script + "\n</body>")
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     open(OUT, "w", encoding="utf-8").write(html)
@@ -465,6 +437,5 @@ if __name__ == "__main__":
     h = build()
     print(f"written: {OUT}  ({len(h)/1024:.0f} KB)")
     assert "cdn.jsdelivr.net/npm/chart.js@4.5.0" in h, "Chart.js tag missing"
-    assert DATA["kpanel"], "kpanel empty — build_dashboard.py payload changed shape?"
-    print(f"  panels: threshold cliff (p2), shrinkage (p6) · "
+    print(f"  panels: threshold cliff (p2), points distribution (p7), squad replay (p8) · "
           f"{len(DATA['rows'])} players shared with Player analysis")
