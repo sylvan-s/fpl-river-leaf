@@ -875,6 +875,59 @@ than a single win/lose start bit — right, and it turned out this dashboard
 already had BOTH built, just not exposed per-player. **Still not consumed by
 `build_squad.py`** — this is the observation layer, not the GW6 activation.
 
+#### Development plan — shrinkage, observe now / activate at GW6 (26 Aug 2026)
+
+*Logged 26 Aug 2026, in conversation, prompted by two things: Sylvan asking
+when A0.2 gets wired into squad selection and whether to just build it now:
+"beyond GW10 the data from last season will be quite stale... the main
+competitive advantage will be between GW5 and 10" — and then, separately,
+questioning why start-rate would be the first live metric wired up at all
+when in-game per-90 stats carry more information per gameweek. Both turned
+out to be sharper than the roadmap's flat "~GW6 for everything" framing
+already reflected — see the corrected A0.2 status above for what that
+investigation actually found (both pieces of statistics already built,
+neither exposed per-player, nothing yet consumed by squad selection).
+Three phases, not one date:*
+
+**Phase 0 — done, confirmed 26 Aug 2026.** In-game per-90 shrinkage
+(xg90/xa90/xgi90/cbit90/cbirt90) live in `fpl_research_mcp.py`'s screens.
+Binomial start-rate shrinkage built and walk-forward-scored in
+`build_prediction_tracker.py`. Per-player prior/raw/shrunk/weight visibility
+added to `docs/priors.html` (panel 3) and `docs/data/priors_player_snapshot.
+json` the same day. **None of this touches `build_squad.py`/
+`optimise_squad.py` yet** — by design, not oversight.
+
+**Phase 1 — now through GW5. Execution, not engineering.** Nothing left to
+build for this phase. `build_prediction_tracker.py` needs to actually run,
+every week, somewhere with real network access (it hits the FPL API
+directly — a sandboxed session without egress cannot run it, confirmed
+26 Aug 2026). It's already wired into `publish_dashboard.sh`'s Friday step;
+the only failure mode here is a skipped week leaving a gap in the RMSE
+record A0.2's own validation design depends on (fit GW1-5, check against
+GW6-10 actuals) — not a missing feature.
+
+**Phase 2 — GW6. The activation decision.** Read `docs/priors.html` panel 1:
+has shrunk actually beaten raw and prior on RMSE, consistently, for the
+metrics that matter, across GW1-5? If yes: wire the shrunk values into
+`build_squad.py`/`optimise_squad.py`/`fixture_adjust.py` in place of the
+frozen-2025/26-only reads — real integration work, but the statistics side
+is already proven against real outcomes by then, not freshly invented under
+deadline pressure. This is also A0.5's remaining precondition — the
+start-weighted objective (`xp_gw = stp x xP_adj`), sized at an 11% headline
+distortion on the live GW1 squad (`size_bench_value.py --fixtures`, 9 Aug),
+has been ready and blocked on exactly this since it was designed.
+
+**Phase 3 — downstream, sequencing unchanged by any of this.** A0.3 club
+rotation index (~GW8, below), A0.4 congestion overlay (~GW10, conditional),
+A0.6 autosub bench value (after A0.5, not before — wrong answers until the
+start-weighted objective exists), and the GW10 `predictive_backtest` — the
+season's real gate, which formally decides A0.5 and A4.
+
+**Open, not yet decided:** whether `build_prediction_tracker.py` should also
+run inside the *daily* `fpl-daily-intel-sweep` cadence rather than
+Friday-only — same network-access constraint applies there too, so this is
+a scheduling/environment question, not a code one.
+
 #### A0.3 Club rotation index — NOT BUILT. Gate: ~GW8 (needs 6–8 GWs)
 
 Measure **XI churn between consecutive gameweeks**, averaged per club.
