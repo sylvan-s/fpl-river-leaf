@@ -138,112 +138,42 @@ def deadline_line(live):
             f"{d:%a %d %b %Y, %H:%M} UTC ({away})</b>{age}")
 
 
-def _local_gw_db_path():
-    """Where fpl_research_mcp.py's player_gw SQLite cache lives, resolved the
-    same way that file's own _default_db_path() does — duplicated rather
-    than imported, because importing fpl_research_mcp.py would pull in the
-    `mcp` server SDK as a hard dependency of this build script, which must
-    keep building even somewhere that package isn't installed (this is a
-    READ path only, so there's nothing to gain from sharing the actual
-    connection code, just the two candidate locations). Returns None if
-    neither exists — the caller fails soft, same as everywhere else on this
-    page that depends on data outside squad.json."""
-    env = os.environ.get("FPL_MCP_DB")
-    for candidate in (env, os.path.expanduser("~/.fpl-mcp/fpl_history_cache.sqlite"),
-                       os.path.join(HERE, "fpl_history_cache.sqlite")):
-        if candidate and os.path.exists(candidate):
-            return candidate
-    return None
+ROUTE_ACTUAL_SNAPSHOT = os.path.join(HERE, "docs", "data", "route_actual_snapshot.json")
 
 
-_ACTUAL_POS_KEYS = ("appearance", "goal_involvement", "clean_sheets",
-                     "defensive_contribution", "saves", "bonus")
-_ACTUAL_DED_KEYS = ("goals_conceded", "yellow_cards", "red_cards",
-                     "own_goals", "penalties_missed")
-
-
-def actual_route_snapshot(xi_players):
+def actual_route_snapshot(xi_players=None):
     """Real per-gameweek average points for the CURRENT XI, split into the
     same six positive categories as the xP route chart plus a parallel
     deductions total — for the squad page's Expected/Actual toggle (added
     26 Aug 2026).
 
-    Reads fpl_research_mcp.py's player_gw SQLite cache DIRECTLY (read-only,
-    offline — no MCP call from this script, matching every other build_*.py
-    page's offline contract). Resolves each XI player's FPL element id from
-    the frozen prior-season snapshot rather than a live lookup: ids are
-    stable season to season regardless of which club a player is
-    contaminated-prior-flagged against (that flag is about STATS belonging
-    to the wrong club, not about the id itself), so the frozen snapshot is a
-    safe, purely local join key here even though build_squad.py's contaminated-
-    prior exclusion would rightly refuse to trust its RATE STATS.
+    PURE READ, like live_snapshot() — this used to open
+    fpl_research_mcp.py's player_gw SQLite cache directly, which only works
+    when this script runs somewhere with real access to
+    ~/.fpl-mcp/fpl_history_cache.sqlite (Sylvan's own terminal). Every
+    Cowork/Claude session's sandbox has its own $HOME with no route to that
+    file, only to the explicitly connected repo folder — so a build done
+    from a session always saw "no data" even after cache_history had
+    genuinely warmed the cache on the real machine. Fixed 26 Aug 2026 by
+    moving the computation to fpl_research_mcp.py's own `squad_actual_points`
+    MCP tool, which runs where the database actually lives and writes the
+    small aggregate here — same fix live_snapshot() already applies to the
+    same problem for total points and the deadline. `xi_players` is accepted
+    and ignored (kept so callers don't need to change) — the snapshot is
+    already computed against squad.json's XI by the tool that wrote it.
 
-    Fails soft — returns None (not an empty/zeroed snapshot, so the caller
-    can tell "no data" from "a real zero") if: the local cache doesn't exist
-    yet, the priors snapshot is missing, none of the XI resolve to an id, or
-    none of those ids have any cached rows yet (e.g. before the first
-    cache_history run, or before this feature's card/own-goal/pen-miss
-    columns have been backfilled — see fpl_research_mcp.py's player_gw
-    migration note)."""
-    db_path = _local_gw_db_path()
-    if not db_path:
+    Returns None if the snapshot hasn't been written yet (nobody has called
+    squad_actual_points() since the last squad change) or belongs to a
+    different-sized XI than 11 (a stale file from before a squad edit)."""
+    if not os.path.exists(ROUTE_ACTUAL_SNAPSHOT):
         return None
     try:
-        snap = json.load(open(PRIORS_SNAPSHOT, encoding="utf-8"))
+        snap = json.load(open(ROUTE_ACTUAL_SNAPSHOT, encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return None
-    id_by_name = {p.get("web_name"): pid for pid, p in snap.get("players", {}).items()}
-
-    ids = {}
-    for p in xi_players:
-        pid = id_by_name.get(p["name"])
-        if pid is not None:
-            ids[int(pid)] = p["pos"]
-    if not ids:
+    if not snap.get("gws") or "positive" not in snap or "deductions" not in snap:
         return None
-
-    import sqlite3
-    cols = ("minutes", "goals_scored", "assists", "clean_sheets", "goals_conceded",
-            "saves", "bonus", "clearances_blocks_interceptions", "tackles", "recoveries",
-            "yellow_cards", "red_cards", "own_goals", "penalties_missed")
-    try:
-        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
-        placeholders = ",".join("?" * len(ids))
-        rows = conn.execute(
-            f"SELECT player_id, round, {','.join(cols)} FROM player_gw "
-            f"WHERE player_id IN ({placeholders})", list(ids)).fetchall()
-        conn.close()
-    except sqlite3.Error:
-        return None
-    if not rows:
-        return None
-
-    by_gw = {}
-    for r in rows:
-        pid, rnd, rest = r[0], r[1], r[2:]
-        row = dict(zip(cols, rest))
-        pos_pts, ded_pts = scoring.actual_points_breakdown(row, ids[pid])
-        acc = by_gw.setdefault(rnd, ({k: 0.0 for k in _ACTUAL_POS_KEYS},
-                                      {k: 0.0 for k in _ACTUAL_DED_KEYS}))
-        for k in _ACTUAL_POS_KEYS:
-            acc[0][k] += pos_pts[k]
-        for k in _ACTUAL_DED_KEYS:
-            acc[1][k] += ded_pts[k]
-
-    n_gw = len(by_gw)
-    totals_pos = {k: 0.0 for k in _ACTUAL_POS_KEYS}
-    totals_ded = {k: 0.0 for k in _ACTUAL_DED_KEYS}
-    for pos_pts, ded_pts in by_gw.values():
-        for k in _ACTUAL_POS_KEYS:
-            totals_pos[k] += pos_pts[k]
-        for k in _ACTUAL_DED_KEYS:
-            totals_ded[k] += ded_pts[k]
-
-    return {
-        "gws": sorted(by_gw),
-        "positive": {k: v / n_gw for k, v in totals_pos.items()},
-        "deductions": {k: v / n_gw for k, v in totals_ded.items()},
-    }
+    return snap
 
 
 def contaminated():

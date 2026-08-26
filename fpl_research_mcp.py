@@ -26,6 +26,21 @@ from typing import Any
 
 import httpx
 
+# scoring.py lives alongside this file in the repo, not on the default
+# import path a Claude Desktop-launched process may have — insert this
+# file's own directory first so `import scoring` resolves regardless of cwd.
+# Pure functions only (json/math/os/sys), so importing it here is cheap and
+# has no side effects at import time — see scoring.py's own module docstring
+# for why it exists (ending four independently-drifting copies of the same
+# formula) and why squad_actual_points() below reuses it rather than adding
+# a fifth.
+_scoring_dir = _os.path.dirname(_os.path.abspath(__file__))
+if _scoring_dir not in sys.path:
+    sys.path.insert(0, _scoring_dir)
+import scoring
+del _scoring_dir  # _PRIORS_DIR (defined further down) is the name every
+                  # other function in this file uses for the same path
+
 # Keep stderr clean so real errors stand out in Claude Desktop's MCP log.
 warnings.filterwarnings("ignore", message=".*incomplete definition.*")
 
@@ -1052,18 +1067,20 @@ def _entry_history(entry: int = ENTRY_ID) -> tuple[list[dict], list[int]]:
         conn.close()
 
 
-def _write_dashboard_snapshot(snap: dict) -> None:
+def _write_dashboard_snapshot(snap: dict, path: str) -> None:
     """Best-effort JSON write for build_squad_page.py to read OFFLINE - that
     script (like every build_*.py page except build_prediction_tracker.py)
     is a pure function of local files and makes no network calls of its own.
-    This is the one place that bridges live data into that contract. Wrapped
-    in try/except because writing the dashboard snapshot is a bonus, not the
-    job entry_summary() exists to do - a filesystem hiccup here must not stop
-    the tool from returning the actual answer to whoever called it."""
+    This is the bridge that gets live data into that contract, shared by
+    every tool on this file that has a dashboard snapshot to write (see
+    _ROUTE_ACTUAL_SNAPSHOT_PATH below for the second user). Wrapped in
+    try/except because writing the snapshot is a bonus, not the job the
+    calling tool exists to do - a filesystem hiccup here must not stop that
+    tool from returning its actual answer to whoever called it."""
     try:
-        _os.makedirs(_os.path.dirname(_ENTRY_SNAPSHOT_PATH), exist_ok=True)
+        _os.makedirs(_os.path.dirname(path), exist_ok=True)
         import json
-        with open(_ENTRY_SNAPSHOT_PATH, "w", encoding="utf-8") as fh:
+        with open(path, "w", encoding="utf-8") as fh:
             json.dump(snap, fh, indent=2)
     except Exception:
         pass
@@ -1103,7 +1120,7 @@ def entry_summary(entry: int = ENTRY_ID) -> str:
         "next_deadline_utc": next_deadline,
         "fetched_utc": _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds"),
     }
-    _write_dashboard_snapshot(snap)
+    _write_dashboard_snapshot(snap, _ENTRY_SNAPSHOT_PATH)
 
     out = [
         f"Entry {entry} - {gws} finished gameweek(s) cached (GW{rows[0]['event']}-{rows[-1]['event']})",
@@ -1119,6 +1136,141 @@ def entry_summary(entry: int = ENTRY_ID) -> str:
     if errors:
         out.append(f"{len(errors)} gameweek(s) failed to fetch and were skipped: {errors}")
     out.append(f"dashboard snapshot written: {_os.path.relpath(_ENTRY_SNAPSHOT_PATH, _PRIORS_DIR)}")
+    return "\n".join(out)
+
+
+# --------------------------------------------------------- squad actual pts --
+# WHY THIS EXISTS. build_squad_page.py's "Where the points come from" chart
+# (Expected/Actual toggle, added 26 Aug 2026) originally read player_gw
+# straight out of SQLite itself. That works when Sylvan runs the build from
+# his own terminal, but not from a Cowork/Claude session — every sandboxed
+# session's $HOME is its own container, with no route to
+# ~/.fpl-mcp/fpl_history_cache.sqlite on the real machine, only to the
+# explicitly connected ~/Projects/FPL folder. This tool runs where the
+# database actually lives (this MCP server, launched by Claude Desktop on
+# Sylvan's own machine) and writes the small aggregate the chart needs into
+# docs/data/ — inside the connected folder, reachable from anywhere — the
+# same fix entry_summary already applies to the same problem for total
+# points and the deadline.
+_ROUTE_ACTUAL_SNAPSHOT_PATH = _os.path.join(_PRIORS_DIR, "docs", "data", "route_actual_snapshot.json")
+_ROUTE_ACTUAL_POS_KEYS = ("appearance", "goal_involvement", "clean_sheets",
+                          "defensive_contribution", "saves", "bonus")
+_ROUTE_ACTUAL_DED_KEYS = ("goals_conceded", "yellow_cards", "red_cards",
+                          "own_goals", "penalties_missed")
+
+
+def _squad_xi() -> list[dict]:
+    """The current XI's name+pos from squad.json - two fields only, read
+    directly rather than through squad_state.py's full validation. That
+    module's fail-loudly-on-any-defect posture is right for the pipeline
+    that actually SELECTS the squad; this is a read-only reporting tool that
+    should degrade to "nothing to compute" on a malformed or missing
+    squad.json rather than raise into the MCP caller."""
+    path = _os.path.join(_PRIORS_DIR, "squad.json")
+    try:
+        import json
+        raw = json.load(open(path, encoding="utf-8"))
+    except Exception:
+        return []
+    return [{"name": p["name"], "pos": p["pos"]}
+            for p in raw.get("squad", []) if p.get("role") == "XI"]
+
+
+@mcp.tool(
+    description=(
+        "Real per-gameweek average points for the CURRENT squad's XI "
+        "(squad.json), split the same way the squad page's Expected/Actual "
+        "chart is: six earned categories (appearance, goal involvement, "
+        "clean sheets, defensive contribution, saves, bonus) plus five "
+        "deductions (goals conceded, yellow/red cards, own goals, penalty "
+        "misses). Reads player_gw locally, no new API calls of its own - "
+        "call cache_history first if it hasn't been warmed since the "
+        "card/own-goal/penalty-miss columns were added (26 Aug 2026). "
+        "Writes docs/data/route_actual_snapshot.json so the squad page can "
+        "show this offline, the same pattern entry_summary uses for total "
+        "points."
+    )
+)
+def squad_actual_points() -> str:
+    xi = _squad_xi()
+    if not xi:
+        return "squad.json not found, unreadable, or has no XI players — nothing to compute."
+
+    import json
+    try:
+        with open(_PRIORS_PATH_V2, encoding="utf-8") as fh:
+            snap = json.load(fh)
+    except Exception:
+        return (f"Prior-season snapshot not found at {_PRIORS_PATH_V2} — "
+                 f"needed to resolve player names to FPL ids.")
+    id_by_name = {p.get("web_name"): pid for pid, p in snap.get("players", {}).items()}
+
+    ids: dict[int, str] = {}
+    unresolved = []
+    for p in xi:
+        pid = id_by_name.get(p["name"])
+        if pid is not None:
+            ids[int(pid)] = p["pos"]
+        else:
+            unresolved.append(p["name"])
+    if not ids:
+        return f"None of the XI's {len(xi)} names resolved to an FPL id — nothing to compute."
+
+    cols = ("minutes", "goals_scored", "assists", "clean_sheets", "goals_conceded",
+            "saves", "bonus", "clearances_blocks_interceptions", "tackles", "recoveries",
+            "yellow_cards", "red_cards", "own_goals", "penalties_missed")
+    conn = _db()
+    try:
+        placeholders = ",".join("?" * len(ids))
+        rows = conn.execute(
+            f"SELECT player_id, round, {','.join(cols)} FROM player_gw "
+            f"WHERE player_id IN ({placeholders})", list(ids)).fetchall()
+    finally:
+        conn.close()
+
+    if not rows:
+        return (f"No cached player_gw rows yet for any of the {len(ids)} resolved "
+                 f"XI player(s) — call cache_history(refresh=True) first.")
+
+    by_gw: dict[int, tuple[dict, dict]] = {}
+    for r in rows:
+        pid, rnd, rest = r[0], r[1], r[2:]
+        row = dict(zip(cols, rest))
+        pos_pts, ded_pts = scoring.actual_points_breakdown(row, ids[pid])
+        acc = by_gw.setdefault(rnd, ({k: 0.0 for k in _ROUTE_ACTUAL_POS_KEYS},
+                                      {k: 0.0 for k in _ROUTE_ACTUAL_DED_KEYS}))
+        for k in _ROUTE_ACTUAL_POS_KEYS:
+            acc[0][k] += pos_pts[k]
+        for k in _ROUTE_ACTUAL_DED_KEYS:
+            acc[1][k] += ded_pts[k]
+
+    n_gw = len(by_gw)
+    totals_pos = {k: 0.0 for k in _ROUTE_ACTUAL_POS_KEYS}
+    totals_ded = {k: 0.0 for k in _ROUTE_ACTUAL_DED_KEYS}
+    for pos_pts, ded_pts in by_gw.values():
+        for k in _ROUTE_ACTUAL_POS_KEYS:
+            totals_pos[k] += pos_pts[k]
+        for k in _ROUTE_ACTUAL_DED_KEYS:
+            totals_ded[k] += ded_pts[k]
+
+    snap_out = {
+        "gws": sorted(by_gw),
+        "positive": {k: round(v / n_gw, 4) for k, v in totals_pos.items()},
+        "deductions": {k: round(v / n_gw, 4) for k, v in totals_ded.items()},
+        "resolved": len(ids), "xi_size": len(xi), "unresolved": unresolved,
+        "fetched_utc": _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds"),
+    }
+    _write_dashboard_snapshot(snap_out, _ROUTE_ACTUAL_SNAPSHOT_PATH)
+
+    total = sum(snap_out["positive"].values()) + sum(snap_out["deductions"].values())
+    out = [
+        f"XI actual points: {total:.2f}/GW avg over {n_gw} finished gameweek(s) "
+        f"(GW{snap_out['gws'][0]}-{snap_out['gws'][-1]}), "
+        f"{len(ids)}/{len(xi)} XI players resolved to an FPL id",
+    ]
+    if unresolved:
+        out.append(f"unresolved (not in the prior-season snapshot, skipped): {unresolved}")
+    out.append(f"snapshot written: {_os.path.relpath(_ROUTE_ACTUAL_SNAPSHOT_PATH, _PRIORS_DIR)}")
     return "\n".join(out)
 
 

@@ -483,6 +483,68 @@ m._ENTRY_SNAPSHOT_PATH = _orig_snapshot_path
 m._get = _orig_get2
 m._DB_PATH = _REAL_DB
 
+print("\n== squad_actual_points (real points for the CURRENT XI) ==")
+_squad_dir = _tf.mkdtemp()
+_squad_json_path = _os2.path.join(_squad_dir, "squad.json")
+_json3.dump({"squad": [
+    {"name": "SquadGK", "pos": "GKP", "role": "XI"},
+    {"name": "SquadDEF", "pos": "DEF", "role": "XI"},
+    {"name": "SquadBench", "pos": "MID", "role": "BENCH"},   # must be excluded
+    {"name": "SquadUnresolved", "pos": "FWD", "role": "XI"},  # not in the priors snapshot
+]}, open(_squad_json_path, "w"))
+
+_orig_priors_dir = m._PRIORS_DIR
+_orig_priors_v2 = m._PRIORS_PATH_V2
+_orig_route_snap = m._ROUTE_ACTUAL_SNAPSHOT_PATH
+m._PRIORS_DIR = _squad_dir
+m._PRIORS_PATH_V2 = _os2.path.join(_squad_dir, "priors_v2.json")
+m._ROUTE_ACTUAL_SNAPSHOT_PATH = _os2.path.join(_squad_dir, "route_actual_snapshot.json")
+_json3.dump({"players": {"101": {"web_name": "SquadGK"}, "102": {"web_name": "SquadDEF"}}},
+            open(m._PRIORS_PATH_V2, "w"))
+
+check("_squad_xi reads the XI only, not the bench",
+      sorted(p["name"] for p in m._squad_xi())
+      == ["SquadDEF", "SquadGK", "SquadUnresolved"])
+
+_squad_db = _os2.path.join(_squad_dir, "squad_hist.sqlite")
+_con = _sq.connect(_squad_db)
+_gwcols = ("minutes", "goals_scored", "assists", "clean_sheets", "goals_conceded", "saves", "bonus",
+          "clearances_blocks_interceptions", "tackles", "recoveries",
+          "yellow_cards", "red_cards", "own_goals", "penalties_missed")
+_con.execute(f"CREATE TABLE player_gw (player_id INTEGER, round INTEGER, "
+            f"{','.join(c+' REAL' for c in _gwcols)})")
+# GK (id 101), GW1: clean sheet, no save pts. DEF (id 102), GW1: assist + CS + DC hit + yellow.
+_con.execute("INSERT INTO player_gw VALUES (101,1,90,0,0,1,0,1,0,1,0,8,0,0,0,0)")
+_con.execute("INSERT INTO player_gw VALUES (102,1,90,0,1,1,0,0,0,6,5,3,1,0,0,0)")
+_con.commit(); _con.close()
+m._DB_PATH = _squad_db
+
+_txt3 = m.squad_actual_points()
+check("reports the resolved/unresolved split", "2/3 XI players resolved" in _txt3, _txt3)
+check("names the unresolved player", "SquadUnresolved" in _txt3, _txt3)
+check("writes the route snapshot file", _os2.path.exists(m._ROUTE_ACTUAL_SNAPSHOT_PATH))
+_rsnap = _json3.load(open(m._ROUTE_ACTUAL_SNAPSHOT_PATH))
+check("snapshot covers GW1 only", _rsnap["gws"] == [1])
+# GK: appearance2+CS4+saves0 = 6. DEF: appearance2+GI3+CS4+DC2 = 11. Combined positive = 17 over 1 GW.
+check("positive total matches the hand-computed XI sum",
+      sum(_rsnap["positive"].values()) == 17.0, str(_rsnap["positive"]))
+check("DEF's yellow card is the only deduction",
+      _rsnap["deductions"]["yellow_cards"] == -1.0 and
+      sum(v for k, v in _rsnap["deductions"].items() if k != "yellow_cards") == 0.0,
+      str(_rsnap["deductions"]))
+check("resolved/xi_size recorded", _rsnap["resolved"] == 2 and _rsnap["xi_size"] == 3)
+check("unresolved name recorded in the snapshot too", _rsnap["unresolved"] == ["SquadUnresolved"])
+
+# no squad.json at all -> graceful "nothing to compute", not a crash
+_os2.remove(_squad_json_path)
+_txt4 = m.squad_actual_points()
+check("missing squad.json degrades gracefully", "nothing to compute" in _txt4.lower(), _txt4)
+
+m._PRIORS_DIR = _orig_priors_dir
+m._PRIORS_PATH_V2 = _orig_priors_v2
+m._ROUTE_ACTUAL_SNAPSHOT_PATH = _orig_route_snap
+m._DB_PATH = _REAL_DB
+
 print("\n== availability and suspension risk ==")
 # Minutes are the dominant source of blanks. These two mechanisms are distinct
 # and the tests exist mainly to stop them being conflated again.
