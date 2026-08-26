@@ -413,6 +413,20 @@ the specific replacement guessed on 20-21 Aug was wrong. Resolution
 logged against `OReilly-MCI-stp-20260820-1`. Sources: Sports Mole,
 mancity.com confirmed lineups.
 
+**New question opened, not closed, by the resolution above, 26 Aug 2026
+— daily sweep, pending Friday review.** The stp resolution only answers
+whether he still starts (yes, all 90). It does not answer whether a
+DEF-priced player actually lining up in central midfield still produces
+DEF-level defensive-contribution numbers. He remains FPL-registered as a
+DEF (clean-sheet/GC scoring is unaffected by where he lines up), but a
+player playing auxiliary midfield rather than in the back four would be
+expected to log fewer clearances/blocks/interceptions/tackles than a
+genuine defender — a live risk to his `cbit90`/DC-threshold value that
+the last-16 start-rate framing doesn't capture. No sourced magnitude yet;
+logged as `OReilly-MCI-cbit90-20260826-1` for the Friday review to size,
+same as the Rice/Villa instructed-estimate precedent, if you want to put
+a number on it.?
+
 ### 11. Guimarães (ARS, £7.0m, MID) — GW1 fitness doubt, relevant to Rice's workload-sharing thesis — **NOT OWNED**
 
 **Logged 21 Aug 2026, daily sweep, pending Friday review.** Guimarães was
