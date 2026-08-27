@@ -1152,6 +1152,27 @@ def entry_summary(entry: int = ENTRY_ID) -> str:
 # docs/data/ — inside the connected folder, reachable from anywhere — the
 # same fix entry_summary already applies to the same problem for total
 # points and the deadline.
+#
+# BUG FOUND AND FIXED 27 Aug 2026 — reported by Sylvan: GW1's real total was
+# 44 (entry_summary/FPL both agree), but this chart's Actual total showed 34.
+# The original version used squad.json's CURRENT XI for EVERY finished
+# gameweek, on the assumption "squad_actual_points" only ever wants "the
+# squad as it stands". That assumption is wrong: the XI drifts week to week
+# (Sarr is in the XI today; GW1 actually started Justin instead, with Sarr
+# benched — see ROLE_INTEL.md entry 13, his groin injury), so reusing
+# today's XI against a past gameweek silently scores the WRONG ELEVEN for
+# that week. Sarr didn't play GW1 (0 pts); Justin did (10 pts) — exactly the
+# missing 10. It also never applied the captain's 2x (or triple-captain's
+# 3x) multiplier at all, which happened to net to zero this gameweek only
+# because captain Thiago blanked (0 pts) — a second, separate bug that would
+# misrepresent a future week the moment the captain scores.
+#
+# THE FIX. Use each finished gameweek's own ACTUAL picks — the same
+# `/entry/{id}/event/{gw}/picks/` endpoint get_squad() already reads — which
+# carries the real per-player `multiplier` (0 benched-and-not-subbed, 1
+# normal, 2 captain, 3 triple-captain) ALREADY RESOLVED for autosubs by FPL
+# itself. That fixes both bugs at once: the right eleven for each week, and
+# a correctly-doubled captain, with no separate autosub logic to write.
 _ROUTE_ACTUAL_SNAPSHOT_PATH = _os.path.join(_PRIORS_DIR, "docs", "data", "route_actual_snapshot.json")
 _ROUTE_ACTUAL_POS_KEYS = ("appearance", "goal_involvement", "clean_sheets",
                           "defensive_contribution", "saves", "bonus")
@@ -1159,90 +1180,89 @@ _ROUTE_ACTUAL_DED_KEYS = ("goals_conceded", "yellow_cards", "red_cards",
                           "own_goals", "penalties_missed")
 
 
-def _squad_xi() -> list[dict]:
-    """The current XI's name+pos from squad.json - two fields only, read
-    directly rather than through squad_state.py's full validation. That
-    module's fail-loudly-on-any-defect posture is right for the pipeline
-    that actually SELECTS the squad; this is a read-only reporting tool that
-    should degrade to "nothing to compute" on a malformed or missing
-    squad.json rather than raise into the MCP caller."""
-    path = _os.path.join(_PRIORS_DIR, "squad.json")
-    try:
-        import json
-        raw = json.load(open(path, encoding="utf-8"))
-    except Exception:
-        return []
-    return [{"name": p["name"], "pos": p["pos"]}
-            for p in raw.get("squad", []) if p.get("role") == "XI"]
-
-
 @mcp.tool(
     description=(
-        "Real per-gameweek average points for the CURRENT squad's XI "
-        "(squad.json), split the same way the squad page's Expected/Actual "
-        "chart is: six earned categories (appearance, goal involvement, "
-        "clean sheets, defensive contribution, saves, bonus) plus five "
-        "deductions (goals conceded, yellow/red cards, own goals, penalty "
-        "misses). Reads player_gw locally, no new API calls of its own - "
-        "call cache_history first if it hasn't been warmed since the "
-        "card/own-goal/penalty-miss columns were added (26 Aug 2026). "
-        "Writes docs/data/route_actual_snapshot.json so the squad page can "
-        "show this offline, the same pattern entry_summary uses for total "
-        "points."
+        "Real per-gameweek average points for the entry's ACTUAL XI each "
+        "finished gameweek — not today's squad.json projected backwards, "
+        "each week's own picks, so a since-changed lineup and captaincy are "
+        "scored correctly. Split the same way the squad page's Expected/"
+        "Actual chart is: six earned categories (appearance, goal "
+        "involvement, clean sheets, defensive contribution, saves, bonus) "
+        "plus five deductions (goals conceded, yellow/red cards, own goals, "
+        "penalty misses), with the captain's/triple-captain's multiplier "
+        "correctly applied (FPL's own autosub-resolved multiplier, no "
+        "separate autosub logic needed). Fetches one picks call per "
+        "finished gameweek not already warm in cache (cheap, same endpoint "
+        "entry_summary uses) plus reads player_gw locally — call "
+        "cache_history first if it hasn't been warmed since the card/own-"
+        "goal/penalty-miss columns were added (26 Aug 2026). Writes "
+        "docs/data/route_actual_snapshot.json so the squad page can show "
+        "this offline, the same pattern entry_summary uses for total points."
     )
 )
-def squad_actual_points() -> str:
-    xi = _squad_xi()
-    if not xi:
-        return "squad.json not found, unreadable, or has no XI players — nothing to compute."
+def squad_actual_points(entry: int = ENTRY_ID) -> str:
+    fin = sorted(_finished_rounds())
+    if not fin:
+        return "No finished gameweeks yet — nothing to compute."
 
-    import json
-    try:
-        with open(_PRIORS_PATH_V2, encoding="utf-8") as fh:
-            snap = json.load(fh)
-    except Exception:
-        return (f"Prior-season snapshot not found at {_PRIORS_PATH_V2} — "
-                 f"needed to resolve player names to FPL ids.")
-    id_by_name = {p.get("web_name"): pid for pid, p in snap.get("players", {}).items()}
-
-    ids: dict[int, str] = {}
-    unresolved = []
-    for p in xi:
-        pid = id_by_name.get(p["name"])
-        if pid is not None:
-            ids[int(pid)] = p["pos"]
-        else:
-            unresolved.append(p["name"])
-    if not ids:
-        return f"None of the XI's {len(xi)} names resolved to an FPL id — nothing to compute."
-
+    teams, els = _maps()
     cols = ("minutes", "goals_scored", "assists", "clean_sheets", "goals_conceded",
             "saves", "bonus", "clearances_blocks_interceptions", "tackles", "recoveries",
             "yellow_cards", "red_cards", "own_goals", "penalties_missed")
+
+    by_gw: dict[int, tuple[dict, dict]] = {}
+    fetch_errors: list[int] = []
+    missing_players: dict[int, list[int]] = {}
     conn = _db()
     try:
-        placeholders = ",".join("?" * len(ids))
-        rows = conn.execute(
-            f"SELECT player_id, round, {','.join(cols)} FROM player_gw "
-            f"WHERE player_id IN ({placeholders})", list(ids)).fetchall()
+        for gw in fin:
+            try:
+                data = _get(f"/entry/{entry}/event/{gw}/picks/", ttl=3600)
+            except httpx.HTTPStatusError:
+                fetch_errors.append(gw)
+                continue
+            picks = data.get("picks", [])
+            # multiplier is FPL's OWN autosub-resolved figure: 0 for a
+            # starter who was subbed out / a bench player never subbed in,
+            # 1 for a normal starter, 2/3 for the (triple) captain. Using it
+            # directly means this function never has to reconstruct autosub
+            # logic itself.
+            mult_by_id = {p["element"]: p.get("multiplier", 0) for p in picks
+                          if p.get("multiplier", 0) > 0}
+            if not mult_by_id:
+                continue
+            placeholders = ",".join("?" * len(mult_by_id))
+            rows = conn.execute(
+                f"SELECT player_id, {','.join(cols)} FROM player_gw "
+                f"WHERE round=? AND player_id IN ({placeholders})",
+                [gw] + list(mult_by_id)).fetchall()
+            acc = by_gw.setdefault(gw, ({k: 0.0 for k in _ROUTE_ACTUAL_POS_KEYS},
+                                         {k: 0.0 for k in _ROUTE_ACTUAL_DED_KEYS}))
+            seen = set()
+            for r in rows:
+                pid, rest = r[0], r[1:]
+                el = els.get(pid)
+                if not el:
+                    continue
+                pos = POS.get(el["element_type"])
+                mult = mult_by_id[pid]
+                row = dict(zip(cols, rest))
+                pos_pts, ded_pts = scoring.actual_points_breakdown(row, pos)
+                for k in _ROUTE_ACTUAL_POS_KEYS:
+                    acc[0][k] += pos_pts[k] * mult
+                for k in _ROUTE_ACTUAL_DED_KEYS:
+                    acc[1][k] += ded_pts[k] * mult
+                seen.add(pid)
+            gap = set(mult_by_id) - seen
+            if gap:
+                missing_players[gw] = sorted(gap)
     finally:
         conn.close()
 
-    if not rows:
-        return (f"No cached player_gw rows yet for any of the {len(ids)} resolved "
-                 f"XI player(s) — call cache_history(refresh=True) first.")
-
-    by_gw: dict[int, tuple[dict, dict]] = {}
-    for r in rows:
-        pid, rnd, rest = r[0], r[1], r[2:]
-        row = dict(zip(cols, rest))
-        pos_pts, ded_pts = scoring.actual_points_breakdown(row, ids[pid])
-        acc = by_gw.setdefault(rnd, ({k: 0.0 for k in _ROUTE_ACTUAL_POS_KEYS},
-                                      {k: 0.0 for k in _ROUTE_ACTUAL_DED_KEYS}))
-        for k in _ROUTE_ACTUAL_POS_KEYS:
-            acc[0][k] += pos_pts[k]
-        for k in _ROUTE_ACTUAL_DED_KEYS:
-            acc[1][k] += ded_pts[k]
+    if not by_gw:
+        return (f"No usable data for entry {entry} across finished GW{fin[0]}-"
+                 f"{fin[-1]} — call cache_history(refresh=True) first, or check "
+                 f"the picks endpoint is reachable.")
 
     n_gw = len(by_gw)
     totals_pos = {k: 0.0 for k in _ROUTE_ACTUAL_POS_KEYS}
@@ -1254,22 +1274,25 @@ def squad_actual_points() -> str:
             totals_ded[k] += ded_pts[k]
 
     snap_out = {
+        "entry": entry,
         "gws": sorted(by_gw),
         "positive": {k: round(v / n_gw, 4) for k, v in totals_pos.items()},
         "deductions": {k: round(v / n_gw, 4) for k, v in totals_ded.items()},
-        "resolved": len(ids), "xi_size": len(xi), "unresolved": unresolved,
         "fetched_utc": _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds"),
     }
     _write_dashboard_snapshot(snap_out, _ROUTE_ACTUAL_SNAPSHOT_PATH)
 
     total = sum(snap_out["positive"].values()) + sum(snap_out["deductions"].values())
     out = [
-        f"XI actual points: {total:.2f}/GW avg over {n_gw} finished gameweek(s) "
-        f"(GW{snap_out['gws'][0]}-{snap_out['gws'][-1]}), "
-        f"{len(ids)}/{len(xi)} XI players resolved to an FPL id",
+        f"Actual points (real per-GW XI + captain multiplier): {total:.2f}/GW "
+        f"avg over {n_gw} finished gameweek(s) (GW{snap_out['gws'][0]}-"
+        f"{snap_out['gws'][-1]})",
     ]
-    if unresolved:
-        out.append(f"unresolved (not in the prior-season snapshot, skipped): {unresolved}")
+    if fetch_errors:
+        out.append(f"gameweek(s) whose picks failed to fetch, skipped: {fetch_errors}")
+    if missing_players:
+        out.append(f"player_gw rows not yet cached for some picks (run "
+                    f"cache_history(refresh=True) then re-run): {missing_players}")
     out.append(f"snapshot written: {_os.path.relpath(_ROUTE_ACTUAL_SNAPSHOT_PATH, _PRIORS_DIR)}")
     return "\n".join(out)
 

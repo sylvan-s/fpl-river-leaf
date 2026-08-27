@@ -483,66 +483,98 @@ m._ENTRY_SNAPSHOT_PATH = _orig_snapshot_path
 m._get = _orig_get2
 m._DB_PATH = _REAL_DB
 
-print("\n== squad_actual_points (real points for the CURRENT XI) ==")
+print("\n== squad_actual_points (real per-GW XI + captain multiplier) ==")
+# Rewritten 27 Aug 2026 alongside the fix for the bug Sylvan reported: this
+# tool used to reuse squad.json's CURRENT XI for every finished gameweek
+# (wrong the moment the XI changes week to week) and never applied the
+# captain's multiplier at all. It now reads each finished GW's own ACTUAL
+# picks (element + multiplier), so these tests exercise a captained player
+# specifically - the exact case the old version got wrong.
 _squad_dir = _tf.mkdtemp()
-_squad_json_path = _os2.path.join(_squad_dir, "squad.json")
-_json3.dump({"squad": [
-    {"name": "SquadGK", "pos": "GKP", "role": "XI"},
-    {"name": "SquadDEF", "pos": "DEF", "role": "XI"},
-    {"name": "SquadBench", "pos": "MID", "role": "BENCH"},   # must be excluded
-    {"name": "SquadUnresolved", "pos": "FWD", "role": "XI"},  # not in the priors snapshot
-]}, open(_squad_json_path, "w"))
-
-_orig_priors_dir = m._PRIORS_DIR
-_orig_priors_v2 = m._PRIORS_PATH_V2
+m._DB_PATH = _os2.path.join(_squad_dir, "squad_hist.sqlite")
 _orig_route_snap = m._ROUTE_ACTUAL_SNAPSHOT_PATH
+_orig_priors_dir = m._PRIORS_DIR
 m._PRIORS_DIR = _squad_dir
-m._PRIORS_PATH_V2 = _os2.path.join(_squad_dir, "priors_v2.json")
 m._ROUTE_ACTUAL_SNAPSHOT_PATH = _os2.path.join(_squad_dir, "route_actual_snapshot.json")
-_json3.dump({"players": {"101": {"web_name": "SquadGK"}, "102": {"web_name": "SquadDEF"}}},
-            open(m._PRIORS_PATH_V2, "w"))
 
-check("_squad_xi reads the XI only, not the bench",
-      sorted(p["name"] for p in m._squad_xi())
-      == ["SquadDEF", "SquadGK", "SquadUnresolved"])
+# GW1 finished; element 101 = GK, 102 = DEF, 103 = MID (deliberately no
+# player_gw row, to exercise the "picked but not yet cached" gap report).
+m._cache.clear()
+m._cache["/bootstrap-static/"] = (time.time(), {
+    "teams": [{"id": 1, "short_name": "AAA", "name": "A"}],
+    "elements": [
+        {"id": 101, "element_type": 1, "team": 1},
+        {"id": 102, "element_type": 2, "team": 1},
+        {"id": 103, "element_type": 3, "team": 1},
+    ],
+    "events": [{"id": 1, "finished": True, "data_checked": True, "is_next": False,
+                "deadline_time": "2026-01-01T00:00:00Z"},
+               {"id": 2, "finished": False, "data_checked": False, "is_next": True,
+                "deadline_time": "2026-01-08T00:00:00Z"}],
+})
 
-_squad_db = _os2.path.join(_squad_dir, "squad_hist.sqlite")
-_con = _sq.connect(_squad_db)
+_orig_get3 = m._get
+
+
+def _picks_get(path, ttl=900):
+    if path == f"/entry/{m.ENTRY_ID}/event/1/picks/":
+        return {"picks": [
+            {"element": 101, "multiplier": 1},                       # GK, normal
+            {"element": 102, "multiplier": 2, "is_captain": True},    # DEF, CAPTAIN -> x2
+            {"element": 103, "multiplier": 1},                       # MID, no player_gw row yet
+            {"element": 999, "multiplier": 0},                       # benched, never subbed in
+        ]}
+    return _orig_get3(path, ttl)
+
+
+m._get = _picks_get
+
+_con = _sq.connect(m._DB_PATH)
 _gwcols = ("minutes", "goals_scored", "assists", "clean_sheets", "goals_conceded", "saves", "bonus",
           "clearances_blocks_interceptions", "tackles", "recoveries",
           "yellow_cards", "red_cards", "own_goals", "penalties_missed")
 _con.execute(f"CREATE TABLE player_gw (player_id INTEGER, round INTEGER, "
             f"{','.join(c+' REAL' for c in _gwcols)})")
-# GK (id 101), GW1: clean sheet, no save pts. DEF (id 102), GW1: assist + CS + DC hit + yellow.
+# GK (101), GW1: clean sheet, no save pts -> appearance2+CS4 = 6.
 _con.execute("INSERT INTO player_gw VALUES (101,1,90,0,0,1,0,1,0,1,0,8,0,0,0,0)")
+# DEF (102), GW1: assist + CS + DC hit + yellow -> appearance2+GI3+CS4+DC2=11,
+# yellow -1. This player is the captain, so BOTH the earned 11 and the -1
+# deduction must come out doubled in the snapshot - the exact case the old
+# squad.json-projected-backwards version silently never doubled.
 _con.execute("INSERT INTO player_gw VALUES (102,1,90,0,1,1,0,0,0,6,5,3,1,0,0,0)")
 _con.commit(); _con.close()
-m._DB_PATH = _squad_db
 
 _txt3 = m.squad_actual_points()
-check("reports the resolved/unresolved split", "2/3 XI players resolved" in _txt3, _txt3)
-check("names the unresolved player", "SquadUnresolved" in _txt3, _txt3)
+check("reports the multiplier-aware total", "captain multiplier" in _txt3, _txt3)
+check("flags the picked-but-not-yet-cached element (103)",
+      "103" in _txt3 and "not yet cached" in _txt3, _txt3)
 check("writes the route snapshot file", _os2.path.exists(m._ROUTE_ACTUAL_SNAPSHOT_PATH))
 _rsnap = _json3.load(open(m._ROUTE_ACTUAL_SNAPSHOT_PATH))
 check("snapshot covers GW1 only", _rsnap["gws"] == [1])
-# GK: appearance2+CS4+saves0 = 6. DEF: appearance2+GI3+CS4+DC2 = 11. Combined positive = 17 over 1 GW.
-check("positive total matches the hand-computed XI sum",
-      sum(_rsnap["positive"].values()) == 17.0, str(_rsnap["positive"]))
-check("DEF's yellow card is the only deduction",
-      _rsnap["deductions"]["yellow_cards"] == -1.0 and
+# GK unmultiplied: 6. DEF captained (x2): (2+3+4+2)*2 = 22. Combined = 28.
+check("captain's EARNED points come out doubled in the snapshot",
+      sum(_rsnap["positive"].values()) == 28.0, str(_rsnap["positive"]))
+# DEF's yellow card (-1) doubled by the same captain multiplier -> -2. A
+# card costs the captain double too, same as any other scoring event.
+check("captain's DEDUCTION comes out doubled too",
+      _rsnap["deductions"]["yellow_cards"] == -2.0 and
       sum(v for k, v in _rsnap["deductions"].items() if k != "yellow_cards") == 0.0,
       str(_rsnap["deductions"]))
-check("resolved/xi_size recorded", _rsnap["resolved"] == 2 and _rsnap["xi_size"] == 3)
-check("unresolved name recorded in the snapshot too", _rsnap["unresolved"] == ["SquadUnresolved"])
+check("entry id recorded in the snapshot", _rsnap["entry"] == m.ENTRY_ID)
 
-# no squad.json at all -> graceful "nothing to compute", not a crash
-_os2.remove(_squad_json_path)
+# no finished gameweeks at all -> graceful message, not a crash
+m._cache.clear()
+m._cache["/bootstrap-static/"] = (time.time(), {
+    "teams": [{"id": 1, "short_name": "AAA", "name": "A"}], "elements": [],
+    "events": [{"id": 1, "finished": False, "data_checked": False, "is_next": True,
+                "deadline_time": "2026-01-01T00:00:00Z"}]})
 _txt4 = m.squad_actual_points()
-check("missing squad.json degrades gracefully", "nothing to compute" in _txt4.lower(), _txt4)
+check("no finished gameweeks degrades gracefully",
+      "no finished gameweeks" in _txt4.lower(), _txt4)
 
 m._PRIORS_DIR = _orig_priors_dir
-m._PRIORS_PATH_V2 = _orig_priors_v2
 m._ROUTE_ACTUAL_SNAPSHOT_PATH = _orig_route_snap
+m._get = _orig_get3
 m._DB_PATH = _REAL_DB
 
 print("\n== availability and suspension risk ==")
