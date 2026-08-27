@@ -1,24 +1,22 @@
 {
+  "entry": 1041614,
   "gws": [
     1
   ],
   "positive": {
-    "appearance": 20.0,
+    "appearance": 24.0,
     "goal_involvement": 7.0,
-    "clean_sheets": 9.0,
-    "defensive_contribution": 2.0,
+    "clean_sheets": 13.0,
+    "defensive_contribution": 4.0,
     "saves": 0.0,
-    "bonus": 2.0
+    "bonus": 4.0
   },
   "deductions": {
     "goals_conceded": -1.0,
     "yellow_cards": -3.0,
     "red_cards": 0.0,
     "own_goals": 0.0,
-    "penalties_missed": -2.0
+    "penalties_missed": -4.0
   },
-  "resolved": 11,
-  "xi_size": 11,
-  "unresolved": [],
-  "fetched_utc": "2026-08-27T07:46:50+00:00"
+  "fetched_utc": "2026-08-27T07:52:08+00:00"
 }
