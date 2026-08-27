@@ -108,6 +108,16 @@ reporting frames him as a long-term Rodri replacement at the base of
 midfield. Doesn't resolve which role wins out — logged as a flag
 (`Anderson-MCI-xgi90-20260820-1`) for GW1-4 positional data to settle.?
 
+**Fitness footnote, 27 Aug 2026 — daily sweep, pending Friday review.**
+Separate from the role question above: Anderson's 63-minute night vs
+Bournemouth (GW1, 23 Aug) was cut short by what Maresca described
+post-match as severe cramp, not a significant knock, after a collision
+with Bournemouth's Alex Scott. Live `injury_report` still shows him
+DOUBTFUL at 75%, but multiple outlets (Sports Mole, CityXtra, Goal.com)
+report he's expected available for City's GW2 fixture v Crystal Palace
+(28 Aug) — where Sarr (own squad, entry 13) is on the opposing side.
+Logged as `Anderson-MCI-injury-20260827-1`.?
+
 ### 3. Mosquera (ARS, £5.5m, DEF) — minutes opening through injury
 
 **Thesis:** regular early-season minutes in the league's best defence while
@@ -489,6 +499,12 @@ falsifiable resolution — he still has to actually be in the squad.
 Logged as `Guimaraes-ARS-injury-20260826-1`. Source: Read Arsenal F.C. /
 SI.com, citing Arteta press comments.?
 
+**Note, 27 Aug 2026 — daily sweep.** The 23 Aug timeline update above
+(`Guimaraes-ARS-injury-20260823-1`) is now marked `superseded` in the
+sweep log by the more specific 31 Aug estimate logged 26 Aug directly
+above — no new evidence today, just tidying the resolution record to
+match what the narrative already showed.
+
 ### 12. Aston Villa (AVL, £0.0m, TEAM) — squad exodus + GW1 collapse — **structural context, not a single-player thesis, NOT CURRENTLY OWNED**
 
 **Logged 25 Aug 2026, raised by Sylvan in chat, pending Friday review.**
@@ -582,6 +598,13 @@ Hayters (Pierre Sage press comments).
 **Falsifiable check:** does Sarr start (or feature) for Crystal Palace in
 GW2, and does his 75% odds firm up or drop as the deadline approaches?
 Source: `Sarr-CRY-injury-20260826-1`.?
+
+**Odds have dropped, not firmed, 27 Aug 2026 — daily sweep, ahead of the
+GW2 deadline.** Live `injury_report` now shows Sarr INJURED at 0%
+("unknown return date"), down from DOUBTFUL/75% logged yesterday —
+directly answers half the falsifiable check above, though no fresh press
+quote has surfaced explaining the downgrade and the actual GW2 team
+sheet is still to come. Logged as `Sarr-CRY-injury-20260827-1`.?
 
 ---
 
