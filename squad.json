@@ -141,24 +141,24 @@
       "selected_on": "First substitute. 100% starts, xP_adj 3.64 - the most valuable autosub in the squad. Unchanged since 9 Aug."
     },
     {
-      "name": "Shaw",
-      "pos": "DEF",
-      "team": "MUN",
-      "price": 4.5,
-      "bought_for": 4.5,
-      "role": "BENCH",
-      "bench_order": 2,
-      "selected_on": "Bench fodder - price and availability only. Unchanged since 9 Aug."
-    },
-    {
       "name": "Sadiki",
       "pos": "MID",
       "team": "SUN",
       "price": 5.0,
       "bought_for": 5.0,
       "role": "BENCH",
+      "bench_order": 2,
+      "selected_on": "Bench fodder, 100% starts. Replaces Evanilson (94% starts, xP_adj 3.91) - a real downgrade in autosub value the objective doesn't price (bench value/A0.6 is not yet built), accepted here because it freed budget for the João Pedro upgrade. Corrected 28 Aug 2026: bench_order was recorded as 3 (behind Shaw) but the live site has always had him 2nd - Sadiki's 100% start rate makes that the more sensible order than Shaw's price-only bench fodder anyway, so squad.json's record was fixed to match live rather than the other way round."
+    },
+    {
+      "name": "Shaw",
+      "pos": "DEF",
+      "team": "MUN",
+      "price": 4.5,
+      "bought_for": 4.5,
+      "role": "BENCH",
       "bench_order": 3,
-      "selected_on": "Bench fodder, 100% starts. Replaces Evanilson (94% starts, xP_adj 3.91) - a real downgrade in autosub value the objective doesn't price (bench value/A0.6 is not yet built), accepted here because it freed budget for the João Pedro upgrade."
+      "selected_on": "Bench fodder - price and availability only. Unchanged since 9 Aug. Corrected 28 Aug 2026: bench_order was recorded as 2, live site has him 3rd behind Sadiki - see Sadiki's note."
     }
   ],
   "bought_for_note": "Pre-season, purchase price equals current price. Keep bought_for accurate from GW1 - FPL pays purchase price plus half any rise on sale.",
