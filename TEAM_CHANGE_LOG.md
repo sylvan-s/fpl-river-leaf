@@ -19,10 +19,21 @@ one-line record. What remains is what actually governs a decision today.
 
 **Deadline:** Fri 28 Aug 2026, 18:30 BST (17:30 UTC) · **Formation:** 3-4-3 (unchanged)
 **Last change:** **1 free transfer, 28 Aug** — `Sarr -> Schade`, via
-`optimise_squad.py --fixtures --transfers 1` (intel ON by default). **Not yet
-actioned live on the FPL site** — this file and `squad.json` record the
-decision; Sylvan still needs to submit it on fantasy.premierleague.com before
-the deadline above.
+`optimise_squad.py --fixtures --transfers 1` (intel ON by default).
+**ACTIONED LIVE on fantasy.premierleague.com, 28 Aug 2026, via Claude-in-Chrome
+browser automation:** transfer submitted (0 pts cost), captain/vice set to
+João Pedro/Thiago and saved via the "Save Your Team" button, confirmed 15/15
+players and correct bank on the site, captain/vice armbands verified by a
+zoomed screenshot after a fresh page reload.
+
+**Price drift found live, not previously tracked.** Sarr actually sold for
+**£6.4m**, not the £6.5m `squad.json` had recorded as his price — a real
+market movement this repo doesn't yet track (roadmap B1, price forecasting,
+not built). Live bank on the site is therefore **£0.4m**, one below this
+file's internal £0.5m (squad.json keeps its own bought_for-based £99.5m +
+£0.5m = £100.0m ledger self-consistent rather than silently absorbing the
+drift). **Do not treat that phantom £0.1m as spendable** — check the live
+site's actual bank before the next transfer.
 **Previous change:** FULL REBUILD, 6 transfers, 12 Aug (see below)
 **Squad value** £99.5m · **Bank** £0.5m · **Captain** João Pedro · **Vice** Thiago
 (**armband moved from Thiago** — see Captaincy below)
