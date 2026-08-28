@@ -147,11 +147,14 @@ not "intel" in the falsifiable-hypothesis sense this pipeline logs.
    card, via the Trello MCP, on the same run — triage happens on the board
    now, not just once a week in the Friday review.
 
-   - **Board:** `FPL Intel Review` (persistent — created 28 Aug 2026; Trello
-     boards can't be renamed via this integration, so its title may still say
-     an old gameweek number. It is the ongoing board regardless of what the
-     name says. Find it via `trelloSearch` action `search_boards` if the ID
-     isn't already known from a prior run, rather than creating a second one.)
+   - **Board:** `FPL News Management` (persistent — created 28 Aug 2026 as
+     "FPL Intel Review — GW2", renamed by hand the same day once the
+     per-gameweek-sounding name was flagged as a problem; the Trello MCP has
+     no board-rename action, so any future rename needs a human in the
+     Trello UI too. Find it via `trelloSearch` action `search_boards` if the
+     ID isn't already known from a prior run, rather than creating a second
+     one — match on board ID/URL if found, not name, in case a rename is
+     mid-flight and the two are briefly out of sync.)
    - **New, independent bite** (`updates_bite_id` null): create a card in the
      **Backlog** list. Name: short player/story title matching the pattern
      already in use (e.g. `"Sarr (CRY) — groin, missed GW1"`). Description:
@@ -421,12 +424,15 @@ mount already keeps his working tree current.
   bundled with the other pages that share the priors snapshot. Its
   "Intel triage board" panel renders `docs/data/trello_snapshot.json`, not
   a live embed — see below.
-- **Trello board `FPL Intel Review`** — the live triage surface. Every bite
-  gets a card (step 3a) the moment it's logged; Sylvan sorts cards into
-  `Backlog` / `Wait for more evidence` / `Take action` / `Reject / Expired`;
-  the Friday review acts on whatever's in `Take action`. Persistent across
-  gameweeks — don't create a new board each week even though its name is
-  frozen at whatever gameweek it was created in.
+- **Trello board `FPL News Management`** — the live triage surface (renamed
+  28 Aug 2026 from "FPL Intel Review — GW2"; board ID/URL unchanged, only the
+  display name). Every bite gets a card (step 3a) the moment it's logged;
+  Sylvan sorts cards into `Backlog` / `Wait for more evidence` / `Take
+  action` / `Reject / Expired`; the Friday review acts on whatever's in
+  `Take action`. Persistent across gameweeks — don't create a new board each
+  week. Match on board ID/URL, not name, when looking it up — the Trello MCP
+  has no rename action, so any future name change happens by hand and could
+  momentarily lag a reference to the old name somewhere in this repo.
 - `docs/data/trello_snapshot.json` — static point-in-time render of the
   Trello board (`{generated_utc, board_name, board_url, board_note, lists:
   [{name, cards: [{name, url, bite_ids, note?}]}]}`), refreshed by step 4
