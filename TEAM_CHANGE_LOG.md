@@ -35,8 +35,24 @@ file's internal £0.5m (squad.json keeps its own bought_for-based £99.5m +
 drift). **Do not treat that phantom £0.1m as spendable** — check the live
 site's actual bank before the next transfer.
 **Previous change:** FULL REBUILD, 6 transfers, 12 Aug (see below)
-**Squad value** £99.5m · **Bank** £0.5m · **Captain** João Pedro · **Vice** Thiago
-(**armband moved from Thiago** — see Captaincy below)
+**Squad value** £99.5m · **Bank** £0.5m · **Captain** Gabriel · **Vice** Thiago
+(**armband moved João Pedro → Gabriel later 28 Aug, Sylvan's own call** — see
+Captaincy below)
+
+**Captain changed again, later 28 Aug — Sylvan's own call, actioned by Sylvan
+directly on the live site.** Villa's leaky defence/attack plus a poor GW1
+made him want the clean-sheet floor over João Pedro's haul ceiling; moved
+the armband to Gabriel himself. First attempt didn't save — ran into the
+same checkbox-vs-"Save Your Team" bug documented in
+`FPL_LIVE_TRANSFER_STEPS.md`, caught when I re-checked the live site and
+found João Pedro still carrying the C badge. Sylvan redid it and a second
+check (zoomed screenshot) confirmed Gabriel C / Thiago V. Worth noting:
+`captaincy_odds` (with intel) actually agrees on expected points, not just
+downside protection — Gabriel 5.93 vs João Pedro 4.77 vs Thiago 4.04,
+almost entirely down to P(blank) (17.8% vs ~60% for the forwards) off the
+Arsenal-at-Villa fixture. The trade-off is real, though: João Pedro's
+P(haul) is still higher (10.0% vs Gabriel's 8.5%), so this is a genuine
+floor-over-ceiling choice, not a free upgrade.
 
 **Governance gap found and closed, 28 Aug 2026.** Sylvan flagged that the
 dashboard's adjustments panel included players never routed through the

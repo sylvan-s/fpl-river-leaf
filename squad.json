@@ -1,12 +1,12 @@
 {
   "_comment": "SINGLE SOURCE OF TRUTH for live squad state. Read by squad_state.py. TEAM_CHANGE_LOG.md is the human narrative. Update BOTH after every actioned transfer.",
-  "updated_utc": "2026-08-28T08:35:00Z",
-  "as_at_note": "GW2 pre-deadline (Fri 28 Aug 2026 17:30 UTC). 1 free transfer via optimise_squad.py (--fixtures --transfers 1, intel ON by default): Sarr -> Schade, +0.22 xP/90 (+1.1 pts over a 5-GW hold). Driven by Sarr's live injury_report status (INJURED, 0% chance of playing, unknown return - accepted narrative-only in the 28 Aug fpl-friday-intel-review, no ROLE_INTEL fence entry since it flows through live status directly). This run also carries the 8 Trello-accepted overrides written into ROLE_INTEL.md's adjustments fence earlier the same day (Mosquera stp window extended 1-3->1-8; O'Reilly cbit90 0.8 + xgi90 1.2; 13 AVL pool players xgi90 0.7) - none of them changed the top transfer recommendation. Bank 0.0 -> 0.5 in this file's internal (bought_for-based) accounting, which keeps squad_value+bank=100.0 self-consistent. KNOWN DRIFT: the live FPL site actually shows bank £0.4m, because Sarr sold for a live £6.4m, not the £6.5m this repo had tracked as his price - a real price movement our repo doesn't yet track (roadmap B1, price forecasting, not built). Do not spend that phantom £0.1m in a future transfer without re-checking the live site's actual bank first. Captain re-confirmed via captaincy_odds (with intel, neutral mode, 28 Aug): João Pedro leads both E[pts] (4.77) and P(haul) (10.0%) vs Thiago (4.04, 8.6%) - armband moved to João Pedro, Thiago to vice. ACTIONED LIVE on fantasy.premierleague.com on 28 Aug 2026 via Claude-in-Chrome browser automation: transfer submitted (0 pts cost), captain/vice set and saved via the 'Save Your Team' button, confirmed 15/15 players, £0.4m bank, captain/vice armbands verified by zoomed screenshot after a fresh page reload.",
+  "updated_utc": "2026-08-28T11:10:00Z",
+  "as_at_note": "GW2 pre-deadline (Fri 28 Aug 2026 17:30 UTC). 1 free transfer via optimise_squad.py (--fixtures --transfers 1, intel ON by default): Sarr -> Schade, +0.22 xP/90 (+1.1 pts over a 5-GW hold). Driven by Sarr's live injury_report status (INJURED, 0% chance of playing, unknown return - accepted narrative-only in the 28 Aug fpl-friday-intel-review, no ROLE_INTEL fence entry since it flows through live status directly). This run also carries the 8 Trello-accepted overrides written into ROLE_INTEL.md's adjustments fence earlier the same day (Mosquera stp window extended 1-3->1-8; O'Reilly cbit90 0.8 + xgi90 1.2; 13 AVL pool players xgi90 0.7) - none of them changed the top transfer recommendation. Bank 0.0 -> 0.5 in this file's internal (bought_for-based) accounting, which keeps squad_value+bank=100.0 self-consistent. KNOWN DRIFT: the live FPL site actually shows bank £0.4m, because Sarr sold for a live £6.4m, not the £6.5m this repo had tracked as his price - a real price movement our repo doesn't yet track (roadmap B1, price forecasting, not built). Do not spend that phantom £0.1m in a future transfer without re-checking the live site's actual bank first. Captain re-confirmed via captaincy_odds (with intel, neutral mode, 28 Aug): João Pedro leads both E[pts] (4.77) and P(haul) (10.0%) vs Thiago (4.04, 8.6%) - armband moved to João Pedro, Thiago to vice. ACTIONED LIVE on fantasy.premierleague.com on 28 Aug 2026 via Claude-in-Chrome browser automation: transfer submitted (0 pts cost), captain/vice set and saved via the 'Save Your Team' button, confirmed 15/15 players, £0.4m bank, captain/vice armbands verified by zoomed screenshot after a fresh page reload. CAPTAIN CHANGED AGAIN, later 28 Aug: Sylvan moved the armband to Gabriel himself on the live site, playing conservative after a poor GW1 (wanted the clean-sheet floor over João Pedro's haul ceiling). His first attempt didn't save - re-discovered the checkbox-vs-Save-Your-Team bug from earlier this session, confirmed via a fresh page load that João Pedro still had the C badge - Sylvan redid it himself and it verified correctly on a second check (zoomed screenshot, Gabriel C / Thiago V). Notably, captaincy_odds with intel actually supports the switch on E[pts] too: Gabriel 5.93 vs João Pedro 4.77 vs Thiago 4.04, driven by a much lower P(blank) (17.8% vs ~60%) off the Arsenal-at-Villa fixture - so this wasn't purely a risk-off call against the model, the model agrees on expectation, just not on ceiling (Gabriel's P(haul) 8.5% vs João Pedro's 10.0%).",
   "gameweek": 2,
   "formation": "3-4-3",
   "bank": 0.5,
   "squad_value": 99.5,
-  "captain": "João Pedro",
+  "captain": "Gabriel",
   "vice": "Thiago",
   "squad": [
     {
@@ -27,7 +27,7 @@
       "bought_for": 8.0,
       "role": "XI",
       "bench_order": null,
-      "selected_on": "xGC 0.72, 18 clean sheets, 23.7 bps/90, xbonus90 0.82 (3rd-highest DEF in the pool). Unchanged since 9 Aug."
+      "selected_on": "xGC 0.72, 18 clean sheets, 23.7 bps/90, xbonus90 0.82 (3rd-highest DEF in the pool). Unchanged since 9 Aug. CAPTAIN, 28 Aug (GW2, moved from João Pedro) - Sylvan's own call, playing conservative after a poor GW1: captaincy_odds (with intel) actually backs it too, Gabriel leads E[pts] 5.93 vs João Pedro's 4.77 and Thiago's 4.04, driven by a much lower P(blank) (17.8% vs ~60% for the forwards) off a strong Arsenal-at-Villa fixture. Trade-off: lower ceiling than João Pedro (P(haul) 8.5% vs 10.0%)."
     },
     {
       "name": "O'Reilly",
@@ -108,7 +108,7 @@
       "bought_for": 7.5,
       "role": "XI",
       "bench_order": null,
-      "selected_on": "xbonus90 0.97 - 4th-highest in the ENTIRE 248-player pool, behind only Haaland, B.Fernandes and Ekitike. Delta +7.13 (one of the largest overperformances in the game) remains an open question the model doesn't resolve, but bonus gives him a second, largely independent route to points that isn't riding on his finishing holding up. CAPTAIN, 28 Aug - captaincy_odds (with intel, neutral mode) has him ahead of Thiago on both E[pts] (4.77 vs 4.04) and P(haul) (10.0% vs 8.6%) for the BHA(H) fixture."
+      "selected_on": "xbonus90 0.97 - 4th-highest in the ENTIRE 248-player pool, behind only Haaland, B.Fernandes and Ekitike. Delta +7.13 (one of the largest overperformances in the game) remains an open question the model doesn't resolve, but bonus gives him a second, largely independent route to points that isn't riding on his finishing holding up. Was CAPTAIN briefly on 28 Aug (ahead of Thiago on captaincy_odds), then Sylvan moved the armband to Gabriel later the same day - conservative call after a poor GW1, not a data-driven reversal; see Gabriel's note."
     },
     {
       "name": "Calvert-Lewin",
