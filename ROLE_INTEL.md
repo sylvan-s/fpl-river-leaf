@@ -190,6 +190,13 @@ pre-match and, per Arteta, is now in contention for next Monday's Villa
 trip — the defensive-cover picture (and Mosquera's minutes runway) stays
 live beyond just Saliba/Timber's return dates.
 
+**Accepted, Friday review 28 Aug 2026.** Both `Mosquera-ARS-stp-20260821-1`
+(GW1 matchday confirmation) and `Saliba-ARS-stp-20260820-1` (Timber "in
+September", Saliba pencilled for winter) accepted. The `stp` fence entry
+below is updated: window extended from GWs 1-3 to 1-8, confidence raised
+from medium to high given actual matchday evidence rather than predicted
+lineups.
+
 ### 4. Ndiaye (EVE, £6.0m, MID) — penalties + shot volume
 
 **Thesis:** locked-in penalty duty plus underlying volume beats his £6.0m price.
@@ -453,6 +460,12 @@ own instructed estimates, not sourced figures**, same discipline as the
 Rice/Villa entries. Not applied to the live fence; Friday review still
 decides accept/reject/defer on both.?
 
+**Accepted, Friday review 28 Aug 2026.** `OReilly-MCI-cbit90-20260826-1`
+(the flag), `OReilly-MCI-cbit90-20260826-2` (cbit90 mult 0.8) and
+`OReilly-MCI-xgi90-20260826-1` (xgi90 mult 1.2) all accepted. Both
+multipliers now live in the adjustments fence below, GWs 1-4 (matching
+the bites' own check_by_gw).
+
 ### 11. Guimarães (ARS, £7.0m, MID) — GW1 fitness doubt, relevant to Rice's workload-sharing thesis — **NOT OWNED**
 
 **Logged 21 Aug 2026, daily sweep, pending Friday review.** Guimarães was
@@ -582,6 +595,14 @@ personnel-availability-driven rather than settled: Matty Cash out
 `AstonVilla-AVL-transfers-20260826-1`. Source: ESPN / Yahoo Sports,
 citing Emery press comments.?
 
+**Accepted, Friday review 28 Aug 2026.** `AstonVilla-AVL-xgi90-20260825-1`
+accepted — `xgi90 mult 0.70` now live in the adjustments fence below, one
+row per AVL pool player (Bogarde, Buendía, Cash, Guessand, Kamara,
+Lindelöf, Maatsen, Martinez, McGinn, Mings, Onana, Pau, Watkins — Ruggeri
+excluded, not in the current pool), GWs 1-6. `AstonVilla-AVL-defsolidity-
+20260825-1` and `AstonVilla-AVL-transfers-20260826-1` remain undecided —
+still on the Trello board.
+
 ### 13. Sarr (CRY, £6.5m, MID) — groin injury, doubtful for GW2 — **ALREADY OWNED**
 
 **Logged 26 Aug 2026, daily sweep, pending Friday review.** Sarr (live XI)
@@ -605,6 +626,12 @@ GW2 deadline.** Live `injury_report` now shows Sarr INJURED at 0%
 directly answers half the falsifiable check above, though no fresh press
 quote has surfaced explaining the downgrade and the actual GW2 team
 sheet is still to come. Logged as `Sarr-CRY-injury-20260827-1`.?
+
+**Accepted, Friday review 28 Aug 2026.** Both `Sarr-CRY-injury-20260826-1`
+and `Sarr-CRY-injury-20260827-1` accepted as read — no `field_affected`,
+narrative-only; his live availability (INJURED, 0%, unknown return)
+already flows through `injury_report` directly, nothing for the
+adjustments fence to add.
 
 ---
 
@@ -801,9 +828,24 @@ on — same discipline as the `setpieces` block.
 Szoboszlai | LIV | xg90  | mult | 1.35 | 1-8 | high   | 2026-08-12 | Penalty + direct FK + corner duty, web-confirmed 12 Aug (reverts to Salah on his return); see entry 1 above
 Ndiaye     | EVE | xg90  | mult | 1.25 | 1-8 | high   | 2026-08-12 | Penalty duty web-confirmed 12 Aug plus -2.09 delta already underperforming his chances; see entry 4 above
 Anderson   | MCI | xgi90 | mult | 1.15 | 1-8 | medium | 2026-08-07 | Elevated box-to-box creative role per community read; screen already confirms the CBIRT floor, this prices the ceiling; see entry 2 above
-Mosquera   | ARS | stp   | set  | 0.85 | 1-3 | medium | 2026-08-12 | Saliba back-injury "rest mode", Timber "weeks away" - out for Cardiff/Villa/likely Chelsea, later than the 21 Aug date previously logged; minutes opening in the league's best defence; see entry 3 above
+Mosquera   | ARS | stp   | set  | 0.85 | 1-8 | high   | 2026-08-28 | Accepted in Friday review 28 Aug 2026 (Mosquera-ARS-stp-20260821-1, Saliba-ARS-stp-20260820-1): GW1 matchday evidence confirms he started ahead of Ben White; window extended from 1-3 to 1-8 given Timber now "in September" and Saliba pencilled for winter (earliest contention ~GW8, 10 Oct Leeds fixture); see entry 3 above
 Dubravka   | TOT | stp   | set  | 0.05 | ALL | high   | 2026-08-09 | Reported backup to Antonin Kinsky at Spurs; 81% last16 rate is a Burnley-era number wearing a Spurs badge; see the competition fence above
 Rice       | ARS | stp   | set  | 0.69 | 1-6 | medium | 2026-08-11 | Guimaraes signed to share his DM/CM workload per Arsenal.com + independent press (rotation intent well corroborated); 25% reduction off his 92% 2025/26 start rate is an UNSOURCED estimate applied on instruction, not a reported figure; see entry 7 above
+O'Reilly   | MCI | cbit90 | mult | 0.8 | 1-4 | medium | 2026-08-28 | Accepted in Friday review 28 Aug 2026 (OReilly-MCI-cbit90-20260826-1/-2): GW1 confirmed lineup has him in central midfield not RB, expected to cut his DC-threshold numbers; magnitude is Sylvan's own instructed estimate (-20%), not sourced; see entry 10 above
+O'Reilly   | MCI | xgi90  | mult | 1.2 | 1-4 | medium | 2026-08-28 | Accepted in Friday review 28 Aug 2026 (OReilly-MCI-xgi90-20260826-1): paired attacking-side lever to the cbit90 cut above; Sylvan's own instructed estimate (+20%), not sourced; see entry 10 above
+Bogarde    | AVL | xgi90  | mult | 0.7 | 1-6 | low    | 2026-08-28 | Accepted in Friday review 28 Aug 2026 (AstonVilla-AVL-xgi90-20260825-1): squad exodus (Rogers/Konsa/Tielemans/Digne sold) + GW1 4-0 collapse to Brighton, Watkins/Martinez left out amid exit talk; -30% magnitude is Sylvan's own instructed estimate, not sourced; see entry 12 above
+Buendía    | AVL | xgi90  | mult | 0.7 | 1-6 | low    | 2026-08-28 | Accepted in Friday review 28 Aug 2026 (AstonVilla-AVL-xgi90-20260825-1): squad exodus (Rogers/Konsa/Tielemans/Digne sold) + GW1 4-0 collapse to Brighton, Watkins/Martinez left out amid exit talk; -30% magnitude is Sylvan's own instructed estimate, not sourced; see entry 12 above
+Cash       | AVL | xgi90  | mult | 0.7 | 1-6 | low    | 2026-08-28 | Accepted in Friday review 28 Aug 2026 (AstonVilla-AVL-xgi90-20260825-1): squad exodus (Rogers/Konsa/Tielemans/Digne sold) + GW1 4-0 collapse to Brighton, Watkins/Martinez left out amid exit talk; -30% magnitude is Sylvan's own instructed estimate, not sourced; see entry 12 above
+Guessand   | AVL | xgi90  | mult | 0.7 | 1-6 | low    | 2026-08-28 | Accepted in Friday review 28 Aug 2026 (AstonVilla-AVL-xgi90-20260825-1): squad exodus (Rogers/Konsa/Tielemans/Digne sold) + GW1 4-0 collapse to Brighton, Watkins/Martinez left out amid exit talk; -30% magnitude is Sylvan's own instructed estimate, not sourced; see entry 12 above
+Kamara     | AVL | xgi90  | mult | 0.7 | 1-6 | low    | 2026-08-28 | Accepted in Friday review 28 Aug 2026 (AstonVilla-AVL-xgi90-20260825-1): squad exodus (Rogers/Konsa/Tielemans/Digne sold) + GW1 4-0 collapse to Brighton, Watkins/Martinez left out amid exit talk; -30% magnitude is Sylvan's own instructed estimate, not sourced; see entry 12 above
+Lindelöf   | AVL | xgi90  | mult | 0.7 | 1-6 | low    | 2026-08-28 | Accepted in Friday review 28 Aug 2026 (AstonVilla-AVL-xgi90-20260825-1): squad exodus (Rogers/Konsa/Tielemans/Digne sold) + GW1 4-0 collapse to Brighton, Watkins/Martinez left out amid exit talk; -30% magnitude is Sylvan's own instructed estimate, not sourced; see entry 12 above
+Maatsen    | AVL | xgi90  | mult | 0.7 | 1-6 | low    | 2026-08-28 | Accepted in Friday review 28 Aug 2026 (AstonVilla-AVL-xgi90-20260825-1): squad exodus (Rogers/Konsa/Tielemans/Digne sold) + GW1 4-0 collapse to Brighton, Watkins/Martinez left out amid exit talk; -30% magnitude is Sylvan's own instructed estimate, not sourced; see entry 12 above
+Martinez   | AVL | xgi90  | mult | 0.7 | 1-6 | low    | 2026-08-28 | Accepted in Friday review 28 Aug 2026 (AstonVilla-AVL-xgi90-20260825-1): squad exodus (Rogers/Konsa/Tielemans/Digne sold) + GW1 4-0 collapse to Brighton, Watkins/Martinez left out amid exit talk; -30% magnitude is Sylvan's own instructed estimate, not sourced; see entry 12 above
+McGinn     | AVL | xgi90  | mult | 0.7 | 1-6 | low    | 2026-08-28 | Accepted in Friday review 28 Aug 2026 (AstonVilla-AVL-xgi90-20260825-1): squad exodus (Rogers/Konsa/Tielemans/Digne sold) + GW1 4-0 collapse to Brighton, Watkins/Martinez left out amid exit talk; -30% magnitude is Sylvan's own instructed estimate, not sourced; see entry 12 above
+Mings      | AVL | xgi90  | mult | 0.7 | 1-6 | low    | 2026-08-28 | Accepted in Friday review 28 Aug 2026 (AstonVilla-AVL-xgi90-20260825-1): squad exodus (Rogers/Konsa/Tielemans/Digne sold) + GW1 4-0 collapse to Brighton, Watkins/Martinez left out amid exit talk; -30% magnitude is Sylvan's own instructed estimate, not sourced; see entry 12 above
+Onana      | AVL | xgi90  | mult | 0.7 | 1-6 | low    | 2026-08-28 | Accepted in Friday review 28 Aug 2026 (AstonVilla-AVL-xgi90-20260825-1): squad exodus (Rogers/Konsa/Tielemans/Digne sold) + GW1 4-0 collapse to Brighton, Watkins/Martinez left out amid exit talk; -30% magnitude is Sylvan's own instructed estimate, not sourced; see entry 12 above
+Pau        | AVL | xgi90  | mult | 0.7 | 1-6 | low    | 2026-08-28 | Accepted in Friday review 28 Aug 2026 (AstonVilla-AVL-xgi90-20260825-1): squad exodus (Rogers/Konsa/Tielemans/Digne sold) + GW1 4-0 collapse to Brighton, Watkins/Martinez left out amid exit talk; -30% magnitude is Sylvan's own instructed estimate, not sourced; see entry 12 above
+Watkins    | AVL | xgi90  | mult | 0.7 | 1-6 | low    | 2026-08-28 | Accepted in Friday review 28 Aug 2026 (AstonVilla-AVL-xgi90-20260825-1): squad exodus (Rogers/Konsa/Tielemans/Digne sold) + GW1 4-0 collapse to Brighton, Watkins/Martinez left out amid exit talk; -30% magnitude is Sylvan's own instructed estimate, not sourced; see entry 12 above
 ```
 
 **Also wired into the live weekly tools, not just the offline squad scripts.**

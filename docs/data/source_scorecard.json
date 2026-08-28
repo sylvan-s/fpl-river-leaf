@@ -1,9 +1,42 @@
 {
-  "generated_utc": "2026-08-21T06:31:41.319268+00:00",
+  "generated_utc": "2026-08-28T07:01:02.611855+00:00",
   "min_resolved_for_accuracy": 5,
   "sources": [
     {
+      "source_name": "Fantasy Football Scout",
+      "source_tier": 3,
+      "n_bites": 2,
+      "n_confirmed": 0,
+      "n_contradicted": 1,
+      "n_expired": 0,
+      "n_superseded": 0,
+      "n_open": 1,
+      "categories": {
+        "setpiece": 2
+      },
+      "n_resolved": 1,
+      "accuracy": null,
+      "stale_rate": 0.0
+    },
+    {
       "source_name": "Manchester City official site",
+      "source_tier": 3,
+      "n_bites": 2,
+      "n_confirmed": 1,
+      "n_contradicted": 0,
+      "n_expired": 0,
+      "n_superseded": 0,
+      "n_open": 1,
+      "categories": {
+        "manager_change": 1,
+        "tactical": 1
+      },
+      "n_resolved": 1,
+      "accuracy": null,
+      "stale_rate": 0.0
+    },
+    {
+      "source_name": "Sports Mole / mancity.com (GW1 lineup); magnitude sized by Sylvan Sitkey against scoring.expected_points()",
       "source_tier": 3,
       "n_bites": 2,
       "n_confirmed": 0,
@@ -12,24 +45,7 @@
       "n_superseded": 0,
       "n_open": 2,
       "categories": {
-        "manager_change": 1,
-        "tactical": 1
-      },
-      "n_resolved": 0,
-      "accuracy": null,
-      "stale_rate": null
-    },
-    {
-      "source_name": "Fantasy Football Scout",
-      "source_tier": 3,
-      "n_bites": 1,
-      "n_confirmed": 0,
-      "n_contradicted": 0,
-      "n_expired": 0,
-      "n_superseded": 0,
-      "n_open": 1,
-      "categories": {
-        "setpiece": 1
+        "tactical": 2
       },
       "n_resolved": 0,
       "accuracy": null,
@@ -39,17 +55,17 @@
       "source_name": "Yardbarker / Yahoo Sports (Man City predicted-lineup reports) + Fantasy Football Scout",
       "source_tier": 3,
       "n_bites": 1,
-      "n_confirmed": 0,
+      "n_confirmed": 1,
       "n_contradicted": 0,
       "n_expired": 0,
       "n_superseded": 0,
-      "n_open": 1,
+      "n_open": 0,
       "categories": {
         "rotation": 1
       },
-      "n_resolved": 0,
+      "n_resolved": 1,
       "accuracy": null,
-      "stale_rate": null
+      "stale_rate": 0.0
     },
     {
       "source_name": "Yahoo Sports / Sports Mole (Arteta press conference)",
@@ -71,20 +87,164 @@
       "source_name": "RoundtableSports (Arsenal), citing Arteta 20 Aug press conference and Community Shield lineup",
       "source_tier": 3,
       "n_bites": 1,
+      "n_confirmed": 1,
+      "n_contradicted": 0,
+      "n_expired": 0,
+      "n_superseded": 0,
+      "n_open": 0,
+      "categories": {
+        "rotation": 1
+      },
+      "n_resolved": 1,
+      "accuracy": null,
+      "stale_rate": 0.0
+    },
+    {
+      "source_name": "RoundtableSports (Arsenal), citing Arteta 20 Aug press conference",
+      "source_tier": 3,
+      "n_bites": 1,
+      "n_confirmed": 1,
+      "n_contradicted": 0,
+      "n_expired": 0,
+      "n_superseded": 0,
+      "n_open": 0,
+      "categories": {
+        "injury": 1
+      },
+      "n_resolved": 1,
+      "accuracy": null,
+      "stale_rate": 0.0
+    },
+    {
+      "source_name": "Fantasy Football Scout, quoting Mikel Arteta's post-Coventry press comments",
+      "source_tier": 3,
+      "n_bites": 1,
+      "n_confirmed": 0,
+      "n_contradicted": 0,
+      "n_expired": 0,
+      "n_superseded": 1,
+      "n_open": 0,
+      "categories": {
+        "injury": 1
+      },
+      "n_resolved": 0,
+      "accuracy": null,
+      "stale_rate": 0.0
+    },
+    {
+      "source_name": "Fantasy Football Scout (GW1 Scout Notes) + Sports Mole (summer transfer confirmations)",
+      "source_tier": 3,
+      "n_bites": 1,
       "n_confirmed": 0,
       "n_contradicted": 0,
       "n_expired": 0,
       "n_superseded": 0,
       "n_open": 1,
       "categories": {
-        "rotation": 1
+        "other": 1
       },
       "n_resolved": 0,
       "accuracy": null,
       "stale_rate": null
     },
     {
-      "source_name": "RoundtableSports (Arsenal), citing Arteta 20 Aug press conference",
+      "source_name": "Fantasy Football Scout (GW1 Scout Notes) - same match report as AstonVilla-AVL-xgi90-20260825-1",
+      "source_tier": 3,
+      "n_bites": 1,
+      "n_confirmed": 0,
+      "n_contradicted": 0,
+      "n_expired": 0,
+      "n_superseded": 0,
+      "n_open": 1,
+      "categories": {
+        "tactical": 1
+      },
+      "n_resolved": 0,
+      "accuracy": null,
+      "stale_rate": null
+    },
+    {
+      "source_name": "Fantasy Football Scout / Hayters (Pierre Sage press comments)",
+      "source_tier": 3,
+      "n_bites": 1,
+      "n_confirmed": 0,
+      "n_contradicted": 0,
+      "n_expired": 0,
+      "n_superseded": 0,
+      "n_open": 1,
+      "categories": {
+        "injury": 1
+      },
+      "n_resolved": 0,
+      "accuracy": null,
+      "stale_rate": null
+    },
+    {
+      "source_name": "Read Arsenal F.C. / SI.com, citing Arteta press comments",
+      "source_tier": 3,
+      "n_bites": 1,
+      "n_confirmed": 0,
+      "n_contradicted": 0,
+      "n_expired": 0,
+      "n_superseded": 0,
+      "n_open": 1,
+      "categories": {
+        "injury": 1
+      },
+      "n_resolved": 0,
+      "accuracy": null,
+      "stale_rate": null
+    },
+    {
+      "source_name": "ESPN / Yahoo Sports, citing Unai Emery press comments",
+      "source_tier": 3,
+      "n_bites": 1,
+      "n_confirmed": 0,
+      "n_contradicted": 0,
+      "n_expired": 0,
+      "n_superseded": 0,
+      "n_open": 1,
+      "categories": {
+        "other": 1
+      },
+      "n_resolved": 0,
+      "accuracy": null,
+      "stale_rate": null
+    },
+    {
+      "source_name": "Sports Mole / mancity.com (GW1 confirmed lineup)",
+      "source_tier": 3,
+      "n_bites": 1,
+      "n_confirmed": 0,
+      "n_contradicted": 0,
+      "n_expired": 0,
+      "n_superseded": 0,
+      "n_open": 1,
+      "categories": {
+        "tactical": 1
+      },
+      "n_resolved": 0,
+      "accuracy": null,
+      "stale_rate": null
+    },
+    {
+      "source_name": "Sports Mole / CityXtra / Goal.com, citing Enzo Maresca post-Bournemouth press comments",
+      "source_tier": 3,
+      "n_bites": 1,
+      "n_confirmed": 0,
+      "n_contradicted": 0,
+      "n_expired": 0,
+      "n_superseded": 0,
+      "n_open": 1,
+      "categories": {
+        "injury": 1
+      },
+      "n_resolved": 0,
+      "accuracy": null,
+      "stale_rate": null
+    },
+    {
+      "source_name": "Live injury_report (fpl-research MCP, FPL API-derived)",
       "source_tier": 3,
       "n_bites": 1,
       "n_confirmed": 0,
