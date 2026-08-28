@@ -15,7 +15,63 @@ one-line record. What remains is what actually governs a decision today.
 
 ---
 
-## CURRENT STATE — as at Wed 12 Aug 2026 (GW1 pre-deadline)
+## CURRENT STATE — as at Fri 28 Aug 2026 (GW2 pre-deadline)
+
+**Deadline:** Fri 28 Aug 2026, 18:30 BST (17:30 UTC) · **Formation:** 3-4-3 (unchanged)
+**Last change:** **1 free transfer, 28 Aug** — `Sarr -> Schade`, via
+`optimise_squad.py --fixtures --transfers 1` (intel ON by default). **Not yet
+actioned live on the FPL site** — this file and `squad.json` record the
+decision; Sylvan still needs to submit it on fantasy.premierleague.com before
+the deadline above.
+**Previous change:** FULL REBUILD, 6 transfers, 12 Aug (see below)
+**Squad value** £99.5m · **Bank** £0.5m · **Captain** João Pedro · **Vice** Thiago
+(**armband moved from Thiago** — see Captaincy below)
+
+**Why the transfer.** Ran per Step 2f of the weekly process: refreshed the
+fixture window (`fixture_difficulty(next_n=4)` -> `fixture_adjust.py --update
+--gw 2`), then `optimise_squad.py --fixtures --transfers 1` with intel
+confirmed ACTIVE in the output banner — carrying the 8 bites Sylvan accepted
+via the Trello board's Take Action swimlane earlier the same day (see
+`ROLE_INTEL.md`'s `adjustments` fence: Mosquera's `stp` window extended
+1-3 -> 1-8; O'Reilly split into `cbit90 mult 0.8` + `xgi90 mult 1.2`; 13 AVL
+pool players at `xgi90 mult 0.7`). None of those eight changed the top
+recommendation — the transfer the optimiser actually surfaced is driven by
+Sarr's own live `injury_report` status (INJURED, 0% chance of playing,
+unknown return date), which was itself accepted narrative-only in that same
+Friday review (no `field_affected` — his availability flows through live
+status directly, not a fence entry).
+
+**The numbers.** `Sarr -> Schade`: +0.22 xP/90, +1.1 pts over a 5-GW hold.
+Clears the ~0.10 xP/90 noise floor but is a real, not a blowout, edge. Free
+transfer, no points cost. Sarr sells at £6.5m (bought for £6.5m, no rise
+yet), Schade costs £6.0m — **bank moves £0.0m -> £0.5m.**
+
+**Risk accepted:** Schade's own start rate/role at Brentford this season is
+itself only lightly tested (GW1-2 data), and he sits behind Thiago in BRE's
+penalty order (2nd) — this transfer trades a confirmed-out injury doubt for
+a fresh, thinly-verified pick, not a like-for-like swap of certainties.
+
+**Alternatives rejected:** holding Sarr on a 75% chance he clears late fitness
+tests was the only alternative the optimiser considered — rejected because a
+free transfer with no hit cost and a positive (if modest) xP/90 gain removes
+that uncertainty at zero cost.
+
+**Captaincy re-confirmed, 28 Aug 2026, post-transfer.** Per the "every
+transfer resets the armband" rule, ran `captaincy_odds` (with intel, neutral
+mode) fresh against the new squad's front-runners: **João Pedro** now leads
+both **E[pts] (4.77)** and **P(haul) (10.0%)**, against Thiago's **4.04 /
+8.6%** — a real change from the 12 Aug pick, not a formality. Armband moves
+to João Pedro (CHE, home to BHA), Thiago to vice. **Captaincy is free until
+the deadline** — re-confirm again if fresh GW2 team news lands before 17:30
+UTC.
+
+**HOLDING THE FIXTURE-WINDOW CAVEAT.** These figures use the GW2-5 window
+stamped today. The objective remains xP per 90, still blind to how often a
+player starts (roadmap A0.5, not yet built).
+
+---
+
+## CURRENT STATE — as at Wed 12 Aug 2026 (GW1 pre-deadline, superseded above)
 
 **Deadline:** Fri 21 Aug 2026, 18:30 BST · **Formation:** 3-4-3 (was 3-5-2)
 **Last change:** **FULL REBUILD, 6 transfers, 12 Aug** — via `optimise_squad.py`'s
