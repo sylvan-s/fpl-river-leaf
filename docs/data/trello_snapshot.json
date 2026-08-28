@@ -1,12 +1,18 @@
 {
-  "generated_utc": "2026-08-28T10:05:00Z",
+  "generated_utc": "2026-08-28T10:20:00Z",
   "board_name": "FPL News Management",
   "board_url": "https://trello.com/b/AEOlxhen/fpl-news-management",
   "board_note": "Persistent triage board for the fpl-daily-intel-sweep / fpl-friday-intel-review pipeline. Renamed by hand in Trello 28 Aug 2026 from the original 'FPL Intel Review — GW2' (a one-time cosmetic label from creation) to a name that doesn't imply a per-gameweek board. Confirmed via trelloReadBoard: board ID unchanged, name is now 'FPL News Management', URL slug updated to fpl-news-management (the old fpl-intel-review-gw2 slug still redirects here).",
   "lists": [
     {
       "name": "Backlog",
-      "cards": []
+      "cards": [
+        {"name": "Szoboszlai (LIV) — xg90 mult 1.35, pulled pending re-approval", "url": "https://trello.com/c/PLWAHyFS", "note": "Backfilled 28 Aug 2026 - pulled from ROLE_INTEL.md's live adjustments fence because it was agreed directly in chat 12 Aug, before this board existed, with no Take Action card behind it"},
+        {"name": "Ndiaye (EVE) — xg90 mult 1.25, pulled pending re-approval", "url": "https://trello.com/c/EXDafHbw", "note": "Backfilled 28 Aug 2026 - pulled from ROLE_INTEL.md's live adjustments fence because it was agreed directly in chat 12 Aug, before this board existed, with no Take Action card behind it"},
+        {"name": "Anderson (MCI) — xgi90 mult 1.15, pulled pending re-approval", "url": "https://trello.com/c/5qOSpiim", "note": "Backfilled 28 Aug 2026 - pulled from ROLE_INTEL.md's live adjustments fence because it was agreed directly in chat 7 Aug, before this board existed, with no Take Action card behind it"},
+        {"name": "Dubravka (TOT) — stp set 0.05, pulled pending re-approval", "url": "https://trello.com/c/vU2vSmnx", "note": "Backfilled 28 Aug 2026 - pulled from ROLE_INTEL.md's live adjustments fence because it was agreed directly in chat 9 Aug, before this board existed, with no Take Action card behind it"},
+        {"name": "Rice (ARS) — stp set 0.69, pulled pending re-approval", "url": "https://trello.com/c/OvHvmTjd", "note": "Backfilled 28 Aug 2026 - pulled from ROLE_INTEL.md's live adjustments fence because it was agreed directly in chat 11 Aug, before this board existed, with no Take Action card behind it"}
+      ]
     },
     {
       "name": "Wait for more evidence",

@@ -820,17 +820,21 @@ that never fires rather than staying silent about it. `gws` is a window like
 `1-4`, a single GW, or `ALL`; it is provenance plus a staleness nudge, not an
 auto-expiry — still prune by hand per rule 6 below.
 
-The five seeded below translate the theses already logged above. Delete or
-re-date a line the moment reality confirms or contradicts the thesis it rests
-on — same discipline as the `setpieces` block.
+**Trello-gated since 28 Aug 2026.** Every row below must trace to a bite that
+was sorted into the Trello board's `Take action` list and accepted at a
+Friday review (see `INTEL_SWEEP.md` step 3a). This is retroactive: on
+28 Aug 2026, five rows — Szoboszlai (xg90), Ndiaye (xg90), Anderson (xgi90),
+Dubravka (stp), Rice (stp) — were **pulled from this fence** because they
+were agreed directly in chat between 7–12 Aug, before the Trello board
+existed, and have no Take Action card behind them. Backlog cards were
+created for all five the same day so they can go through the normal
+gate; they are **out of the live model** until each is accepted. See the
+narrative entries above (1, 2, 4, 7, and the Dubravka competition-fence
+note) for the underlying theses — those still stand as intel, they just no
+longer move a number until re-approved.
 
 ```adjustments
-Szoboszlai | LIV | xg90  | mult | 1.35 | 1-8 | high   | 2026-08-12 | Penalty + direct FK + corner duty, web-confirmed 12 Aug (reverts to Salah on his return); see entry 1 above
-Ndiaye     | EVE | xg90  | mult | 1.25 | 1-8 | high   | 2026-08-12 | Penalty duty web-confirmed 12 Aug plus -2.09 delta already underperforming his chances; see entry 4 above
-Anderson   | MCI | xgi90 | mult | 1.15 | 1-8 | medium | 2026-08-07 | Elevated box-to-box creative role per community read; screen already confirms the CBIRT floor, this prices the ceiling; see entry 2 above
 Mosquera   | ARS | stp   | set  | 0.85 | 1-8 | high   | 2026-08-28 | Accepted in Friday review 28 Aug 2026 (Mosquera-ARS-stp-20260821-1, Saliba-ARS-stp-20260820-1): GW1 matchday evidence confirms he started ahead of Ben White; window extended from 1-3 to 1-8 given Timber now "in September" and Saliba pencilled for winter (earliest contention ~GW8, 10 Oct Leeds fixture); see entry 3 above
-Dubravka   | TOT | stp   | set  | 0.05 | ALL | high   | 2026-08-09 | Reported backup to Antonin Kinsky at Spurs; 81% last16 rate is a Burnley-era number wearing a Spurs badge; see the competition fence above
-Rice       | ARS | stp   | set  | 0.69 | 1-6 | medium | 2026-08-11 | Guimaraes signed to share his DM/CM workload per Arsenal.com + independent press (rotation intent well corroborated); 25% reduction off his 92% 2025/26 start rate is an UNSOURCED estimate applied on instruction, not a reported figure; see entry 7 above
 O'Reilly   | MCI | cbit90 | mult | 0.8 | 1-4 | medium | 2026-08-28 | Accepted in Friday review 28 Aug 2026 (OReilly-MCI-cbit90-20260826-1/-2): GW1 confirmed lineup has him in central midfield not RB, expected to cut his DC-threshold numbers; magnitude is Sylvan's own instructed estimate (-20%), not sourced; see entry 10 above
 O'Reilly   | MCI | xgi90  | mult | 1.2 | 1-4 | medium | 2026-08-28 | Accepted in Friday review 28 Aug 2026 (OReilly-MCI-xgi90-20260826-1): paired attacking-side lever to the cbit90 cut above; Sylvan's own instructed estimate (+20%), not sourced; see entry 10 above
 Bogarde    | AVL | xgi90  | mult | 0.7 | 1-6 | low    | 2026-08-28 | Accepted in Friday review 28 Aug 2026 (AstonVilla-AVL-xgi90-20260825-1): squad exodus (Rogers/Konsa/Tielemans/Digne sold) + GW1 4-0 collapse to Brighton, Watkins/Martinez left out amid exit talk; -30% magnitude is Sylvan's own instructed estimate, not sourced; see entry 12 above

@@ -38,6 +38,21 @@ site's actual bank before the next transfer.
 **Squad value** £99.5m · **Bank** £0.5m · **Captain** João Pedro · **Vice** Thiago
 (**armband moved from Thiago** — see Captaincy below)
 
+**Governance gap found and closed, 28 Aug 2026.** Sylvan flagged that the
+dashboard's adjustments panel included players never routed through the
+Trello Take Action gate. Five `adjustments` fence rows — Szoboszlai (xg90
+×1.35), Ndiaye (xg90 ×1.25), Anderson (xgi90 ×1.15), Dubravka (stp 0.05),
+Rice (stp 0.69) — predated the Trello board (created same day) and were
+agreed directly in chat 7–12 Aug with no card behind them. Sylvan's call:
+pull them from the live fence until each is re-approved through a Take
+Action card + Friday review; Backlog cards were created for all five so
+that can happen. **No effect on this squad** — none of the five are
+currently owned, so the Sarr→Schade transfer and captaincy call above are
+unchanged. Sanity-checked with a fresh `optimise_squad.py --fixtures
+--transfers 1` run post-pull: top suggestion is now `Virgil -> Mosquera`
+(+0.15 xP/90, +0.7 pts/5-GW), unrelated to the pull and not actioned here —
+flagged for a future review, not this transfer.
+
 **Why the transfer.** Ran per Step 2f of the weekly process: refreshed the
 fixture window (`fixture_difficulty(next_n=4)` -> `fixture_adjust.py --update
 --gw 2`), then `optimise_squad.py --fixtures --transfers 1` with intel
