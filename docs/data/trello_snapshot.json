@@ -1,0 +1,45 @@
+{
+  "generated_utc": "2026-08-28T09:05:00Z",
+  "board_name": "FPL Intel Review — GW2",
+  "board_url": "https://trello.com/b/AEOlxhen/fpl-intel-review-gw2",
+  "board_note": "Persistent triage board for the fpl-daily-intel-sweep / fpl-friday-intel-review pipeline. The name is a one-time cosmetic label from when the board was created (28 Aug 2026, live GW2) — Trello boards can't be renamed via this integration, so it stays the ongoing board across gameweeks, not a per-GW board.",
+  "lists": [
+    {
+      "name": "Backlog",
+      "cards": []
+    },
+    {
+      "name": "Wait for more evidence",
+      "cards": [
+        {"name": "O'Reilly (MCI) — RB start-rate threat", "url": "https://trello.com/c/6RDshftJ", "bite_ids": ["OReilly-MCI-stp-20260820-1"]},
+        {"name": "Maresca now permanent MCI manager", "url": "https://trello.com/c/H1pgS3C4", "bite_ids": ["Maresca-MCI-managerchange-20260820-1"]},
+        {"name": "Anderson (MCI) — No.6 vs advanced role open", "url": "https://trello.com/c/X6Mlepyn", "bite_ids": ["Anderson-MCI-xgi90-20260820-1"]},
+        {"name": "Szoboszlai (LIV) — pen order contradicted, then confirmed", "url": "https://trello.com/c/EElPpXif", "bite_ids": ["Szoboszlai-LIV-xg90-20260820-1"]},
+        {"name": "Szoboszlai (LIV) — pen duty still described as shared", "url": "https://trello.com/c/3VBSAdDp", "bite_ids": ["Szoboszlai-LIV-xg90-20260826-1"]},
+        {"name": "Villa (squad-wide) — Watkins staying, Cash/Mings return timelines", "url": "https://trello.com/c/0oVkV8ne", "bite_ids": ["AstonVilla-AVL-transfers-20260826-1"]}
+      ]
+    },
+    {
+      "name": "Take action",
+      "cards": [
+        {"name": "Sarr (CRY) — downgraded to INJURED/0%", "url": "https://trello.com/c/6EyhuC75", "bite_ids": ["Sarr-CRY-injury-20260827-1"]},
+        {"name": "Sarr (CRY) — groin, missed GW1", "url": "https://trello.com/c/5o1fHg6U", "bite_ids": ["Sarr-CRY-injury-20260826-1"]},
+        {"name": "Villa (squad-wide) — xgi90 mult 0.70 proposed", "url": "https://trello.com/c/Mt57L2rS", "bite_ids": ["AstonVilla-AVL-xgi90-20260825-1"]},
+        {"name": "Saliba/Timber (ARS) — return windows longer than coded", "url": "https://trello.com/c/R4vzpqxG", "bite_ids": ["Saliba-ARS-stp-20260820-1"]},
+        {"name": "O'Reilly (MCI) — CBIT rate at risk from midfield role", "url": "https://trello.com/c/9uwRjJmv", "bite_ids": ["OReilly-MCI-cbit90-20260826-1"]},
+        {"name": "O'Reilly (MCI) — xGI sized at mult 1.2", "url": "https://trello.com/c/n7EbJX24", "bite_ids": ["OReilly-MCI-xgi90-20260826-1"]},
+        {"name": "O'Reilly (MCI) — CBIT sized at mult 0.8", "url": "https://trello.com/c/d2ho9TDR", "bite_ids": ["OReilly-MCI-cbit90-20260826-2"]},
+        {"name": "Mosquera (ARS) — minutes-opening confirmed", "url": "https://trello.com/c/1M4cWmG8", "bite_ids": ["Mosquera-ARS-stp-20260821-1"]}
+      ]
+    },
+    {
+      "name": "Reject / Expired",
+      "cards": [
+        {"name": "Guimarães Arsenal injury update", "url": "https://trello.com/c/WfC5WLQu", "bite_ids": ["Guimaraes-ARS-injury-20260826-1", "Guimaraes-ARS-injury-20260821-1"], "note": "Merged card, consolidated by Sylvan from two related bites"},
+        {"name": "Anderson (MCI) — subbed 63', cramp not injury", "url": "https://trello.com/c/vCQzi7SZ", "bite_ids": ["Anderson-MCI-injury-20260827-1"]},
+        {"name": "Guimarães (ARS) — Arteta: \"not weeks\"", "url": "https://trello.com/c/Zttq1wnd", "bite_ids": ["Guimaraes-ARS-injury-20260823-1"]},
+        {"name": "Villa (squad-wide) — defensive-solidity mirror, no fence mechanism", "url": "https://trello.com/c/7jigM2T5", "bite_ids": ["AstonVilla-AVL-defsolidity-20260825-1"]}
+      ]
+    }
+  ]
+}

@@ -64,7 +64,7 @@ not "intel" in the falsifiable-hypothesis sense this pipeline logs.
 
 0. **Record a start timestamp** — `started_utc`, ISO 8601 UTC, captured
    before any reading or searching begins. Needed for the run-metadata
-   record in step 4.
+   record in step 5.
 
 1. **Check open bites first.** Read `docs/data/intel_sweep_log.jsonl`,
    filter to bites with no resolution record, and for any whose
@@ -91,7 +91,8 @@ not "intel" in the falsifiable-hypothesis sense this pipeline logs.
     "field_affected": "xg90", "suggested_op": "mult",
     "suggested_value": 1.35, "confidence": "high",
     "falsifiable_check": "who takes LIV's first penalty",
-    "check_by_gw": 8, "logged_utc": "2026-08-21T07:05:00Z"}
+    "check_by_gw": 8, "updates_bite_id": null,
+    "logged_utc": "2026-08-21T07:05:00Z"}
    ```
 
    `category` is one of `setpiece · injury · rotation · tactical ·
@@ -102,12 +103,31 @@ not "intel" in the falsifiable-hypothesis sense this pipeline logs.
    finding is not a bite** — reconciliation rule 7 in `ROLE_INTEL.md` still
    applies: value comes only from what the data cannot already see.
 
+   **`updates_bite_id` — flag it, don't just imply it.** If this bite is a
+   materially new development on a story already logged (a timeline that's
+   firmed up, odds that moved, a resolution being revised) rather than a
+   genuinely independent finding, set `updates_bite_id` to the prior bite's
+   `id` (or a list, if it updates more than one). Added 28 Aug 2026 after a
+   run where updates were only distinguishable by reading prose ("Updates
+   Sarr-CRY-injury-20260826-1...") — that's still required in the narrative
+   (step 3) but is no longer sufficient on its own; the JSONL record itself
+   must carry the link so it survives being read out of context (e.g. by the
+   Trello sync in step 3a, which uses it to decide whether to comment on an
+   existing card or create a new one).
+
 3. **Draft into `ROLE_INTEL.md` — narrative only.** Every new bite gets a
    one- or two-line entry under "Active intel", dated and sourced, exactly as
    the file's existing entries already look, marked `?` if unconfirmed and
    noted as "pending Friday review". **The daily sweep never writes to the
    `setpieces` or `adjustments` fences, regardless of how well-corroborated a
    finding is.** That gate only opens in the Friday review, below.
+
+   **If `updates_bite_id` is set, open the entry with an explicit flag —
+   `**UPDATE, prior bite `<id>`:**` — before the claim itself**, not just a
+   passing "Updates X" mid-paragraph. The reader (Sylvan, or this pipeline
+   reading its own history back) should be able to tell from the first few
+   words whether they're looking at a new independent finding or a revision
+   of one already on the record, without reading the whole paragraph.
 
    **Header format matters — it's parsed, not just prose.** `build_intel_page.py`
    renders `docs/news.html` (the public "Availability & intel" page) by
@@ -119,12 +139,54 @@ not "intel" in the falsifiable-hypothesis sense this pipeline logs.
    change, a plausible stand-in `(TEAM, £0.0m, ROLE)` — e.g.
    `### 9. Maresca (MCI, £0.0m, MGR) — new Man City manager...` — rather than
    dropping the parenthetical. If in doubt, run `python3 build_intel_page.py`
-   after step 3 and check its printed `intel:` count matches the number of
-   `### N.` headings in the file.
+   after this step and check its printed `intel:` count matches the number
+   of `### N.` headings in the file.
 
-   **Rebuild and republish the intel page — every day this step wrote
-   anything.** Run `python3 build_intel_page.py` (only that page, not the
-   full `publish_dashboard.sh` suite — the diagnostics/squad/relationships/
+3a. **Sync new bites to Trello — every bite, every run.**
+   **Added 28 Aug 2026.** Every bite logged in step 2 gets a matching Trello
+   card, via the Trello MCP, on the same run — triage happens on the board
+   now, not just once a week in the Friday review.
+
+   - **Board:** `FPL Intel Review` (persistent — created 28 Aug 2026; Trello
+     boards can't be renamed via this integration, so its title may still say
+     an old gameweek number. It is the ongoing board regardless of what the
+     name says. Find it via `trelloSearch` action `search_boards` if the ID
+     isn't already known from a prior run, rather than creating a second one.)
+   - **New, independent bite** (`updates_bite_id` null): create a card in the
+     **Backlog** list. Name: short player/story title matching the pattern
+     already in use (e.g. `"Sarr (CRY) — groin, missed GW1"`). Description:
+     `ID:`, category, confidence, the claim, source (tier, accuracy/n if
+     known), current resolution status, falsifiable check, and — if
+     `field_affected` is set — what accepting it would change. Match the
+     format of existing cards on the board exactly; don't invent a new shape.
+   - **Bite with `updates_bite_id` set:** if a card already exists for the
+     bite(s) it updates (match on the `ID:` line in the card description),
+     **add a comment to that existing card** (`trelloWriteCard` action
+     `add_comment`) with the new information, rather than creating a
+     duplicate card — the update should read as a thread on the original
+     story, matching the `updates_bite_id` discipline from step 2. If no
+     matching card can be found (e.g. it predates this pipeline change), fall
+     back to creating a new card and note in its description which bite it
+     updates.
+   - **A resolution record logged in step 1** (confirmed/contradicted/
+     expired/superseded) is not itself a new bite and does not get a new
+     card — but add a short comment to the relevant existing card noting the
+     resolution, so the board reflects it without Sylvan needing to cross-
+     reference the JSONL log by hand.
+
+4. **Rebuild and republish the intel page — every day this step wrote
+   anything, or step 3a touched Trello.** First, **refresh the Trello
+   snapshot**: fetch the board's current lists and cards via the Trello MCP
+   (`trelloReadCard` action `list_by_board`) and write
+   `docs/data/trello_snapshot.json` — `{generated_utc, board_name, board_url,
+   board_note, lists: [{name, cards: [{name, url, bite_ids, note?}]}]}`,
+   matching the shape `build_intel_page.py` already reads. This is a static
+   snapshot, not a live embed, because `build_intel_page.py` runs offline
+   (no MCP access) and the board itself stays private — the public page
+   renders whatever was true at the last sync, and says so.
+
+   Then run `python3 build_intel_page.py` (only that page, not the full
+   `publish_dashboard.sh` suite — the diagnostics/squad/relationships/
    player/priors pages depend on the weekly priors snapshot and stay on the
    Friday cadence). Then `node verify_pages.js` — it structurally checks
    every page already in `docs/`, so it still covers `docs/news.html` even
@@ -136,7 +198,7 @@ not "intel" in the falsifiable-hypothesis sense this pipeline logs.
    whatever the last Friday `fpl-weekly-brief` run published, so a whole
    week of daily intel was invisible on the site until Friday.
 
-4. **Record run metadata, then commit — every day, even a quiet one.**
+5. **Record run metadata, then commit — every day, even a quiet one.**
    Immediately before committing, append one `run_meta` line to
    `docs/data/intel_sweep_log.jsonl` (same append-only file, new `kind`,
    never edited or deleted like every other record here):
@@ -164,15 +226,15 @@ not "intel" in the falsifiable-hypothesis sense this pipeline logs.
    Then: `bash safe_git_commit.sh "Intel sweep <date>: <n> new bites, <n>
    resolved"` — see "Known issue" below for why this script, not raw
    `git add`/`git commit`/`git push`. It picks up whatever changed
-   (`ROLE_INTEL.md`, `docs/data/intel_sweep_log.jsonl`, and `docs/news.html`
-   if step 3's rebuild ran and both verify steps passed) automatically from
-   `git status` — nothing to list by hand, and nothing to no-op on a quiet
-   day. The commit now happens every run regardless of whether steps 1-3
-   found anything, since `run_meta` itself is always new — the commit
-   message still says "0 new bites, 0 resolved" on a quiet day rather than
-   claiming there's nothing to commit. Do not regenerate
-   `SOURCE_RELIABILITY.md`/`INTEL_REVIEW.md` on every daily run — see
-   below, those are weekly.
+   (`ROLE_INTEL.md`, `docs/data/intel_sweep_log.jsonl`, and — if step 4's
+   rebuild ran and both verify steps passed — `docs/news.html` and
+   `docs/data/trello_snapshot.json`) automatically from `git status` —
+   nothing to list by hand, and nothing to no-op on a quiet day. The commit
+   now happens every run regardless of whether steps 1-3 found anything,
+   since `run_meta` itself is always new — the commit message still says
+   "0 new bites, 0 resolved" on a quiet day rather than claiming there's
+   nothing to commit. Do not regenerate `SOURCE_RELIABILITY.md`/
+   `INTEL_REVIEW.md` on every daily run — see below, those are weekly.
 
 ---
 
@@ -198,8 +260,11 @@ not "intel" in the falsifiable-hypothesis sense this pipeline logs.
    week's review. `rejected` bites get a one-line dated note in the
    narrative section and nothing else. `deferred` bites simply reappear in
    next week's queue.
-5. Regenerates the queue and commits everything, including the two derived
-   reports.
+5. Refreshes `docs/data/trello_snapshot.json` (same method as step 4 of the
+   daily sweep — fetch the board via the Trello MCP, write the file) so the
+   public page reflects however Sylvan actually sorted the cards, then runs
+   `build_intel_page.py` + `node verify_pages.js`, regenerates the queue, and
+   commits everything, including the two derived reports.
 
 **Resolution and decision are independent axes.** A bite can be `open`
 (nobody has confirmed or contradicted the claim yet) and still be `accepted`
@@ -350,10 +415,23 @@ mount already keeps his working tree current.
   with zero bites — see step 4 above.
 - `docs/news.html` — the public "Availability & intel" page, built from
   `ROLE_INTEL.md` by `build_intel_page.py`. Rebuilt and republished by
-  *both* `fpl-daily-intel-sweep` (step 3, that page only) and
+  *both* `fpl-daily-intel-sweep` (step 4, that page only) and
   `fpl-weekly-brief`/`publish_dashboard.sh` (the full page suite, Friday) —
   the daily sweep keeps it current all week; the weekly run keeps it
-  bundled with the other pages that share the priors snapshot.
+  bundled with the other pages that share the priors snapshot. Its
+  "Intel triage board" panel renders `docs/data/trello_snapshot.json`, not
+  a live embed — see below.
+- **Trello board `FPL Intel Review`** — the live triage surface. Every bite
+  gets a card (step 3a) the moment it's logged; Sylvan sorts cards into
+  `Backlog` / `Wait for more evidence` / `Take action` / `Reject / Expired`;
+  the Friday review acts on whatever's in `Take action`. Persistent across
+  gameweeks — don't create a new board each week even though its name is
+  frozen at whatever gameweek it was created in.
+- `docs/data/trello_snapshot.json` — static point-in-time render of the
+  Trello board (`{generated_utc, board_name, board_url, board_note, lists:
+  [{name, cards: [{name, url, bite_ids, note?}]}]}`), refreshed by step 4
+  (or the Friday review's own commit step) and read by
+  `build_intel_page.py`. Not hand-edited; not a live feed.
 - `score_source_reliability.py` — per-source scorer; `build_intel_review.py`
   — Friday decision-queue builder; both regenerate weekly, do not hand-edit
   their outputs
@@ -367,8 +445,9 @@ mount already keeps his working tree current.
 - `intel_adjust.py` — the vocabulary (`field`/`op`/`value`) bites should use
   when they map to a model input
 - Scheduled tasks: `fpl-daily-intel-sweep` (daily, gather + log + narrative
-  draft, never touches the fences) and `fpl-friday-intel-review` (Friday
-  07:30, the decision meeting, the only writer of the fences). Together they
+  draft + Trello card sync, never touches the fences) and
+  `fpl-friday-intel-review` (Friday 07:30, the decision meeting, the only
+  writer of the fences). Together they
   superseded `fpl-pre-deadline-news-watch` (Friday-only), whose safety-net
   function — catching late-breaking squad news before a deadline — is now
   covered by the daily cadence plus the deadline-week emphasis in step 2

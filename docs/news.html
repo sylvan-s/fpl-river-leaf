@@ -69,6 +69,24 @@ border-radius:9px;padding:10px 12px}
 .pc-w{font-size:12px;margin-top:7px;padding-top:7px;border-top:1px solid var(--line)}
 .pc-w.chk{color:var(--dim)}
 @media(max-width:700px){.pc{flex:1 1 100%}}
+.trello-link{float:right;font-size:12px;font-weight:400;color:var(--dim);text-decoration:none;
+border:1px solid var(--line);border-radius:6px;padding:3px 9px}
+.trello-link:hover{color:inherit;border-color:currentColor}
+.tboard{display:flex;gap:12px;overflow-x:auto;padding-bottom:4px}
+.tl{flex:1 1 220px;min-width:200px;background:var(--bg);border:1px solid var(--line);
+border-radius:9px;padding:8px}
+.tl-h{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;
+padding:4px 6px 8px;display:flex;justify-content:space-between}
+.tl-n{color:var(--dim);font-weight:400}
+.tl-b{display:flex;flex-direction:column;gap:6px}
+.tl-empty{font-size:11.5px;color:var(--dim);padding:8px 6px;text-align:center}
+.tc{display:block;background:var(--panel);border:1px solid var(--line);border-radius:7px;
+padding:8px 9px;text-decoration:none;color:inherit}
+.tc:hover{border-color:currentColor}
+.tc-name{font-size:12.5px;line-height:1.35}
+.tc-ids{font-size:10px;color:var(--dim);margin-top:4px;word-break:break-word}
+.tc-note{font-size:10.5px;color:var(--dim);margin-top:4px;font-style:italic}
+@media(max-width:700px){.tboard{flex-direction:column}.tl{min-width:0}}
 </style>
 </head><body>
 <nav class="top">
@@ -81,93 +99,92 @@ border-radius:9px;padding:10px 12px}
 </nav>
 
 <h1>Availability & intel</h1>
-<p class="sub">Rendered from ROLE_INTEL.md · GW1 · page generated 2026-08-27 07:07</p>
-<div class="kpis"><div class="kpi"><div class="kv mono">19</div><div class="kl">Contaminated priors</div><div class="kn">0 in your squad</div></div><div class="kpi"><div class="kv mono">1</div><div class="kl">Contested places</div><div class="kn">0 in your squad</div></div><div class="kpi"><div class="kv mono">2</div><div class="kl">Set-piece claims</div><div class="kn">all unconfirmed pre-season</div></div><div class="kpi"><div class="kv mono">13</div><div class="kl">Active intel entries</div><div class="kn">each with a check</div></div><div class="kpi"><div class="kv mono">6</div><div class="kl">Modelled-input adjustments</div><div class="kn">0 in your squad</div></div></div>
+<p class="sub">Rendered from ROLE_INTEL.md · GW2 · page generated 2026-08-28 10:31</p>
+<div class="kpis"><div class="kpi"><div class="kv mono">19</div><div class="kl">Contaminated priors</div><div class="kn">0 in your squad</div></div><div class="kpi"><div class="kv mono">1</div><div class="kl">Contested places</div><div class="kn">0 in your squad</div></div><div class="kpi"><div class="kv mono">2</div><div class="kl">Set-piece claims</div><div class="kn">all unconfirmed pre-season</div></div><div class="kpi"><div class="kv mono">13</div><div class="kl">Active intel entries</div><div class="kn">each with a check</div></div><div class="kpi"><div class="kv mono">21</div><div class="kl">Modelled-input adjustments</div><div class="kn">2 in your squad</div></div></div>
+<div class="panel">
+  <h2>Intel triage board <a class="trello-link" href="https://trello.com/b/AEOlxhen/fpl-intel-review-gw2" target="_blank" rel="noopener">Open on Trello &#8599;</a></h2>
+  <p class="tests">Every news bite the daily sweep gathers becomes a Trello card the moment it's
+  logged — this replaces the old per-bite card list below with a snapshot of that board itself, so
+  triage happens in one place instead of two. A card that updates or supersedes an earlier story is
+  flagged as such on the card (see its description) rather than silently replacing it. This is a
+  point-in-time render, generated 2026-08-28T09:05:00Z — it does not update itself; open the board on Trello
+  for the live state.</p>
+  <div class="tboard"><div class="tl">
+  <div class="tl-h">Backlog <span class="tl-n mono">0</span></div>
+  <div class="tl-b"><div class="tl-empty">empty</div></div>
+</div><div class="tl">
+  <div class="tl-h">Wait for more evidence <span class="tl-n mono">6</span></div>
+  <div class="tl-b"><a class="tc" href="https://trello.com/c/6RDshftJ" target="_blank" rel="noopener">
+  <div class="tc-name">O'Reilly (MCI) — RB start-rate threat</div>
+  <div class='tc-ids mono'>OReilly-MCI-stp-20260820-1</div>
+</a><a class="tc" href="https://trello.com/c/H1pgS3C4" target="_blank" rel="noopener">
+  <div class="tc-name">Maresca now permanent MCI manager</div>
+  <div class='tc-ids mono'>Maresca-MCI-managerchange-20260820-1</div>
+</a><a class="tc" href="https://trello.com/c/X6Mlepyn" target="_blank" rel="noopener">
+  <div class="tc-name">Anderson (MCI) — No.6 vs advanced role open</div>
+  <div class='tc-ids mono'>Anderson-MCI-xgi90-20260820-1</div>
+</a><a class="tc" href="https://trello.com/c/EElPpXif" target="_blank" rel="noopener">
+  <div class="tc-name">Szoboszlai (LIV) — pen order contradicted, then confirmed</div>
+  <div class='tc-ids mono'>Szoboszlai-LIV-xg90-20260820-1</div>
+</a><a class="tc" href="https://trello.com/c/3VBSAdDp" target="_blank" rel="noopener">
+  <div class="tc-name">Szoboszlai (LIV) — pen duty still described as shared</div>
+  <div class='tc-ids mono'>Szoboszlai-LIV-xg90-20260826-1</div>
+</a><a class="tc" href="https://trello.com/c/0oVkV8ne" target="_blank" rel="noopener">
+  <div class="tc-name">Villa (squad-wide) — Watkins staying, Cash/Mings return timelines</div>
+  <div class='tc-ids mono'>AstonVilla-AVL-transfers-20260826-1</div>
+</a></div>
+</div><div class="tl">
+  <div class="tl-h">Take action <span class="tl-n mono">8</span></div>
+  <div class="tl-b"><a class="tc" href="https://trello.com/c/6EyhuC75" target="_blank" rel="noopener">
+  <div class="tc-name">Sarr (CRY) — downgraded to INJURED/0%</div>
+  <div class='tc-ids mono'>Sarr-CRY-injury-20260827-1</div>
+</a><a class="tc" href="https://trello.com/c/5o1fHg6U" target="_blank" rel="noopener">
+  <div class="tc-name">Sarr (CRY) — groin, missed GW1</div>
+  <div class='tc-ids mono'>Sarr-CRY-injury-20260826-1</div>
+</a><a class="tc" href="https://trello.com/c/Mt57L2rS" target="_blank" rel="noopener">
+  <div class="tc-name">Villa (squad-wide) — xgi90 mult 0.70 proposed</div>
+  <div class='tc-ids mono'>AstonVilla-AVL-xgi90-20260825-1</div>
+</a><a class="tc" href="https://trello.com/c/R4vzpqxG" target="_blank" rel="noopener">
+  <div class="tc-name">Saliba/Timber (ARS) — return windows longer than coded</div>
+  <div class='tc-ids mono'>Saliba-ARS-stp-20260820-1</div>
+</a><a class="tc" href="https://trello.com/c/9uwRjJmv" target="_blank" rel="noopener">
+  <div class="tc-name">O'Reilly (MCI) — CBIT rate at risk from midfield role</div>
+  <div class='tc-ids mono'>OReilly-MCI-cbit90-20260826-1</div>
+</a><a class="tc" href="https://trello.com/c/n7EbJX24" target="_blank" rel="noopener">
+  <div class="tc-name">O'Reilly (MCI) — xGI sized at mult 1.2</div>
+  <div class='tc-ids mono'>OReilly-MCI-xgi90-20260826-1</div>
+</a><a class="tc" href="https://trello.com/c/d2ho9TDR" target="_blank" rel="noopener">
+  <div class="tc-name">O'Reilly (MCI) — CBIT sized at mult 0.8</div>
+  <div class='tc-ids mono'>OReilly-MCI-cbit90-20260826-2</div>
+</a><a class="tc" href="https://trello.com/c/1M4cWmG8" target="_blank" rel="noopener">
+  <div class="tc-name">Mosquera (ARS) — minutes-opening confirmed</div>
+  <div class='tc-ids mono'>Mosquera-ARS-stp-20260821-1</div>
+</a></div>
+</div><div class="tl">
+  <div class="tl-h">Reject / Expired <span class="tl-n mono">4</span></div>
+  <div class="tl-b"><a class="tc" href="https://trello.com/c/WfC5WLQu" target="_blank" rel="noopener">
+  <div class="tc-name">Guimarães Arsenal injury update</div>
+  <div class='tc-ids mono'>Guimaraes-ARS-injury-20260826-1, Guimaraes-ARS-injury-20260821-1</div><div class='tc-note'>Merged card, consolidated by Sylvan from two related bites</div>
+</a><a class="tc" href="https://trello.com/c/vCQzi7SZ" target="_blank" rel="noopener">
+  <div class="tc-name">Anderson (MCI) — subbed 63', cramp not injury</div>
+  <div class='tc-ids mono'>Anderson-MCI-injury-20260827-1</div>
+</a><a class="tc" href="https://trello.com/c/Zttq1wnd" target="_blank" rel="noopener">
+  <div class="tc-name">Guimarães (ARS) — Arteta: "not weeks"</div>
+  <div class='tc-ids mono'>Guimaraes-ARS-injury-20260823-1</div>
+</a><a class="tc" href="https://trello.com/c/7jigM2T5" target="_blank" rel="noopener">
+  <div class="tc-name">Villa (squad-wide) — defensive-solidity mirror, no fence mechanism</div>
+  <div class='tc-ids mono'>AstonVilla-AVL-defsolidity-20260825-1</div>
+</a></div>
+</div></div>
+</div>
 <div class="panel">
   <h2>Intel summary &amp; modelled-input adjustments</h2>
   <p class="tests">What the screens structurally cannot see: a new penalty taker, a
   tactical shift, a berth opening through injury. Every entry carries a check that
   the opening gameweeks will confirm or kill — and, where an entry is confident enough
-  to move a number, exactly what it moved and by how much.</p>
-  <div class="row"><div class="pc">
-  <div class="pc-h"><b>Szoboszlai</b></div>
-  <div class="pc-m mono">LIV · £7.0m · MID</div>
-  <div class="pc-w"><b>primary penalty + direct FK taker</b></div>
-  <div class='pc-w'>steps up as Liverpool's primary penalty and direct free-kick taker following changes in their attacking structure.</div>
-  <div class='pc-w chk'><b>Check:</b> who takes Liverpool's first penalty and first direct free kick? Also watch <span class="mono">penalties_order</span> in the API once populated.</div>
-</div><div class="pc">
-  <div class="pc-h"><b>Elliott Anderson</b></div>
-  <div class="pc-m mono">MCI · £6.5m · MID</div>
-  <div class="pc-w"><b>budget enabler, elevated creative role</b></div>
-  <div class='pc-w'>absorbs heavy minutes with an elevated creative role, out-projecting several £8.0m midfielders.</div>
-  <div class='pc-w chk'><b>Check:</b> does his xGI/90 rise above ~0.30 in the opening weeks?</div>
-</div><div class="pc">
-  <div class="pc-h"><b>Mosquera</b></div>
-  <div class="pc-m mono">ARS · £5.5m · DEF</div>
-  <div class="pc-w"><b>minutes opening through injury</b></div>
-  <div class='pc-w'>regular early-season minutes in the league's best defence while starters recover.</div>
-  <div class='pc-w chk'><b>Check:</b> does he start GW1 v Coventry? Timber's return date of 21 Aug is the deadline day itself — this could evaporate immediately.</div>
-</div><div class="pc">
-  <div class="pc-h"><b>Ndiaye</b></div>
-  <div class="pc-m mono">EVE · £6.0m · MID</div>
-  <div class="pc-w"><b>penalties + shot volume</b></div>
-  <div class='pc-w'>locked-in penalty duty plus underlying volume beats his £6.0m price.</div>
-  <div class='pc-w chk'><b>Check:</b> confirm he takes Everton's first penalty.</div>
-</div><div class="pc">
-  <div class="pc-h"><b>João Pedro</b> <span class="tag ok">in squad</span></div>
-  <div class="pc-m mono">CHE · £7.5m · FWD</div>
-  <div class="pc-w"><b>central catalyst — **ALREADY OWNED**</b></div>
-  <div class='pc-w'>operates as the focal point in Chelsea's setup.</div>
-  <div class='pc-w chk'><b>Check:</b> does the delta compress toward zero over the opening weeks as expected? If it stays high, he may be a genuine finisher rather than lucky.</div>
-</div><div class="pc">
-  <div class="pc-h"><b>Botman</b></div>
-  <div class="pc-m mono">NEW · £5.0m · DEF</div>
-  <div class="pc-w"><b>recurring fitness fragility — **NOT CURRENTLY OWNED (tag corrected 18 Aug)**</b></div>
-  
-  <div class='pc-w chk'><b>Check:</b> does he complete pre-season and start GW1 without a new knock? A clean run through August would meaningfully undercut this flag.</div>
-</div><div class="pc">
-  <div class="pc-h"><b>Rice</b></div>
-  <div class="pc-m mono">ARS · £7.5m · MID</div>
-  <div class="pc-w"><b>Guimarães signing shares his workload — **NOT OWNED**</b></div>
-  <div class='pc-w'>Sylvan heard on a podcast that Arsenal brought in support for Rice specifically to let his role be rotated more. Checked 11 Aug 2026, web-confirmed from multiple independent sources.</div>
-  <div class='pc-w chk'><b>Check:</b> does Rice's start share over GW1-6 come in materially below ~90%? If he's still starting nearly every match once the season begins, the magnitude here was wrong even if the underlying signing/intent was real. Review at GW6, not GW8 — a shorter window than usual given the magnitude is unsourced guesswork rather than a specific injury/suspension window.</div>
-</div><div class="pc">
-  <div class="pc-h"><b>Bruno Fernandes</b></div>
-  <div class="pc-m mono">MUN · £12.0m · MID</div>
-  <div class="pc-w"><b>pre-season penalty misses — **ALREADY OWNED, VICE-CAPTAIN**</b></div>
-  
-  <div class='pc-w chk'><b>Check:</b> does he take and convert United's first competitive penalty of the season? A miss there, or a hint from Amorim/Carrick about a change of taker, would warrant a <span class="mono">stp</span>-adjacent look at his set-piece share — a straight miss with no taker change does not.</div>
-</div><div class="pc">
-  <div class="pc-h"><b>Maresca</b></div>
-  <div class="pc-m mono">MCI · £0.0m · MGR</div>
-  <div class="pc-w"><b>new Man City manager replaces Guardiola — **structural context, not a single-player thesis**</b></div>
-  
-  <div class='pc-w chk'><b>Check:</b> does Maresca's confirmed GW1 XI/setup materially differ from Guardiola's final-season patterns (formation, who plays the Rodri role, fullback usage)? Source: <span class="mono">Maresca-MCI-managerchange-20260820-1</span>.?</div>
-</div><div class="pc">
-  <div class="pc-h"><b>O'Reilly</b> <span class="tag ok">in squad</span></div>
-  <div class="pc-m mono">MCI · £6.5m · DEF</div>
-  <div class="pc-w"><b>right-back competition risk — **ALREADY OWNED**</b></div>
-  
-  <div class='pc-w chk'><b>Check:</b> does O'Reilly start at right-back (or at all) in City's actual GW1 fixture? Source: <span class="mono">OReilly-MCI-stp-20260820-1</span>.</div>
-</div><div class="pc">
-  <div class="pc-h"><b>Guimarães</b></div>
-  <div class="pc-m mono">ARS · £7.0m · MID</div>
-  <div class="pc-w"><b>GW1 fitness doubt, relevant to Rice's workload-sharing thesis — **NOT OWNED**</b></div>
-  
-  <div class='pc-w chk'><b>Check:</b> does Guimarães start (or feature) for Arsenal vs Coventry tonight, and does Rice play close to 90 minutes if he doesn't?</div>
-</div><div class="pc">
-  <div class="pc-h"><b>Aston Villa</b></div>
-  <div class="pc-m mono">AVL · £0.0m · TEAM</div>
-  <div class="pc-w"><b>squad exodus + GW1 collapse — **structural context, not a single-player thesis, NOT CURRENTLY OWNED**</b></div>
-  
-  <div class='pc-w chk'><b>Check:</b> does Villa's attacking output stay depressed (xG per match materially below their 2025/26 rate) across the next 3-4 fixtures — Arsenal, Hull, Nottingham Forest (all three without the suspended Gomes), then Brentford — rather than reverting toward pre-sale form as Watkins/Martínez's situations resolve and new signings (record buy Manzambi, João Gomes' namesake-free replacement roles, Garnacho on loan) bed in? Source: <span class="mono">AstonVilla-AVL-xgi90-20260825-1</span>.?</div>
-</div><div class="pc">
-  <div class="pc-h"><b>Sarr</b> <span class="tag ok">in squad</span></div>
-  <div class="pc-m mono">CRY · £6.5m · MID</div>
-  <div class="pc-w"><b>groin injury, doubtful for GW2 — **ALREADY OWNED**</b></div>
-  
-  <div class='pc-w chk'><b>Check:</b> does Sarr start (or feature) for Crystal Palace in GW2, and does his 75% odds firm up or drop as the deadline approaches? Source: <span class="mono">Sarr-CRY-injury-20260826-1</span>.?</div>
-</div></div>
+  to move a number, exactly what it moved and by how much. Per-bite triage now lives on
+  the Trello board above; this panel covers what's actually confirmed into the narrative
+  and, below, what it changed in the model.</p>
   <div class="find">An entry without a falsifiable check is folklore. Anything
   still unproven after roughly five gameweeks gets deleted, not archived.</div>
   
@@ -185,7 +202,7 @@ border-radius:9px;padding:10px 12px}
   to binary than continuous.</p>
   <table><thead><tr><th>Player</th><th>Team</th><th>Field</th><th>Effect</th>
   <th>GWs</th><th>Confidence</th><th>Logged</th><th style="text-align:left">Why</th></tr></thead>
-  <tbody><tr><td><b>Szoboszlai</b></td><td class='mono'>LIV</td><td class='mono'>xg90</td><td class='mono'>&times;1.35</td><td class='mono'>1-8</td><td class='mono'>high</td><td class='mono'>2026-08-12</td><td style='text-align:left'>Penalty + direct FK + corner duty, web-confirmed 12 Aug (reverts to Salah on his return); see entry 1 above</td></tr><tr><td><b>Ndiaye</b></td><td class='mono'>EVE</td><td class='mono'>xg90</td><td class='mono'>&times;1.25</td><td class='mono'>1-8</td><td class='mono'>high</td><td class='mono'>2026-08-12</td><td style='text-align:left'>Penalty duty web-confirmed 12 Aug plus -2.09 delta already underperforming his chances; see entry 4 above</td></tr><tr><td><b>Anderson</b></td><td class='mono'>MCI</td><td class='mono'>xgi90</td><td class='mono'>&times;1.15</td><td class='mono'>1-8</td><td class='mono'>medium</td><td class='mono'>2026-08-07</td><td style='text-align:left'>Elevated box-to-box creative role per community read; screen already confirms the CBIRT floor, this prices the ceiling; see entry 2 above</td></tr><tr><td><b>Mosquera</b></td><td class='mono'>ARS</td><td class='mono'>stp</td><td class='mono'>&rarr; 85%</td><td class='mono'>1-3</td><td class='mono'>medium</td><td class='mono'>2026-08-12</td><td style='text-align:left'>Saliba back-injury "rest mode", Timber "weeks away" - out for Cardiff/Villa/likely Chelsea, later than the 21 Aug date previously logged; minutes opening in the league's best defence; see entry 3 above</td></tr><tr><td><b>Dubravka</b></td><td class='mono'>TOT</td><td class='mono'>stp</td><td class='mono'>&rarr; 5%</td><td class='mono'>ALL</td><td class='mono'>high</td><td class='mono'>2026-08-09</td><td style='text-align:left'>Reported backup to Antonin Kinsky at Spurs; 81% last16 rate is a Burnley-era number wearing a Spurs badge; see the competition fence above</td></tr><tr><td><b>Rice</b></td><td class='mono'>ARS</td><td class='mono'>stp</td><td class='mono'>&rarr; 69%</td><td class='mono'>1-6</td><td class='mono'>medium</td><td class='mono'>2026-08-11</td><td style='text-align:left'>Guimaraes signed to share his DM/CM workload per Arsenal.com + independent press (rotation intent well corroborated); 25% reduction off his 92% 2025/26 start rate is an UNSOURCED estimate applied on instruction, not a reported figure; see entry 7 above</td></tr></tbody></table>
+  <tbody><tr><td><b>Szoboszlai</b></td><td class='mono'>LIV</td><td class='mono'>xg90</td><td class='mono'>&times;1.35</td><td class='mono'>1-8</td><td class='mono'>high</td><td class='mono'>2026-08-12</td><td style='text-align:left'>Penalty + direct FK + corner duty, web-confirmed 12 Aug (reverts to Salah on his return); see entry 1 above</td></tr><tr><td><b>Ndiaye</b></td><td class='mono'>EVE</td><td class='mono'>xg90</td><td class='mono'>&times;1.25</td><td class='mono'>1-8</td><td class='mono'>high</td><td class='mono'>2026-08-12</td><td style='text-align:left'>Penalty duty web-confirmed 12 Aug plus -2.09 delta already underperforming his chances; see entry 4 above</td></tr><tr><td><b>Anderson</b></td><td class='mono'>MCI</td><td class='mono'>xgi90</td><td class='mono'>&times;1.15</td><td class='mono'>1-8</td><td class='mono'>medium</td><td class='mono'>2026-08-07</td><td style='text-align:left'>Elevated box-to-box creative role per community read; screen already confirms the CBIRT floor, this prices the ceiling; see entry 2 above</td></tr><tr><td><b>Mosquera</b></td><td class='mono'>ARS</td><td class='mono'>stp</td><td class='mono'>&rarr; 85%</td><td class='mono'>1-8</td><td class='mono'>high</td><td class='mono'>2026-08-28</td><td style='text-align:left'>Accepted in Friday review 28 Aug 2026 (Mosquera-ARS-stp-20260821-1, Saliba-ARS-stp-20260820-1): GW1 matchday evidence confirms he started ahead of Ben White; window extended from 1-3 to 1-8 given Timber now "in September" and Saliba pencilled for winter (earliest contention ~GW8, 10 Oct Leeds fixture); see entry 3 above</td></tr><tr><td><b>Dubravka</b></td><td class='mono'>TOT</td><td class='mono'>stp</td><td class='mono'>&rarr; 5%</td><td class='mono'>ALL</td><td class='mono'>high</td><td class='mono'>2026-08-09</td><td style='text-align:left'>Reported backup to Antonin Kinsky at Spurs; 81% last16 rate is a Burnley-era number wearing a Spurs badge; see the competition fence above</td></tr><tr><td><b>Rice</b></td><td class='mono'>ARS</td><td class='mono'>stp</td><td class='mono'>&rarr; 69%</td><td class='mono'>1-6</td><td class='mono'>medium</td><td class='mono'>2026-08-11</td><td style='text-align:left'>Guimaraes signed to share his DM/CM workload per Arsenal.com + independent press (rotation intent well corroborated); 25% reduction off his 92% 2025/26 start rate is an UNSOURCED estimate applied on instruction, not a reported figure; see entry 7 above</td></tr><tr><td><b>O'Reilly</b> <span class="tag ok">in squad</span></td><td class='mono'>MCI</td><td class='mono'>cbit90</td><td class='mono'>&times;0.80</td><td class='mono'>1-4</td><td class='mono'>medium</td><td class='mono'>2026-08-28</td><td style='text-align:left'>Accepted in Friday review 28 Aug 2026 (OReilly-MCI-cbit90-20260826-1/-2): GW1 confirmed lineup has him in central midfield not RB, expected to cut his DC-threshold numbers; magnitude is Sylvan's own instructed estimate (-20%), not sourced; see entry 10 above</td></tr><tr><td><b>O'Reilly</b> <span class="tag ok">in squad</span></td><td class='mono'>MCI</td><td class='mono'>xgi90</td><td class='mono'>&times;1.20</td><td class='mono'>1-4</td><td class='mono'>medium</td><td class='mono'>2026-08-28</td><td style='text-align:left'>Accepted in Friday review 28 Aug 2026 (OReilly-MCI-xgi90-20260826-1): paired attacking-side lever to the cbit90 cut above; Sylvan's own instructed estimate (+20%), not sourced; see entry 10 above</td></tr><tr><td><b>Bogarde</b></td><td class='mono'>AVL</td><td class='mono'>xgi90</td><td class='mono'>&times;0.70</td><td class='mono'>1-6</td><td class='mono'>low</td><td class='mono'>2026-08-28</td><td style='text-align:left'>Accepted in Friday review 28 Aug 2026 (AstonVilla-AVL-xgi90-20260825-1): squad exodus (Rogers/Konsa/Tielemans/Digne sold) + GW1 4-0 collapse to Brighton, Watkins/Martinez left out amid exit talk; -30% magnitude is Sylvan's own instructed estimate, not sourced; see entry 12 above</td></tr><tr><td><b>Buendía</b></td><td class='mono'>AVL</td><td class='mono'>xgi90</td><td class='mono'>&times;0.70</td><td class='mono'>1-6</td><td class='mono'>low</td><td class='mono'>2026-08-28</td><td style='text-align:left'>Accepted in Friday review 28 Aug 2026 (AstonVilla-AVL-xgi90-20260825-1): squad exodus (Rogers/Konsa/Tielemans/Digne sold) + GW1 4-0 collapse to Brighton, Watkins/Martinez left out amid exit talk; -30% magnitude is Sylvan's own instructed estimate, not sourced; see entry 12 above</td></tr><tr><td><b>Cash</b></td><td class='mono'>AVL</td><td class='mono'>xgi90</td><td class='mono'>&times;0.70</td><td class='mono'>1-6</td><td class='mono'>low</td><td class='mono'>2026-08-28</td><td style='text-align:left'>Accepted in Friday review 28 Aug 2026 (AstonVilla-AVL-xgi90-20260825-1): squad exodus (Rogers/Konsa/Tielemans/Digne sold) + GW1 4-0 collapse to Brighton, Watkins/Martinez left out amid exit talk; -30% magnitude is Sylvan's own instructed estimate, not sourced; see entry 12 above</td></tr><tr><td><b>Guessand</b></td><td class='mono'>AVL</td><td class='mono'>xgi90</td><td class='mono'>&times;0.70</td><td class='mono'>1-6</td><td class='mono'>low</td><td class='mono'>2026-08-28</td><td style='text-align:left'>Accepted in Friday review 28 Aug 2026 (AstonVilla-AVL-xgi90-20260825-1): squad exodus (Rogers/Konsa/Tielemans/Digne sold) + GW1 4-0 collapse to Brighton, Watkins/Martinez left out amid exit talk; -30% magnitude is Sylvan's own instructed estimate, not sourced; see entry 12 above</td></tr><tr><td><b>Kamara</b></td><td class='mono'>AVL</td><td class='mono'>xgi90</td><td class='mono'>&times;0.70</td><td class='mono'>1-6</td><td class='mono'>low</td><td class='mono'>2026-08-28</td><td style='text-align:left'>Accepted in Friday review 28 Aug 2026 (AstonVilla-AVL-xgi90-20260825-1): squad exodus (Rogers/Konsa/Tielemans/Digne sold) + GW1 4-0 collapse to Brighton, Watkins/Martinez left out amid exit talk; -30% magnitude is Sylvan's own instructed estimate, not sourced; see entry 12 above</td></tr><tr><td><b>Lindelöf</b></td><td class='mono'>AVL</td><td class='mono'>xgi90</td><td class='mono'>&times;0.70</td><td class='mono'>1-6</td><td class='mono'>low</td><td class='mono'>2026-08-28</td><td style='text-align:left'>Accepted in Friday review 28 Aug 2026 (AstonVilla-AVL-xgi90-20260825-1): squad exodus (Rogers/Konsa/Tielemans/Digne sold) + GW1 4-0 collapse to Brighton, Watkins/Martinez left out amid exit talk; -30% magnitude is Sylvan's own instructed estimate, not sourced; see entry 12 above</td></tr><tr><td><b>Maatsen</b></td><td class='mono'>AVL</td><td class='mono'>xgi90</td><td class='mono'>&times;0.70</td><td class='mono'>1-6</td><td class='mono'>low</td><td class='mono'>2026-08-28</td><td style='text-align:left'>Accepted in Friday review 28 Aug 2026 (AstonVilla-AVL-xgi90-20260825-1): squad exodus (Rogers/Konsa/Tielemans/Digne sold) + GW1 4-0 collapse to Brighton, Watkins/Martinez left out amid exit talk; -30% magnitude is Sylvan's own instructed estimate, not sourced; see entry 12 above</td></tr><tr><td><b>Martinez</b></td><td class='mono'>AVL</td><td class='mono'>xgi90</td><td class='mono'>&times;0.70</td><td class='mono'>1-6</td><td class='mono'>low</td><td class='mono'>2026-08-28</td><td style='text-align:left'>Accepted in Friday review 28 Aug 2026 (AstonVilla-AVL-xgi90-20260825-1): squad exodus (Rogers/Konsa/Tielemans/Digne sold) + GW1 4-0 collapse to Brighton, Watkins/Martinez left out amid exit talk; -30% magnitude is Sylvan's own instructed estimate, not sourced; see entry 12 above</td></tr><tr><td><b>McGinn</b></td><td class='mono'>AVL</td><td class='mono'>xgi90</td><td class='mono'>&times;0.70</td><td class='mono'>1-6</td><td class='mono'>low</td><td class='mono'>2026-08-28</td><td style='text-align:left'>Accepted in Friday review 28 Aug 2026 (AstonVilla-AVL-xgi90-20260825-1): squad exodus (Rogers/Konsa/Tielemans/Digne sold) + GW1 4-0 collapse to Brighton, Watkins/Martinez left out amid exit talk; -30% magnitude is Sylvan's own instructed estimate, not sourced; see entry 12 above</td></tr><tr><td><b>Mings</b></td><td class='mono'>AVL</td><td class='mono'>xgi90</td><td class='mono'>&times;0.70</td><td class='mono'>1-6</td><td class='mono'>low</td><td class='mono'>2026-08-28</td><td style='text-align:left'>Accepted in Friday review 28 Aug 2026 (AstonVilla-AVL-xgi90-20260825-1): squad exodus (Rogers/Konsa/Tielemans/Digne sold) + GW1 4-0 collapse to Brighton, Watkins/Martinez left out amid exit talk; -30% magnitude is Sylvan's own instructed estimate, not sourced; see entry 12 above</td></tr><tr><td><b>Onana</b></td><td class='mono'>AVL</td><td class='mono'>xgi90</td><td class='mono'>&times;0.70</td><td class='mono'>1-6</td><td class='mono'>low</td><td class='mono'>2026-08-28</td><td style='text-align:left'>Accepted in Friday review 28 Aug 2026 (AstonVilla-AVL-xgi90-20260825-1): squad exodus (Rogers/Konsa/Tielemans/Digne sold) + GW1 4-0 collapse to Brighton, Watkins/Martinez left out amid exit talk; -30% magnitude is Sylvan's own instructed estimate, not sourced; see entry 12 above</td></tr><tr><td><b>Pau</b></td><td class='mono'>AVL</td><td class='mono'>xgi90</td><td class='mono'>&times;0.70</td><td class='mono'>1-6</td><td class='mono'>low</td><td class='mono'>2026-08-28</td><td style='text-align:left'>Accepted in Friday review 28 Aug 2026 (AstonVilla-AVL-xgi90-20260825-1): squad exodus (Rogers/Konsa/Tielemans/Digne sold) + GW1 4-0 collapse to Brighton, Watkins/Martinez left out amid exit talk; -30% magnitude is Sylvan's own instructed estimate, not sourced; see entry 12 above</td></tr><tr><td><b>Watkins</b></td><td class='mono'>AVL</td><td class='mono'>xgi90</td><td class='mono'>&times;0.70</td><td class='mono'>1-6</td><td class='mono'>low</td><td class='mono'>2026-08-28</td><td style='text-align:left'>Accepted in Friday review 28 Aug 2026 (AstonVilla-AVL-xgi90-20260825-1): squad exodus (Rogers/Konsa/Tielemans/Digne sold) + GW1 4-0 collapse to Brighton, Watkins/Martinez left out amid exit talk; -30% magnitude is Sylvan's own instructed estimate, not sourced; see entry 12 above</td></tr></tbody></table>
   <div class="find">An adjustment without a falsifiable check above it is an unexplained number.
   Every row here should trace back to a dated entry in the cards above — <span class="mono">see
   entry N above</span> in its <i>why</i> column is deliberate, not filler.</div>
