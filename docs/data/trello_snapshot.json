@@ -1,8 +1,8 @@
 {
-  "generated_utc": "2026-08-28T09:20:00Z",
+  "generated_utc": "2026-08-28T10:05:00Z",
   "board_name": "FPL News Management",
-  "board_url": "https://trello.com/b/AEOlxhen/fpl-intel-review-gw2",
-  "board_note": "Persistent triage board for the fpl-daily-intel-sweep / fpl-friday-intel-review pipeline. Renamed 28 Aug 2026 from the original 'FPL Intel Review — GW2' (a one-time cosmetic label from creation) to a name that doesn't imply a per-gameweek board. The Trello MCP has no board-rename action, so this rename was done by hand in Trello; the URL slug may lag the new name (Trello redirects the old slug), the underlying board is unchanged.",
+  "board_url": "https://trello.com/b/AEOlxhen/fpl-news-management",
+  "board_note": "Persistent triage board for the fpl-daily-intel-sweep / fpl-friday-intel-review pipeline. Renamed by hand in Trello 28 Aug 2026 from the original 'FPL Intel Review — GW2' (a one-time cosmetic label from creation) to a name that doesn't imply a per-gameweek board. Confirmed via trelloReadBoard: board ID unchanged, name is now 'FPL News Management', URL slug updated to fpl-news-management (the old fpl-intel-review-gw2 slug still redirects here).",
   "lists": [
     {
       "name": "Backlog",
