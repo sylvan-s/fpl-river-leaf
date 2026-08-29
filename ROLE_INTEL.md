@@ -466,6 +466,22 @@ decides accept/reject/defer on both.?
 multipliers now live in the adjustments fence below, GWs 1-4 (matching
 the bites' own check_by_gw).
 
+**Continued into GW2, 29 Aug 2026 — daily sweep.** Second gameweek
+running with the same pattern: City's actual GW2 lineup vs Crystal
+Palace (28 Aug, won 1-4) again had O'Reilly outside the back four
+(Khusanov, Dias, Gvardiol at the back), grouped instead with Anderson,
+Foden and Cherki in an advanced unit behind Haaland — multiple
+independent GW2 confirmed-lineup reports agree (beIN Sports, Al
+Jazeera, SI.com, Yahoo Sports, lastwordonsports, 101GreatGoals).
+`compare_players` post-GW2 shows his underlying numbers tracking an
+attacking-midfield workload more than a defender's: 150 minutes across
+2 starts (75 min/game, still being subbed early — managed minutes, not
+a fixed 90), xGI 0.52 (~0.31/90), materially elevated for a DEF and
+close to Anderson's own 0.54. Corroborates, but doesn't newly size, the
+already-accepted `cbit90 mult 0.8` / `xgi90 mult 1.2` above. Logged as
+`OReilly-MCI-role-20260829-1`, updates `OReilly-MCI-cbit90-20260826-1`/
+`-2` and `OReilly-MCI-xgi90-20260826-1`, pending Friday review.?
+
 ### 11. Guimarães (ARS, £7.0m, MID) — GW1 fitness doubt, relevant to Rice's workload-sharing thesis — **NOT OWNED**
 
 **Logged 21 Aug 2026, daily sweep, pending Friday review.** Guimarães was
@@ -632,6 +648,27 @@ and `Sarr-CRY-injury-20260827-1` accepted as read — no `field_affected`,
 narrative-only; his live availability (INJURED, 0%, unknown return)
 already flows through `injury_report` directly, nothing for the
 adjustments fence to add.
+
+**Confirmed, 29 Aug 2026 — daily sweep, actual GW2 team sheet.** Sarr
+did not feature in Crystal Palace's 1-4 home defeat to Man City (28
+Aug) — confirmed lineup has no Sarr, Nketiah started up front in his
+place, as previewed. Sage's pre-match presser (RotoWire, 26 Aug) had
+already ruled him out definitively ("There's no chance he plays on
+Friday... he's really in pain with his groin"). Resolves both
+`Sarr-CRY-injury-20260826-1` and `Sarr-CRY-injury-20260827-1` as
+`confirmed`. Separately — a genuinely new thread, not an injury
+update — Liverpool's transfer interest (a reported £50m bid, 26 Aug,
+alongside a since-abandoned Galatasaray £34m approach) has now been
+resolved as the window closes: Read Crystal Palace (29 Aug, citing
+Fabrizio Romano and BBC Sport) reports Liverpool have pulled out to
+pursue PSG's Bradley Barcola instead, and Galatasaray have signed AC
+Milan's Rafael Leao — both suitors gone, though some Saudi (Al Ittihad)
+interest lingers per Sacha Tavolieri. Sarr was sold out of the live
+squad for Schade on 28 Aug purely on his injury status, not a
+transfer-exit concern — this closes off the small residual risk that a
+sale would have made any future reconsideration moot regardless of his
+fitness. Logged as `Sarr-CRY-transfer-20260829-1`, pending Friday
+review.?
 
 ---
 
