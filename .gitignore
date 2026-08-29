@@ -30,3 +30,10 @@ git_access.md
 # derived prediction_tracker.json (small, walk-forward summary) IS committed,
 # so the season's track record survives even if this cache is cleared.
 live_gw_cache.json
+
+# Exploratory multi-user/Supabase work-in-progress — not yet part of this
+# repo's actual pipeline. Untracked locally, but got swept into a scheduled
+# task's commit on 29 Aug 2026 because safe_git_commit.sh picks up every
+# untracked file; ignored from here on so that doesn't happen again.
+multi-user_plan.md
+supabase/
