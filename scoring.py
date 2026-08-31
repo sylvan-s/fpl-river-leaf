@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Canonical expected-points scoring — the single source of truth for
-expected_points(), the DC-threshold estimator, and the bonus-points
-shrinkage that produces xbonus90.
+expected_points(), the DC-threshold estimator, the bonus-points shrinkage
+that produces xbonus90, and (added 31 Aug 2026) the continuous-metric
+shrinkage build_squad.py uses for xg90/xa90/xgi90/xgc90/cbit90/cbirt90/sv90 —
+see estimate_k_priors()/shrink_rate() below and METHODOLOGY_ALTERNATIVES.md's
+A0.2 "Phase 2" for why this shipped ahead of the original GW6 gate.
 
 EXTRACTED 14 Aug 2026 (architecture review candidate #1). Before this, the
 formula existed as four independently-written copies:
@@ -219,6 +222,71 @@ def bonus_shrinkage(players, teams, min_minutes=900):
             mult = TACKLE_BUMP
         out[r["pid"]] = shrunk * mult
     return out, k
+
+
+# ---- continuous-metric shrinkage for build_squad.py (roadmap A0.2, activation
+# REVISED 31 Aug 2026 — see METHODOLOGY_ALTERNATIVES.md "Phase 2") -----------
+#
+# Same Poisson-Gamma method-of-moments as fpl_research_mcp.py's `_estimate_k`/
+# `_shrunk` — deliberately a SEPARATE, hand-maintained copy rather than an
+# import, for the same reason estimate_k_bonus() above is (see this module's
+# docstring): importing that file would pull in its whole MCP server/tool
+# surface (it instantiates a live server object and imports httpx at module
+# load, per its own top-of-file comment) for a few lines of arithmetic, and
+# touching a live ~3000-line MCP server mid-season for a refactor is a real
+# behavioural risk for a theoretical win — the exact trade already made and
+# documented for the bonus estimator above. Keep DISPERSION in sync with
+# fpl_research_mcp.py's DISPERSION dict by hand if either changes; there is
+# no automated check for this, the same gap estimate_k_bonus() already
+# accepts.
+#
+# Scope: xg90/xa90/xgi90/xgc90/cbit90/cbirt90/sv90 only. Deliberately EXCLUDES
+# stp (start rate) — that uses a different, newer binomial formula
+# (`_estimate_k_binomial()` in build_prediction_tracker.py) not yet through
+# the same full-season backtest these six/seven have. See A0.2 in
+# METHODOLOGY_ALTERNATIVES.md for why the two were split.
+PRIORS_DISPERSION = {
+    "xg90": 0.11, "xa90": 0.11, "xgi90": 0.11, "xgc90": 0.11,  # xG family
+    "cbit90": 1.0, "cbirt90": 1.0, "sv90": 1.0,                 # counts
+}
+
+
+def estimate_k_priors(samples, dispersion=1.0):
+    """Poisson-Gamma method of moments — same formula as
+    fpl_research_mcp.py's `_estimate_k`, kept as a separate hand-maintained
+    copy (see the section comment above, and this module's own docstring).
+
+    samples: [(rate, n90), ...] for the population this metric/position is
+    being derived over. Returns a safe fallback (10.0) rather than raising
+    when the population is too small to fit from — the same "not enough
+    data yet" behaviour fpl_research_mcp.py's version has.
+    """
+    pts = [(r, n) for r, n in samples if n >= 3 and r >= 0]
+    if len(pts) < 20:
+        return 10.0
+    rates = [r for r, _ in pts]
+    m = sum(rates) / len(rates)
+    if m <= 0:
+        return 10.0
+    total_var = sum((r - m) ** 2 for r in rates) / (len(rates) - 1)
+    sampling_var = dispersion * (sum(r / n for r, n in pts) / len(pts))
+    between_var = total_var - sampling_var
+    if between_var <= 1e-9:
+        return 40.0
+    return max(1.0, min(m / between_var, 60.0))
+
+
+def shrink_rate(raw, n90, baseline, k):
+    """shrunk = (n90*raw + k*baseline) / (n90+k).
+
+    Returns `baseline` unchanged when n90 <= 0 — no current-season data at
+    all yet (GW1's degenerate case, or a player the live fetch didn't
+    return) — matching fpl_research_mcp.py's `_shrunk()` behaviour in the
+    same situation.
+    """
+    if n90 <= 0:
+        return baseline
+    return (n90 * raw + k * baseline) / (n90 + k)
 
 
 def expected_points(r, empirical=True):

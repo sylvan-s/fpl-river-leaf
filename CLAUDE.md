@@ -13,3 +13,7 @@ Default vocabulary — `needs-triage`, `needs-info`, `ready-for-agent`, `ready-f
 ### Domain docs
 
 Single-context layout — `CONTEXT.md` + `docs/adr/` at the repo root, created lazily as terms and decisions get resolved. See `docs/agents/domain.md`.
+
+### Squad optimiser preferences
+
+`optimise_squad.py` holds standing preferences (no Haaland, max attackers per club) as overridable ILP constraints and reports the point cost of each. Before running it, state the active defaults and ask whether to proceed or clear one — see `docs/agents/optimiser.md`.

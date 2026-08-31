@@ -11,6 +11,9 @@ player: it looks justified but cannot be reproduced.
     python3 build_squad.py --gate 0.70     # loosen the availability gate
     python3 build_squad.py --season-starts # gate 2 on full-season starts, not last-16
     python3 build_squad.py --no-intel      # disable ROLE_INTEL.md adjustments (ON by default since 13 Aug 2026)
+    python3 build_squad.py --shrunk-priors # blend live 2026/27 rates toward the 2025/26 prior (roadmap A0.2,
+                                            # OFF by default until exercised - see METHODOLOGY_ALTERNATIVES.md
+                                            # "Phase 2"). Needs live network; degrades to prior-only if unreachable.
 
 NOT a live tool. It reads the frozen prior-season snapshot, so from GW1 it should
 read player_gw from SQLite instead — see METHODOLOGY_ALTERNATIVES.md B6.
@@ -206,6 +209,11 @@ USE_EMPIRICAL_DC = True   # roadmap A4. Pass --legacy-dc for the superseded step
 USE_INTEL = True          # ROLE_INTEL.md adjustments. Pass --no-intel to disable.
 USE_BONUS = True          # roadmap A1 (xbonus90). Pass --no-bonus to rebuild without it.
 USE_CONTAM_FILTER = True  # Tier-1 contaminated-prior exclusion. Pass --allow-contaminated to include them.
+USE_SHRUNK_PRIORS = False # roadmap A0.2 Phase 2 (revised 31 Aug 2026). DEFAULT OFF
+                          # until exercised via --compare-shrink this week - pass
+                          # --shrunk-priors to enable. Flips to default-on before
+                          # the GW4 deadline if that check looks sane. See
+                          # METHODOLOGY_ALTERNATIVES.md A0.2 "Phase 2".
 
 # Scoring table, the DC-threshold estimator, and bonus shrinkage all moved to
 # scoring.py (architecture review candidate #1) — see that module's
@@ -226,20 +234,84 @@ _bonus_shrinkage = scoring.bonus_shrinkage
 # players, not a component of expected points. Kept separate on purpose.
 
 
+# ---- live current-season fetch, for --shrunk-priors only --------------------
+# build_squad.py has been fully offline until now (SNAP is a frozen JSON file
+# on disk). This is its first live-network dependency, and it is kept
+# strictly optional and silent-safe: any failure (no egress, timeout, bad
+# response) degrades to {} - every row's shrink then no-ops back to its
+# prior-only value via scoring.shrink_rate()'s n90<=0 branch, so a sandboxed
+# or offline run behaves exactly as --shrunk-priors were never passed, just
+# with one warning printed rather than a crash.
+_current_cache = None
+
+
+def _fetch_current_season():
+    global _current_cache
+    if _current_cache is not None:
+        return _current_cache
+    import urllib.request
+    try:
+        req = urllib.request.Request(
+            "https://fantasy.premierleague.com/api/bootstrap-static/",
+            headers={"User-Agent": "fpl-build-squad/1.0"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        _current_cache = {str(e["id"]): e for e in data.get("elements", [])}
+    except Exception as exc:
+        print(f"  SHRUNK PRIORS: live bootstrap-static fetch failed ({exc}) - "
+              f"falling back to prior-only rates for every player this run.",
+              file=sys.stderr)
+        _current_cache = {}
+    return _current_cache
+
+
+def _current_rates(el):
+    """Current-season per-90 rates from a LIVE bootstrap element, in this
+    file's own field names. Mirrors fpl_research_mcp.py's `_rates()` — see
+    scoring.py's PRIORS_DISPERSION comment for why that file isn't imported
+    directly. `el` may be {} (player not found in the live fetch, or the
+    fetch itself failed) - returns all-zero/n90=0, which shrink_rate() then
+    treats as "no current data, keep the baseline" rather than a divide.
+    """
+    m = el.get("minutes", 0) or 0
+    n90 = m / 90.0
+    if n90 <= 0:
+        return dict(n90=0.0, xg90=0.0, xa90=0.0, xgi90=0.0, xgc90=0.0,
+                    cbit90=0.0, cbirt90=0.0, sv90=0.0)
+    cbi = el.get("clearances_blocks_interceptions", 0) or 0
+    tk, rec = el.get("tackles", 0) or 0, el.get("recoveries", 0) or 0
+    return dict(
+        n90=n90,
+        xg90=f(el.get("expected_goals")) / n90,
+        xa90=f(el.get("expected_assists")) / n90,
+        xgi90=f(el.get("expected_goal_involvements")) / n90,
+        xgc90=f(el.get("expected_goals_conceded")) / n90,
+        cbit90=(cbi + tk) / n90,
+        cbirt90=(cbi + tk + rec) / n90,
+        sv90=(el.get("saves") or 0) / n90,
+    )
+
+
 def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
-         empirical=None):
+         empirical=None, shrunk=None):
     use_intel = USE_INTEL if intel is None else intel
     use_bonus = USE_BONUS if bonus is None else bonus
     use_contam_filter = USE_CONTAM_FILTER if exclude_contaminated is None else exclude_contaminated
     use_empirical_dc = USE_EMPIRICAL_DC if empirical is None else empirical
+    use_shrunk = USE_SHRUNK_PRIORS if shrunk is None else shrunk
     snap = json.load(open(SNAP, encoding="utf-8"))
     teams = {int(k): v for k, v in snap["teams"].items()}
     last16 = {} if season_starts else _load_last16()
     xbonus_map, _bonus_k = _bonus_shrinkage(snap["players"], teams) if use_bonus else ({}, None)
     contam = _contaminated() if use_contam_filter else {}
+    current = _fetch_current_season() if use_shrunk else {}
     excluded = []
     matched = set()
-    out = []
+    # PASS A - baseline rows (prior-season / last16 / bonus), no intel yet.
+    # Shrinkage needs every row's current-season sample BEFORE it can derive
+    # a population k for any one of them, so this has to be a full pass
+    # before anything downstream (intel, p_cs, score) runs - see PASS B below.
+    rows = []
     for pid, p in snap["players"].items():
         m = p.get("minutes", 0) or 0
         if m < MIN_MINUTES:
@@ -286,6 +358,37 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
                  # tell whether xbonus90 came from a fitted k or one of
                  # scoring.BONUS_FALLBACK_KS without re-deriving it.
                  bonus_k=_bonus_k)
+        if use_shrunk:
+            r["_cur"] = _current_rates(current.get(pid, {}))
+        rows.append(r)
+
+    # Between passes: derive one k per metric from the WHOLE population's
+    # current-season samples, then blend every row toward it. Pool-wide, not
+    # per-position — a deliberate scope decision for this first activation,
+    # not an oversight; see METHODOLOGY_ALTERNATIVES.md A0.2 "Phase 2" for
+    # what the GW5 review should reconsider if this looks wrong.
+    if use_shrunk:
+        ks = {}
+        for metric, disp in scoring.PRIORS_DISPERSION.items():
+            samples = [(r["_cur"][metric], r["_cur"]["n90"]) for r in rows]
+            ks[metric] = scoring.estimate_k_priors(samples, dispersion=disp)
+        degenerate = sorted(m for m, k in ks.items() if k in (10.0, 40.0, 60.0))
+        if degenerate:
+            print(f"  SHRUNK PRIORS: fallback/clamp k for {', '.join(degenerate)} "
+                  f"— not derived from variance (population too thin, or GW1's "
+                  f"no-current-data case) — treat those metrics as unvalidated "
+                  f"this run.", file=sys.stderr)
+        for r in rows:
+            cur = r.pop("_cur")
+            for metric in scoring.PRIORS_DISPERSION:
+                r[metric] = scoring.shrink_rate(cur[metric], cur["n90"], r[metric], ks[metric])
+
+    # PASS B - intel, availability, score. Same order as the old single-pass
+    # loop (intel BEFORE p_cs/score), so a ROLE_INTEL `mult`/`set` entry
+    # applies ON TOP of the now-shrunk baseline, not the other way round -
+    # unchanged whether use_shrunk is on or off.
+    out = []
+    for r in rows:
         if use_intel:
             for e in ia.apply(r):
                 matched.add((e["player"], e["team"]))
@@ -293,6 +396,11 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
         r["ok"] = r["name"] not in UNAVAILABLE
         r["score"] = scoring.expected_points(r, empirical=use_empirical_dc)
         out.append(r)
+    if use_shrunk and not current:
+        print("  SHRUNK PRIORS: enabled but no live current-season data was "
+              "available this run (see the fetch warning above, if any) — "
+              "every rate fell back to its prior-only value, same as "
+              "--shrunk-priors were never passed.", file=sys.stderr)
     if use_intel:
         # UNMATCHED IS A BUG, NOT A NO-OP. A typo'd name/team in the fence
         # would otherwise adjust nothing and say nothing - the exact silent
@@ -361,11 +469,13 @@ def main():
     use_bonus = "--no-bonus" not in sys.argv
     use_contam_filter = "--allow-contaminated" not in sys.argv
     use_empirical_dc = "--legacy-dc" not in sys.argv
+    use_shrunk = "--shrunk-priors" in sys.argv or USE_SHRUNK_PRIORS
     gate = GATE_XI
     if "--gate" in sys.argv:
         gate = float(sys.argv[sys.argv.index("--gate") + 1])
     pool = load(season_starts=season_starts, intel=use_intel, bonus=use_bonus,
-                exclude_contaminated=use_contam_filter, empirical=use_empirical_dc)
+                exclude_contaminated=use_contam_filter, empirical=use_empirical_dc,
+                shrunk=use_shrunk)
     best = None
     for form in ((3,4,3),(3,5,2),(4,4,2),(4,3,3),(5,3,2),(4,5,1),(5,4,1)):
         ok, xi, sq, xs, tot = build(pool, form, allow_haaland, gate)
@@ -380,7 +490,8 @@ def main():
     print(f"gates: {MIN_MINUTES}+ mins · starts% basis: {basis} · "
           f">={gate:.0%} (XI) / {GATE_BENCH:.0%} (bench) "
           f"· £{BUDGET}m · max {MAX_PER_CLUB}/club" + ("" if allow_haaland else " · no Haaland")
-          + (" · INTEL ADJUSTMENTS APPLIED (default)" if use_intel else " · INTEL OFF (--no-intel)"))
+          + (" · INTEL ADJUSTMENTS APPLIED (default)" if use_intel else " · INTEL OFF (--no-intel)")
+          + (" · SHRUNK PRIORS (--shrunk-priors)" if use_shrunk else ""))
     print(f"formation {form[0]}-{form[1]}-{form[2]}   XI £{xs:.1f}m   "
           f"squad £{tot:.1f}m   bank £{BUDGET-tot:.1f}m\n")
     for r in sorted(xi, key=lambda x: (list(POS.values()).index(x["pos"]), -x["score"])):

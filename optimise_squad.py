@@ -15,6 +15,22 @@ one. This solves the same problem exactly.
     python3 optimise_squad.py --fixtures               # score on xP_adj (GW1-4)
     python3 optimise_squad.py --fixtures --transfers 1
 
+EXOGENOUS PREFERENCES. Two standing choices are applied as ILP constraints,
+ON by default, each overridable per run - see "THE FORMULATION" below for
+why constraints (not a hardcoded pool filter) is the right mechanism, and
+"PRICE OF THE PREFERENCE" for why every one of them reports its own cost.
+
+    python3 optimise_squad.py --haaland                      # relax: allow Haaland
+    python3 optimise_squad.py --max-attackers-per-club 3      # relax: allow 3
+    python3 optimise_squad.py --no-max-attackers-per-club     # disable: fall back
+                                                                # to the blanket
+                                                                # 3-per-club rule only
+
+A request to RUN the optimiser (from Sylvan, or a scheduled skill) should
+open with a dialogue stating the active defaults and asking whether to
+proceed or clear/adjust one - see docs/agents/optimiser.md. This file only
+implements the constraints; the dialogue is the calling agent's job.
+
 ROLE_INTEL.md adjustments are ON BY DEFAULT since 13 Aug 2026 (see
 build_squad.py USE_INTEL) - every run above already applies the `set stp` /
 `mult` fence entries. This was flipped after finding the weekly brief's
@@ -26,6 +42,18 @@ explicit comparisons. Pass --no-intel to see the raw, unadjusted numbers:
     python3 optimise_squad.py --no-intel --transfers 1
     python3 optimise_squad.py --compare-intel           # WITH vs WITHOUT, one run
     python3 optimise_squad.py --compare-intel --transfers 1
+
+SHRUNK PRIORS (roadmap A0.2, revised 31 Aug 2026) - OFF by default, unlike
+intel above. Blends live 2026/27 per-90 rates toward the 2025/26 prior for
+xg90/xa90/xgi90/xgc90/cbit90/cbirt90/sv90 (NOT stp - see
+METHODOLOGY_ALTERNATIVES.md A0.2 "Phase 2" for why start rate stays out of
+this). Needs live network to build_squad.load()'s new fetch; degrades to
+prior-only with a warning if unreachable (e.g. this session's sandbox).
+Compare-only until the GW3 sanity check looks sane, then --shrunk-priors
+flips to default-on before GW4:
+
+    python3 optimise_squad.py --shrunk-priors --fixtures --transfers 1
+    python3 optimise_squad.py --compare-shrink --fixtures --transfers 1   # WITH vs WITHOUT, one run
 
 TWO MODES, AND THE WEEKLY ONE IS THE SECOND.
 
@@ -56,6 +84,14 @@ THE FORMULATION
       XI size     sum( x_i )                    == 11
       formation   1 GKP · 3-5 DEF · 2-5 MID · 1-3 FWD in the XI
       club        sum over club( x_i + b_i )    <= 3
+      concentr.   sum over club, pos in {MID,FWD}( x_i + b_i )  <= 2   (default)
+                  a PREFERENCE, not an FPL rule - the 3-per-club line above is
+                  the real rule and never changes. This one caps how many of
+                  those 3 may be attacking-returns sources from the same
+                  fixture, because correlated returns (three players who all
+                  score or all blank together) are a risk the flat objective
+                  cannot see - it only sums expectations, never covariance.
+                  Overridable/clearable per run - see EXOGENOUS PREFERENCES.
       gates       applied as a pre-filter, so an ineligible player has no variable
 
 WHAT THIS BUYS OVER GREEDY - measured, not asserted.
@@ -108,6 +144,23 @@ BUDGET, SQUAD, XI_SIZE, MAX_CLUB = (
 FORMATION = constants.FORMATION
 HIT_COST = 4                     # points per transfer beyond the free allowance
 
+# --- Exogenous preferences --------------------------------------------------
+# NOT FPL rules - those are constants.py (budget, squad shape, 3-per-club) and
+# never change. These are Sylvan's standing choices, held as constraints so
+# their cost is measurable (see PRICE OF THE PREFERENCE) rather than baked in
+# silently. allow_haaland follows the same pattern via its own bool param.
+MAX_ATT_PER_CLUB_DEFAULT = 2     # cap on MID+FWD owned from one club; None = off
+
+
+def _max_attackers_from_one_club(rows):
+    """(club, count) for whichever club has the most MID+FWD players in
+    `rows`, or (None, 0) if there are none."""
+    from collections import Counter
+    c = Counter(r["team"] for r in rows if r["pos"] in ("MID", "FWD"))
+    if not c:
+        return None, 0
+    return c.most_common(1)[0]
+
 # The live squad, from squad.json via squad_state.py - the SINGLE source of
 # truth. These were hardcoded here, in build_dashboard.py and in
 # fixture_adjust.py until 9 Aug 2026; keeping three copies in step was a
@@ -122,7 +175,8 @@ CURRENT_SQUAD = _STATE.names
 BANK = _STATE.bank
 
 
-def optimise(pool, allow_haaland=False, verbose=True):
+def optimise(pool, allow_haaland=False, max_att_per_club=MAX_ATT_PER_CLUB_DEFAULT,
+             verbose=True):
     P = [r for r in pool if r["ok"]]
     if not allow_haaland:
         P = [r for r in P if r["name"] != "Haaland"]
@@ -163,6 +217,9 @@ def optimise(pool, allow_haaland=False, verbose=True):
     for club in {r["team"] for r in P}:
         idx = [i for i in range(len(P)) if P[i]["team"] == club]
         prob += pulp.lpSum(x[i] + b[i] for i in idx) <= MAX_CLUB
+        if max_att_per_club is not None:
+            idx_att = [i for i in idx if P[i]["pos"] in ("MID", "FWD")]
+            prob += pulp.lpSum(x[i] + b[i] for i in idx_att) <= max_att_per_club
 
     prob.solve(pulp.PULP_CBC_CMD(msg=0))
     if pulp.LpStatus[prob.status] != "Optimal":
@@ -174,6 +231,7 @@ def optimise(pool, allow_haaland=False, verbose=True):
 
 
 def optimise_transfers(pool, owned_names, bank, n_transfers, allow_haaland=False,
+                       max_att_per_club=MAX_ATT_PER_CLUB_DEFAULT,
                        free_transfers=1, force=False):
     """Best n_transfers FROM the current squad. The weekly question.
 
@@ -246,6 +304,9 @@ def optimise_transfers(pool, owned_names, bank, n_transfers, allow_haaland=False
     for club in {r["team"] for r in P}:
         ii = [i for i in range(len(P)) if P[i]["team"] == club]
         prob += pulp.lpSum(own[i] for i in ii) <= MAX_CLUB
+        if max_att_per_club is not None:
+            ii_att = [i for i in ii if P[i]["pos"] in ("MID", "FWD")]
+            prob += pulp.lpSum(own[i] for i in ii_att) <= max_att_per_club
 
     prob.solve(pulp.PULP_CBC_CMD(msg=0))
     if pulp.LpStatus[prob.status] != "Optimal":
@@ -273,20 +334,36 @@ def show(xi, bench, obj):
               f"{r['stp']*100:>4.0f}%   xP {r['score']:>5.2f}")
 
 
-def transfer_mode(pool, n, allow_haaland):
+def transfer_mode(pool, n, allow_haaland, max_att_per_club=MAX_ATT_PER_CLUB_DEFAULT):
     owned = set(CURRENT_SQUAD)
     base = [r for r in pool if r["name"] in owned]
-    # Baseline: best XI from the squad already owned.
-    res0 = optimise_transfers(pool, owned, BANK, 0, allow_haaland)
+    # Baseline: best XI from the squad already owned, AS OWNED - never run
+    # through max_att_per_club. That preference governs what gets BOUGHT; a
+    # squad assembled before the preference existed (or under FPL's own
+    # weaker 3-per-club rule) can already breach a stricter, later-added one.
+    # Forcing k=0 through the same cap would make "make no changes" itself
+    # infeasible and hide the real answer - whether a transfer is worth it.
+    res0 = optimise_transfers(pool, owned, BANK, 0, allow_haaland, max_att_per_club=None)
     if not res0:
-        sys.exit("current squad is infeasible under the constraints — check CURRENT_SQUAD")
+        sys.exit("current squad is infeasible under the base constraints — check CURRENT_SQUAD")
     xi0 = sum(r["score"] for r in res0[0])
     print(f"current squad   XI xP/90 {xi0:.2f}   bank £{BANK:.1f}m\n")
 
+    if max_att_per_club is not None:
+        club_b, breach = _max_attackers_from_one_club(res0[0] + res0[1])
+        if breach > max_att_per_club:
+            print(f"  NOTE: current squad already holds {breach} attackers from "
+                  f"{club_b} - over the {max_att_per_club}/club preference. Options "
+                  f"below still enforce the cap on the resulting squad, so clearing "
+                  f"the breach may be forced into whichever move is shown, or may "
+                  f"need more transfers than are free this week.\n")
+
     for k in range(1, n + 1):
-        res = optimise_transfers(pool, owned, BANK, k, allow_haaland)
+        res = optimise_transfers(pool, owned, BANK, k, allow_haaland, max_att_per_club)
         if not res:
-            print(f"  {k} transfer(s): infeasible"); continue
+            print(f"  {k} transfer(s): infeasible"
+                  + (f" — {max_att_per_club}/club cap cannot be met in {k} move(s)"
+                     if max_att_per_club is not None else "")); continue
         xi, bench, hits = res
         gain = sum(r["score"] for r in xi) - xi0
         out = sorted(owned - {r["name"] for r in xi + bench})
@@ -324,7 +401,8 @@ def _fixture_scale(pool):
     return fa
 
 
-def compare_intel(allow_haaland, season_starts, use_fixtures, n_transfers):
+def compare_intel(allow_haaland, season_starts, use_fixtures, n_transfers,
+                   max_att_per_club=MAX_ATT_PER_CLUB_DEFAULT):
     """WITH vs WITHOUT ROLE_INTEL.md adjustments, in one run.
 
     Mirrors the "PRICE OF THE PREFERENCE" pattern already used for the
@@ -343,13 +421,13 @@ def compare_intel(allow_haaland, season_starts, use_fixtures, n_transfers):
 
     if n_transfers is not None:
         print("--- WITHOUT intel ---")
-        transfer_mode(pool_off, n_transfers, allow_haaland)
+        transfer_mode(pool_off, n_transfers, allow_haaland, max_att_per_club)
         print("\n--- WITH intel ---")
-        transfer_mode(pool_on, n_transfers, allow_haaland)
+        transfer_mode(pool_on, n_transfers, allow_haaland, max_att_per_club)
         return
 
-    xi_off, bench_off, _ = optimise(pool_off, allow_haaland)
-    xi_on, bench_on, _ = optimise(pool_on, allow_haaland)
+    xi_off, bench_off, _ = optimise(pool_off, allow_haaland, max_att_per_club)
+    xi_on, bench_on, _ = optimise(pool_on, allow_haaland, max_att_per_club)
     xp_off = sum(r["score"] for r in xi_off)
     xp_on = sum(r["score"] for r in xi_on)
     out = sorted({r["name"] for r in xi_off + bench_off}
@@ -366,17 +444,80 @@ def compare_intel(allow_haaland, season_starts, use_fixtures, n_transfers):
               "gets picked at this budget.")
 
 
+def compare_shrink(allow_haaland, season_starts, use_fixtures, n_transfers,
+                    max_att_per_club=MAX_ATT_PER_CLUB_DEFAULT):
+    """WITH vs WITHOUT --shrunk-priors, in one run. Mirrors compare_intel()
+    above exactly, varying `shrunk` instead of `intel` - this is the
+    sanity-check tool for this week's GW3 dry run and the GW5 review (see
+    METHODOLOGY_ALTERNATIVES.md A0.2 "Phase 2"). If the live bootstrap-static
+    fetch fails (no network - true in this session's sandbox), both pools
+    fall back to prior-only and this will correctly report no difference;
+    that is build_squad.load()'s designed degrade-safe behaviour, not a bug
+    in the comparison.
+    """
+    print("=== SHRINK COMPARISON — WITH vs WITHOUT --shrunk-priors ===\n")
+    pool_off = bs.load(season_starts=season_starts, shrunk=False)
+    pool_on = bs.load(season_starts=season_starts, shrunk=True)
+    if use_fixtures:
+        _fixture_scale(pool_off)
+        _fixture_scale(pool_on)
+        print(f"objective: xP_adj (opponent-adjusted, GW1-4)\n")
+
+    if n_transfers is not None:
+        print("--- WITHOUT shrunk priors ---")
+        transfer_mode(pool_off, n_transfers, allow_haaland, max_att_per_club)
+        print("\n--- WITH shrunk priors ---")
+        transfer_mode(pool_on, n_transfers, allow_haaland, max_att_per_club)
+        return
+
+    xi_off, bench_off, _ = optimise(pool_off, allow_haaland, max_att_per_club)
+    xi_on, bench_on, _ = optimise(pool_on, allow_haaland, max_att_per_club)
+    xp_off = sum(r["score"] for r in xi_off)
+    xp_on = sum(r["score"] for r in xi_on)
+    out = sorted({r["name"] for r in xi_off + bench_off}
+                 - {r["name"] for r in xi_on + bench_on})
+    inn = sorted({r["name"] for r in xi_on + bench_on}
+                 - {r["name"] for r in xi_off + bench_off})
+    print(f"XI xP/90 WITHOUT shrunk priors: {xp_off:.2f}")
+    print(f"XI xP/90 WITH shrunk priors:    {xp_on:.2f}   ({xp_on - xp_off:+.2f})")
+    if out or inn:
+        print(f"  OUT (without -> with): {out}")
+        print(f"  IN  (without -> with): {inn}")
+    else:
+        print("  Same 15 players either way — shrinkage moved rates but not "
+              "who gets picked at this budget (or the live fetch found "
+              "nothing to blend toward - check for a fetch-failed warning "
+              "above).")
+
+
 def main():
     global BUDGET
     allow_haaland = "--haaland" in sys.argv
     if "--gate" in sys.argv:
         bs.GATE_XI = float(sys.argv[sys.argv.index("--gate") + 1])
 
+    # Concentration preference: same treatment as --haaland above - overridable
+    # (--max-attackers-per-club N) or clearable (--no-max-attackers-per-club),
+    # never silently different from what gets printed and reported below.
+    if "--no-max-attackers-per-club" in sys.argv:
+        max_att_per_club = None
+    elif "--max-attackers-per-club" in sys.argv:
+        max_att_per_club = int(sys.argv[sys.argv.index("--max-attackers-per-club") + 1])
+    else:
+        max_att_per_club = MAX_ATT_PER_CLUB_DEFAULT
+
     if "--compare-intel" in sys.argv:
         n_transfers = (int(sys.argv[sys.argv.index("--transfers") + 1])
                        if "--transfers" in sys.argv else None)
         compare_intel(allow_haaland, "--season-starts" in sys.argv,
-                      "--fixtures" in sys.argv, n_transfers)
+                      "--fixtures" in sys.argv, n_transfers, max_att_per_club)
+        return
+
+    if "--compare-shrink" in sys.argv:
+        n_transfers = (int(sys.argv[sys.argv.index("--transfers") + 1])
+                       if "--transfers" in sys.argv else None)
+        compare_shrink(allow_haaland, "--season-starts" in sys.argv,
+                       "--fixtures" in sys.argv, n_transfers, max_att_per_club)
         return
 
     # Parses its own argv now (architecture review candidate #3) rather than
@@ -384,13 +525,18 @@ def main():
     # entry point, so this was already correct in practice, but an explicit
     # local variable is the real fix, not a coincidence of shared argv.
     use_intel = "--no-intel" not in sys.argv
-    pool = bs.load(season_starts="--season-starts" in sys.argv, intel=use_intel)
+    use_shrunk = "--shrunk-priors" in sys.argv    # OFF by default - see A0.2 "Phase 2"
+    pool = bs.load(season_starts="--season-starts" in sys.argv, intel=use_intel,
+                   shrunk=use_shrunk)
     if use_intel:
         print("INTEL: ROLE_INTEL.md `adjustments` fence is ACTIVE (default since "
               "13 Aug 2026 - pass --no-intel to disable)\n")
     else:
         print("INTEL: DISABLED (--no-intel) - stp/xg90/etc. are the raw, "
               "ROLE_INTEL-blind numbers\n")
+    print("SHRUNK PRIORS: ACTIVE (--shrunk-priors)\n" if use_shrunk else
+          "SHRUNK PRIORS: OFF by default (--shrunk-priors to enable) - see "
+          "METHODOLOGY_ALTERNATIVES.md A0.2 'Phase 2'\n")
     if "--fixtures" in sys.argv:
         # Swap the objective from flat xP to opponent-adjusted xP over the
         # window. Everything else - gates, constraints, bench rule - is
@@ -405,17 +551,19 @@ def main():
         print(f"OBJECTIVE: xP_adj over GW1-{fa.HORIZON} "
               f"(opponent-adjusted; workload scaling "
               f"{'on' if fa.SCALE_WORKLOAD else 'off'})")
+    att_note = ("" if max_att_per_club is None
+                else f" · max {max_att_per_club} attackers/club")
     print(f"pool {len(pool)} players · gates: {bs.MIN_MINUTES}+ mins · "
           f"starts >={bs.GATE_XI:.0%} XI / {bs.GATE_BENCH:.0%} bench"
-          + ("" if allow_haaland else " · no Haaland") + "\n")
+          + ("" if allow_haaland else " · no Haaland") + att_note + "\n")
 
     if "--transfers" in sys.argv:
         n = int(sys.argv[sys.argv.index("--transfers") + 1])
         print("=== TRANSFER MODE — best moves from the CURRENT squad ===")
-        transfer_mode(pool, n, allow_haaland)
+        transfer_mode(pool, n, allow_haaland, max_att_per_club)
         return
 
-    xi, bench, obj = optimise(pool, allow_haaland)
+    xi, bench, obj = optimise(pool, allow_haaland, max_att_per_club)
     print("=== OPTIMAL (ILP)" + ("" if allow_haaland else " — WITH THE NO-HAALAND PREFERENCE APPLIED") + " ===")
     show(xi, bench, obj)
 
@@ -424,11 +572,14 @@ def main():
     # to hold - but it must never be silently baked into something labelled
     # "optimal". Always report what it costs.
     if not allow_haaland:
-        fxi, fbench, _ = optimise(pool, allow_haaland=True)
+        # Relax ONLY this preference - hold max_att_per_club fixed at its
+        # current value - so the cost reported is this preference's alone,
+        # not conflated with the concentration cap.
+        fxi, fbench, _ = optimise(pool, allow_haaland=True, max_att_per_club=max_att_per_club)
         free = sum(r["score"] for r in fxi)
         held = sum(r["score"] for r in xi)
         cost = free - held
-        print(f"\n--- PRICE OF THE PREFERENCE ---")
+        print(f"\n--- PRICE OF THE PREFERENCE (no Haaland) ---")
         print(f"  unconstrained optimum : {free:.2f} xP/90"
               + ("  (includes Haaland)" if any(r["name"] == "Haaland" for r in fxi) else ""))
         print(f"  with no-Haaland held  : {held:.2f} xP/90")
@@ -443,6 +594,39 @@ def main():
         if gone:
             print(f"  holding it gives up : {sorted(gone)}")
             print(f"  and starts instead  : {sorted(gained)}")
+
+    if max_att_per_club is not None:
+        # Same treatment, other axis: relax the concentration cap only, hold
+        # allow_haaland fixed at its current value.
+        rxi, rbench, _ = optimise(pool, allow_haaland, max_att_per_club=None)
+        relaxed = sum(r["score"] for r in rxi)
+        held2 = sum(r["score"] for r in xi)
+        cost2 = relaxed - held2
+        club_m, m = _max_attackers_from_one_club(rxi + rbench)
+        print(f"\n--- PRICE OF THE CONCENTRATION PREFERENCE "
+              f"(max {max_att_per_club} attackers/club) ---")
+        print(f"  unconstrained on this axis : {relaxed:.2f} xP/90"
+              + (f"  (uses {m} attackers from one club — {club_m})"
+                 if m > max_att_per_club else ""))
+        print(f"  with the cap held          : {held2:.2f} xP/90")
+        print(f"  COST OF THE PREFERENCE     : {cost2:.2f} xP/90  (~{cost2*38:.0f} pts/season)")
+        if cost2 < 0.30:
+            print(f"  -> Small enough to be inside model error. The preference is"
+                  f" effectively free.")
+        else:
+            print(f"  -> Material. This preference is costing real points; revisit it.")
+        gone2 = {r["name"] for r in rxi} - {r["name"] for r in xi}
+        gained2 = {r["name"] for r in xi} - {r["name"] for r in rxi}
+        if gone2:
+            print(f"  holding it gives up : {sorted(gone2)}")
+            print(f"  and starts instead  : {sorted(gained2)}")
+
+    if max_att_per_club is not None:
+        print(f"\n(NOTE: greedy below is blind to the max-{max_att_per_club}-"
+              f"attackers-per-club preference — build_squad.py never applies it, "
+              f"so any gap it shows against the ILP is not purely a methodology "
+              f"gap; some of it may be the ILP paying for a constraint greedy "
+              f"never had to satisfy.)")
 
     # Same gates, same xP, greedy slot-filling - the difference is the method.
     best = None

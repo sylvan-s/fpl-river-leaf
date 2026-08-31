@@ -906,16 +906,62 @@ the only failure mode here is a skipped week leaving a gap in the RMSE
 record A0.2's own validation design depends on (fit GW1-5, check against
 GW6-10 actuals) — not a missing feature.
 
-**Phase 2 — GW6. The activation decision.** Read `docs/priors.html` panel 1:
-has shrunk actually beaten raw and prior on RMSE, consistently, for the
-metrics that matter, across GW1-5? If yes: wire the shrunk values into
-`build_squad.py`/`optimise_squad.py`/`fixture_adjust.py` in place of the
-frozen-2025/26-only reads — real integration work, but the statistics side
-is already proven against real outcomes by then, not freshly invented under
-deadline pressure. This is also A0.5's remaining precondition — the
-start-weighted objective (`xp_gw = stp x xP_adj`), sized at an 11% headline
-distortion on the live GW1 squad (`size_bench_value.py --fixtures`, 9 Aug),
-has been ready and blocked on exactly this since it was designed.
+**Phase 2 — REVISED 31 Aug 2026. Activate now for the continuous metrics;
+GW6 stays the gate for start rate only.** The original design treated
+"does shrinkage work" and "has THIS season diverged enough to trust it
+live" as one combined question, answered once at GW6. They are not the
+same question, and conflating them was costing weeks for no reason: the
+first was already answered on 12 Aug — see "Shrinkage backtest — 2025/26
+GW1-8 vs GW9-38" below, shrunk beat both raw and baseline on RMSE for all
+seven metrics, on a full season of ground truth. Waiting until GW6 to
+re-ask a question already settled, on a mechanism (`_estimate_k`) that
+*by construction* discounts a thin current-season sample (`n90/(n90+k)`
+weight — two gameweeks earns almost no trust automatically), was over-cautious
+for the six continuous per-90 metrics (xG90, xA90, xGC90, saves90, CBIT90,
+CBIRT90). Decision, agreed with Sylvan 31 Aug 2026: wire those six into
+`build_squad.py`/`optimise_squad.py`/`fixture_adjust.py` now, behind a flag
+(`use_shrunk_priors`, default off until exercised; `--shrunk-priors` to
+enable, `--compare-shrink` to diff against the frozen-prior baseline —
+mirrors the existing `--compare-intel` pattern), rather than wait for a
+GW6 checkpoint that was never actually running (see below).
+
+**Start rate is NOT included in this activation.** Its shrinkage uses a
+different, newer formula (`_estimate_k_binomial()` in
+`build_prediction_tracker.py`, method-of-moments on `p(1-p)/n`) that has not
+been through the same full-season backtest the continuous metrics have —
+the 12 Aug table's start-rate row used the older borrowed-constant `k`,
+which A0.2's 26 Aug correction specifically flagged as the wrong tool for
+a binomial quantity. Start rate stays gated at GW6 (see A0.2 above),
+unchanged by this decision.
+
+**Sequencing found while planning this.** The GW6 gate had a second,
+unrelated problem: it depends on `build_prediction_tracker.py` running
+every week from GW1, and as of 31 Aug it had run exactly once (GW1, a
+degenerate baseline-only week by design) — GW2 was never scored. The
+original Phase 1 plan assumed weekly execution that wasn't happening, so
+GW6 would have arrived with far less data behind it than the design
+required regardless. Catching that tracker up is now part of this work,
+not a separate concern.
+
+**Rollout: compare-only this week, live from GW4.** GW3's deadline
+(4 Sep) is too close to trust unexercised data-pipeline code for a live
+transfer decision. `--shrunk-priors` ships this week for sanity-checking
+via `--compare-shrink`; the flag flips to default-on before the GW4
+deadline once that check looks sane.
+
+**GW5 review, reframed as a sanity/kill-switch check, not a verdict.**
+With one or two live gameweeks banked by GW5, this is nowhere near the
+statistical power the original GW1-5-vs-GW6-10 design assumed — it is a
+"did anything break, does the direction look right" pass against
+`docs/priors.html` panel 1 plus a squad-level `--compare-shrink` diff, with
+room to tweak (per-position `k` instead of pool-wide, revisit which of the
+six metrics are worth shrinking, adjust the flag back off) if something
+looks wrong. The real statistically-powered read is still the GW10
+`predictive_backtest` gate, unchanged by any of this. This is also A0.5's
+remaining precondition — the start-weighted objective (`xp_gw = stp x
+xP_adj`), sized at an 11% headline distortion on the live GW1 squad
+(`size_bench_value.py --fixtures`, 9 Aug), stays blocked on the *start-rate*
+gate specifically, which this decision does not touch.
 
 **Phase 3 — downstream, sequencing unchanged by any of this.** A0.3 club
 rotation index (~GW8, below), A0.4 congestion overlay (~GW10, conditional),
@@ -1756,8 +1802,18 @@ GW1–2    Build nothing. Priors only. Verify logging fires.
 NOW      ** A4: p_threshold recalibration ** — NOT gated. The data exists.
          0.42 xP/90 understated for the 39 players in the 0.80-1.00 band;
          the 1.30x band is unreachable and never fires.
-GW3      Price decision (B1). First calibration entries exist.
-GW5–6    Start-rate shrinkage (A0.2). Goalkeeper screen (A2). Bonus/BPS (A1) —
+GW3      Price decision (B1). First calibration entries exist. Continuous-metric
+         shrinkage (A0.2, xG/xA/xGC/saves/CBIT/CBIRT only — NOT start rate)
+         shipped behind `--shrunk-priors`, compare-only via `--compare-shrink`
+         — REVISED 31 Aug 2026, see A0.2 Phase 2 above.
+GW4      Continuous-metric shrinkage flag flips to default-on, if the GW3
+         compare check looked sane.
+GW5      Sanity/kill-switch review of continuous-metric shrinkage against
+         `docs/priors.html` — NOT the statistically-powered read (too little
+         data by then), just a "did anything break" pass. See A0.2 above.
+GW5–6    Start-rate shrinkage (A0.2, still gated as originally planned —
+         unaffected by the GW3 continuous-metric decision). Goalkeeper
+         screen (A2). Bonus/BPS (A1) —
          DONE 12 Aug 2026, ahead of schedule.
          First calibration read.
          Start-weighted objective (A0.5) behind a flag — needs A0.2. Its other
