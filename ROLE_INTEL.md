@@ -670,6 +670,25 @@ sale would have made any future reconsideration moot regardless of his
 fitness. Logged as `Sarr-CRY-transfer-20260829-1`, pending Friday
 review.?
 
+**Correction, 31 Aug 2026 — the "no fence entry needed" judgement below was
+wrong.** The 28 Aug Friday review (below) accepted the injury bites as
+"narrative-only... his live availability already flows through
+`injury_report` directly, nothing for the adjustments fence to add." That
+is false for anything other than the manual `squad.json` edit made that
+same day: `build_squad.py`/`optimise_squad.py` never call `injury_report`
+at all — their only availability inputs are the last-16/season `stp` rate
+and this fence. Live status flows into a HUMAN's decision, not into the
+optimiser's own pool. Surfaced for real running the GW3 brief: `Sarr` still
+reads GROIN/INJURED/0%/unknown-return in live `injury_report` — unchanged
+since 27 Aug — but `optimise_squad.py --fixtures --transfers 1` confidently
+recommended buying him back (`Schade -> Sarr`, +0.85 xP/90), because
+nothing in his pool row reflected the injury. Fixed below with a
+`stp | set | 0.0` row — the exact mechanism this fence's own docs describe
+for unavailability, just never applied here. Treat any future "flows
+through live status directly, no fence entry" call on an owned-or-target
+player with suspicion: it is only true for `squad.json`, never for the
+optimiser.
+
 ---
 
 ## Machine-readable set-piece overrides
@@ -887,6 +906,7 @@ Mings      | AVL | xgi90  | mult | 0.7 | 1-6 | low    | 2026-08-28 | Accepted in
 Onana      | AVL | xgi90  | mult | 0.7 | 1-6 | low    | 2026-08-28 | Accepted in Friday review 28 Aug 2026 (AstonVilla-AVL-xgi90-20260825-1): squad exodus (Rogers/Konsa/Tielemans/Digne sold) + GW1 4-0 collapse to Brighton, Watkins/Martinez left out amid exit talk; -30% magnitude is Sylvan's own instructed estimate, not sourced; see entry 12 above
 Pau        | AVL | xgi90  | mult | 0.7 | 1-6 | low    | 2026-08-28 | Accepted in Friday review 28 Aug 2026 (AstonVilla-AVL-xgi90-20260825-1): squad exodus (Rogers/Konsa/Tielemans/Digne sold) + GW1 4-0 collapse to Brighton, Watkins/Martinez left out amid exit talk; -30% magnitude is Sylvan's own instructed estimate, not sourced; see entry 12 above
 Watkins    | AVL | xgi90  | mult | 0.7 | 1-6 | low    | 2026-08-28 | Accepted in Friday review 28 Aug 2026 (AstonVilla-AVL-xgi90-20260825-1): squad exodus (Rogers/Konsa/Tielemans/Digne sold) + GW1 4-0 collapse to Brighton, Watkins/Martinez left out amid exit talk; -30% magnitude is Sylvan's own instructed estimate, not sourced; see entry 12 above
+Sarr       | CRY | stp    | set  | 0.0 | 3-8 | high   | 2026-08-31 | Live injury_report unchanged since 27 Aug (GROIN, INJURED, 0%, unknown return) - accepted 28 Aug as narrative-only on the wrong assumption that this flows into the optimiser automatically; it does not (see entry 13's 31 Aug correction above). Without this row optimise_squad.py --fixtures --transfers 1 recommended buying him back for GW3 (Schade -> Sarr, +0.85 xP/90) despite him being unable to play. gws is a staleness nudge only - his return date is still unknown, so re-verify against injury_report before every run and remove this row (do not wait for GW8) the moment he's actually available again
 ```
 
 **Also wired into the live weekly tools, not just the offline squad scripts.**
