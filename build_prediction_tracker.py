@@ -724,15 +724,18 @@ if (!DATA.finished || DATA.finished.length === 0) {
      <th colspan="3" class="cum-gw-head">GW${latest} only</th>
      <th colspan="3" class="cum-season-head cum-season-start">cumulative, season to date</th></tr>
      <tr><th></th><th></th>
-     <th class="cum-gw">raw</th><th class="cum-gw">prior</th><th class="cum-gw">shrunk</th>
-     <th class="cum-season cum-season-start">raw</th><th class="cum-season">prior</th>
-     <th class="cum-season">shrunk</th></tr></thead>
+     <th class="cum-gw">raw<span class="th-sub">(&mu;, &sigma;)</span></th>
+     <th class="cum-gw">prior<span class="th-sub">(&mu;, &sigma;)</span></th>
+     <th class="cum-gw">shrunk<span class="th-sub">(&mu;, &sigma;)</span></th>
+     <th class="cum-season cum-season-start">raw<span class="th-sub">(&mu;, &sigma;)</span></th>
+     <th class="cum-season">prior<span class="th-sub">(&mu;, &sigma;)</span></th>
+     <th class="cum-season">shrunk<span class="th-sub">(&mu;, &sigma;)</span></th></tr></thead>
      <tbody>${rowsSum}</tbody></table>
-    <p class="tests" style="margin-top:6px">Each cell reads <span class="mono">(avg, rmse)</span>
-    \\u2014 avg is the mean value that estimator predicted across the players scored, rmse is its
-    error against what they actually did. Two players averaging to the same predicted rate can
-    still have wildly different rmse, so the average alone never tells you which estimator to
-    trust; it just tells you what it was predicting when you compare the errors.</p>
+    <p class="tests" style="margin-top:6px">Each cell reads <span class="mono">(&mu;, &sigma;)</span>
+    \\u2014 &mu; is the mean value that estimator predicted across the players scored, &sigma; is
+    its RMSE against what they actually did. Two players averaging to the same predicted rate can
+    still have wildly different &sigma;, so &mu; alone never tells you which estimator to trust;
+    it just tells you what it was predicting when you compare the errors.</p>
     <div class="find">Early season, "prior" (last season, or a positional fallback) often wins
     \\u2014 a handful of matches of noise can be worse than a full season of someone else's
     history. Watch for "shrunk" starting to beat "prior" consistently as gameweeks accumulate;
