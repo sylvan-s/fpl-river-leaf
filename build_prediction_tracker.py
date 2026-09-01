@@ -36,10 +36,16 @@ minutes _estimate_k() requires to trust a variance estimate, so k correctly
 falls back to a safe default and the page says so (tagged "fallback", not
 silently presented as derived) rather than borrowing a stale number.
 
-NEEDS NETWORK. Pulls the FPL API directly — bootstrap-static once per run,
-then event/{gw}/live/ once per newly-finished gameweek (cheap: one call per
-GW, not per player). Run this wherever publish_dashboard.sh normally runs, on
-a machine with real internet access, not an offline sandbox.
+SOURCES FROM SQLITE FIRST, added 1 Sep 2026 — see docs/adr/0003. Prefers
+fpl_research_mcp.py's player_gw table (~/.fpl-mcp/fpl_history_cache.sqlite,
+warmed weekly by Sylvan's own routine calling that MCP server's
+cache_history) over hitting the FPL API directly. Only falls back to a live
+fetch — bootstrap-static once per run, then event/{gw}/live/ once per
+newly-finished gameweek — when that database is not there to read, e.g. a
+Cowork/Claude sandbox session, whose $HOME has no route to a file on the
+real machine. Run this wherever publish_dashboard.sh normally runs; a
+machine with neither the database nor internet access falls back further
+still, to whatever was last persisted (see EMPTY-SEASON STATE below).
 
 PERSISTENCE, FOUR LAYERS.
   live_gw_cache.json      raw per-gameweek FPL stats, keyed by gameweek. Only
@@ -246,6 +252,88 @@ def update_live_cache(boot):
     if new:
         json.dump(cache, open(LIVE_CACHE, "w", encoding="utf-8"))
     return cache, finished, new
+
+
+# ==================================================== SQLITE (PREFERRED) ====
+# ADDED 1 Sep 2026. build() tries this FIRST, before update_live_cache()'s own
+# httpx calls - fpl_research_mcp.py's player_gw table is warmed weekly (every
+# Tuesday, by Sylvan's own routine calling that MCP server's cache_history)
+# from the exact same live/{gw} endpoint _fetch_live() hits, so a build run
+# from Sylvan's own terminal has no reason to fetch what is already sitting
+# on disk. Falls back to the live API untouched when the database is not
+# there to read - e.g. any Cowork/Claude sandbox session, whose $HOME has no
+# route to ~/.fpl-mcp/ on the real machine (see build_squad_page.py's
+# actual_route_snapshot() docstring for the identical constraint, solved
+# there by moving the read into an MCP tool instead - not done here because
+# that would mean this file duplicating ~250 lines of shrinkage machinery
+# into fpl_research_mcp.py, or that live production server importing THIS
+# file; either is a bigger, riskier change than the one-week-stale sandbox
+# fallback this file already handles via empty_state).
+def _sqlite_db_path():
+    """Mirrors fpl_research_mcp.py's _default_db_path() rather than
+    importing it - importing that FILE pulls in the whole MCP-server
+    dependency stack (httpx, the mcp SDK) for no reason a static-page build
+    has, same reasoning as the shrinkage machinery copied above."""
+    return os.environ.get("FPL_MCP_DB") or os.path.expanduser("~/.fpl-mcp/fpl_history_cache.sqlite")
+
+
+_SQLITE_GW_COLS = ("minutes", "starts", "expected_goals", "expected_assists",
+                   "expected_goals_conceded", "saves",
+                   "clearances_blocks_interceptions", "tackles", "recoveries")
+
+
+def _cache_from_sqlite():
+    """Reshape fpl_research_mcp.py's player_gw table into the same
+    {round_str: {player_id_str: stats}} shape _fetch_live() returns from the
+    live API, so walk_forward() needs no changes to consume either source.
+
+    Returns (cache, finished) normally, or (None, None) if the database does
+    not exist or cannot be read - the caller falls back to the live API in
+    that case, exactly as it always has.
+
+    ONLY DISTINCT ROUNDS PRESENT ARE TREATED AS FINISHED, with no separate
+    finished-flag check needed: cache_history's own _player_history() in
+    fpl_research_mcp.py enforces upstream that only finished gameweeks are
+    ever written to this table (see that file's "CORRECTNESS RULE" comment),
+    so a round showing up here at all is already that guarantee holding.
+    """
+    path = _sqlite_db_path()
+    if not os.path.exists(path):
+        return None, None
+    import sqlite3
+    try:
+        conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+        try:
+            cols = ",".join(_SQLITE_GW_COLS)
+            rows = conn.execute(
+                f"SELECT player_id, round, {cols} FROM player_gw").fetchall()
+        finally:
+            conn.close()
+    except Exception:
+        return None, None
+    cache = {}
+    for pid, rnd, *vals in rows:
+        cache.setdefault(str(rnd), {})[str(pid)] = dict(zip(_SQLITE_GW_COLS, vals))
+    finished = sorted(int(r) for r in cache)
+    return cache, finished
+
+
+def _boot_from_priors_snapshot():
+    """A boot["elements"]-shaped stand-in built from the frozen prior-season
+    snapshot, so the SQLite path never needs a bootstrap-static call either -
+    walk_forward() and build()'s id_pos/id_name only read `id`, `element_type`
+    and `web_name` off each entry, all three already loaded for baselines.
+
+    Same population baselines() already restricts to, so this introduces no
+    NEW gap: a genuine 2026/27 newcomer with no 2025/26 record has never had
+    a baseline (and therefore never scored a walk-forward row) regardless of
+    where id_pos/id_name come from.
+    """
+    snap = json.load(open(PRIORS_SNAP, encoding="utf-8"))
+    return {"elements": [
+        {"id": int(pid), "element_type": p["element_type"], "web_name": p["web_name"]}
+        for pid, p in snap["players"].items()
+    ]}
 
 
 # ============================================================ BASELINES =====
@@ -468,9 +556,16 @@ def player_snapshot(cum, id_pos, id_name, baselines):
 def build():
     empty_state = None
     weeks, finished, snapshot = {}, [], []
+    source = None
     try:
-        boot = _bootstrap()
-        cache, finished, new = update_live_cache(boot)
+        cache, finished = _cache_from_sqlite()
+        if cache is not None:
+            source = "sqlite"
+            boot = _boot_from_priors_snapshot()
+        else:
+            source = "live API"
+            boot = _bootstrap()
+            cache, finished, new = update_live_cache(boot)
         if not finished:
             empty_state = "The 2026/27 season has not started yet — no finished gameweeks to score against."
         else:
@@ -749,12 +844,16 @@ fetch('data/priors_payload.json', {cache: 'no-store'})
     html = html.replace("</body>", script + "\n</body>")
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     open(OUT, "w", encoding="utf-8").write(html)
-    return html, dict(payload, snapshot=snapshot)
+    # `source` is CLI-only diagnostic (was this run sourced from the SQLite
+    # cache or the live API), never written to PAYLOAD - the browser only
+    # needs empty_state to know whether the numbers are current or stale.
+    return html, dict(payload, snapshot=snapshot, source=source)
 
 
 if __name__ == "__main__":
     h, payload = build()
     print(f"written: {OUT}  ({len(h)/1024:.0f} KB)")
+    print(f"  data source: {payload['source'] or 'unknown'}")
     assert "cdn.jsdelivr.net/npm/chart.js@4.5.0" in h, "Chart.js tag missing"
     if payload["empty_state"]:
         print(f"  {payload['empty_state']}")
