@@ -1,0 +1,152 @@
+# Weekly FPL dashboard refresh — the mechanical half of the Tuesday routine.
+#
+# WHAT THIS DOES. Warms fpl_research_mcp.py's player_gw SQLite cache from the
+# live FPL API, writes the two live snapshots that cache feeds
+# (entry_summary, squad_actual_points), rebuilds all six dashboard pages, runs
+# both verification layers, and pushes docs/ if anything actually changed.
+#
+# WHAT THIS DOES NOT DO. Nothing here reasons about the season — no strategy,
+# no captaincy calls, no source-reliability judgment. That is deliberate: this
+# workflow is exactly Part A + Part B of
+# ~/Documents/Claude/Scheduled/fpl-cache-history-weekly/SKILL.md, the halves
+# of that routine with no LLM judgment in them at all. The job-search briefs,
+# the Friday intel review, and the FPL weekly deadline brief stay on Cowork's
+# scheduler, because they need an agent actually reasoning (verifying live
+# postings, forming strategy options, having a review conversation) — GitHub
+# Actions has no way to do that and this workflow does not attempt to.
+#
+# WHY THIS RUNS HERE RATHER THAN IN COWORK OR ON A LOCAL CRON. A Cowork
+# session's sandbox has no filesystem route to ~/.fpl-mcp/ on Sylvan's own
+# Mac and gets 403 Forbidden calling the live FPL API directly — that split
+# is why entry_summary/squad_actual_points had to become MCP-tool-only
+# writes in the first place (see build_squad_page.py's
+# actual_route_snapshot() docstring). A GitHub Actions runner does not have
+# that problem: cache-building and dashboard-building happen in the SAME
+# ephemeral machine in the SAME job, so the SQLite file just sits on that
+# runner's disk when the later steps read it — no MCP indirection needed.
+# It also has ordinary internet access (no proxy allowlist) and an ordinary
+# filesystem (no FUSE bridge), so the git push at the end needs none of
+# safe_git_commit.sh's scratch-clone workaround — that script exists purely
+# to route around Cowork's connected-folder mount not supporting the
+# unlink()/rename-over-existing semantics git's commit machinery needs. A
+# fresh Actions checkout has no such mount and no leftover local edits from
+# unrelated work-in-progress either, so the failure mode that made Sylvan
+# gate Cowork's own push on "did anything outside docs/ change" — a run
+# once bundled unreviewed supabase migrations into a dashboard commit — is
+# structurally impossible here: this job never sees anything that was not
+# already committed to the branch it checked out. The explicit path scoping
+# below is still kept as a second, static safeguard, not because the risk
+# it guarded against in Cowork can recur here.
+#
+# CACHING. player_gw is normally "slow once, instant after" — cache_history's
+# own docstring says so — because a persistent local machine keeps the
+# database between runs and only ever fetches newly-finished gameweeks. An
+# Actions runner is ephemeral and would lose that benefit entirely without
+# help, paying the full ~600-call, 1-3 minute fetch every single week. The
+# cache step below persists ~/.fpl-mcp/ across runs for exactly that reason,
+# keyed on the ISO week number so it rolls over naturally alongside the
+# gameweek calendar.
+#
+# TRIGGER TIMING. Same reasoning as the Cowork task it replaces: gameweeks
+# finish Monday or Tuesday, so the previous gameweek is final and cacheable
+# by Tuesday. Cron is UTC; 12:00 UTC mirrors that task's scheduled time.
+name: Weekly FPL dashboard refresh
+
+on:
+  schedule:
+    - cron: "0 12 * * 2"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fpl-weekly-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Restore the player-history cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.fpl-mcp
+          # Not the gameweek number itself — that would need a live call just
+          # to compute the cache key. The ISO week is a fine proxy: the whole
+          # point of the incremental fetch inside cache_history is that an
+          # unnecessary restore costs nothing (already-synced players are
+          # skipped), so a slightly-stale key is harmless either way.
+          key: fpl-history-cache-${{ github.run_id }}
+          restore-keys: |
+            fpl-history-cache-
+
+      # mcp<2 matches fpl_research_mcp.py's own install note: SDK 2.x pulls in
+      # `cryptography`, which is the conda-specific breakage that pin exists
+      # for. Irrelevant to this runner's plain Python, but keeping the same
+      # pin as everywhere else this file runs is one less thing to diverge.
+      - name: Install Python dependencies
+        run: pip install "mcp<2" httpx pulp
+
+      - name: Warm the SQLite cache and write the live snapshots
+        run: |
+          python3 <<'PY'
+          import sys
+          sys.path.insert(0, ".")
+          import fpl_research_mcp as m
+
+          print("=== cache_history(refresh=False) — before ===")
+          print(m.cache_history(refresh=False))
+
+          print("\n=== cache_history(refresh=True) ===")
+          print(m.cache_history(refresh=True))
+
+          print("\n=== entry_summary ===")
+          print(m.entry_summary())
+
+          print("\n=== squad_actual_points ===")
+          print(m.squad_actual_points())
+          PY
+
+      - name: Build and verify all dashboard pages
+        run: bash publish_dashboard.sh
+
+      - name: Commit and push if anything changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Scoped on purpose, never `git add -A` — see the header comment on
+          # why the risk that guarded against in Cowork cannot recur here,
+          # and why this line stays anyway as a second, static safeguard.
+          git add docs/ prediction_tracker.json
+
+          if git diff --cached --quiet; then
+            echo "Nothing changed — dashboard already matches this week's data."
+            exit 0
+          fi
+
+          LATEST_GW=$(python3 -c "
+          import json
+          try:
+              d = json.load(open('docs/data/priors_payload.json'))
+              print(d['finished'][-1] if d.get('finished') else '?')
+          except Exception:
+              print('?')
+          ")
+          git commit -m "Weekly refresh: cache history, rebuild dashboard through GW${LATEST_GW}"
+          git push
