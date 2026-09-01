@@ -190,6 +190,18 @@ pre-match and, per Arteta, is now in contention for next Monday's Villa
 trip — the defensive-cover picture (and Mosquera's minutes runway) stays
 live beyond just Saliba/Timber's return dates.
 
+**Third straight start, 1 Sep 2026 — daily sweep, no new bite.**
+Mosquera started again at centre-back in Arsenal's GW2 win at Villa
+(31 Aug, 0-1), alongside Gabriel, with Ben White at right-back and
+Calafiori at left — the same shape as GW1 and the Community Shield.
+Timber and Saliba both still read INJURED / 0% / unknown return in live
+`injury_report`. Logged as narrative only, deliberately: the thesis is
+already confirmed and the `stp set 0.85` window (GWs 1-8) already
+accepted, so a third corroborating team sheet restates what the fence
+has rather than adding anything the model can't see — reconciliation
+rule 7. Noted so the GW8 window review starts from the full run of
+evidence rather than just GW1.
+
 **Accepted, Friday review 28 Aug 2026.** Both `Mosquera-ARS-stp-20260821-1`
 (GW1 matchday confirmation) and `Saliba-ARS-stp-20260820-1` (Timber "in
 September", Saliba pencilled for winter) accepted. The `stp` fence entry
@@ -534,6 +546,19 @@ sweep log by the more specific 31 Aug estimate logged 26 Aug directly
 above — no new evidence today, just tidying the resolution record to
 match what the narrative already showed.
 
+**CONFIRMED, 1 Sep 2026 — daily sweep, GW2 matchday squad.** The 31 Aug
+return estimate landed. Guimarães was named in Arsenal's squad for the
+GW2 trip to Aston Villa (31 Aug, 0-1 Arsenal), on the bench alongside
+Konsa, Gyökeres, Merino, Eze, Madueke, Hincapié, Zubimendi and Kepa —
+Arsenal having managed his groin load through the week specifically to
+get him available for the Monday game. He did not start; Rice and
+Myles Lewis-Skelly formed the pivot. Resolution logged against
+`Guimaraes-ARS-injury-20260826-1` as `confirmed`. For entry 7's Rice
+workload thesis this is the onset point, not the proof: Guimarães is
+now available, so from GW3 the shared-minutes question stops being
+hypothetical and starts being measurable. Sources: lastwordonsports,
+Athlon Sports confirmed team news, 31 Aug 2026.
+
 ### 12. Aston Villa (AVL, £0.0m, TEAM) — squad exodus + GW1 collapse — **structural context, not a single-player thesis, NOT CURRENTLY OWNED**
 
 **Logged 25 Aug 2026, raised by Sylvan in chat, pending Friday review.**
@@ -610,6 +635,48 @@ personnel-availability-driven rather than settled: Matty Cash out
 "3-4 weeks", Tyrone Mings needs "some days more." Logged as
 `AstonVilla-AVL-transfers-20260826-1`. Source: ESPN / Yahoo Sports,
 citing Emery press comments.?
+
+**UPDATE, prior bites `AstonVilla-AVL-transfers-20260826-1` and
+`AstonVilla-AVL-xgi90-20260825-1`: Watkins and Martínez have both
+actually gone, and two accepted fence rows are now dead. 1 Sep 2026 —
+daily sweep, pending Friday review.** The 26 Aug pull-back below was
+wrong. Ollie Watkins completed a c.£51m move to Al-Hilal on a
+three-year deal (ESPN, Sky Sports, Goal.com) — Emery's "happy to stay"
+did not survive the week — and Emiliano Martínez signed a three-year
+deal at Chelsea for c.£7.5m (chelseafc.com's own announcement, Al
+Jazeera, Yahoo), starting for Chelsea against Brighton. Matty Cash,
+reported 26 Aug as "3-4 weeks" out, started at right-back against
+Arsenal. `AstonVilla-AVL-transfers-20260826-1` is resolved
+`contradicted` on all three counts.
+
+**The part that needs a decision, not just a note:** both Watkins and
+Martínez are rows in the 14-row `xgi90 mult 0.70` AVL block accepted on
+28 Aug and live in the fence below. `intel_adjust.py` matches on
+player + team, so `Watkins | AVL` and `Martinez | AVL` will match
+nothing once the pool reflects their new clubs, and
+`build_squad.load()` will warn on both as entries that never fire.
+They are stale rows to prune under rule 6, not wrong-but-harmless ones.
+Villa's inbound business (Nicolas Jackson, Leon Goretzka, Zion Suzuki,
+Taylor Harwood-Bellis agreed) also means the squad that 0.70 was sized
+against on 25 Aug is materially not the squad on the pitch now — worth
+the Friday review deciding whether to keep, re-size or re-scope the
+block, not just delete two lines. **Not changed here** — the daily
+sweep never edits the fence. Logged as
+`AstonVilla-AVL-transfers-20260901-1`.?
+
+**Falsifiable check's own evidence starts landing, 1 Sep 2026 — daily
+sweep, pending Friday review. UPDATE, prior bite
+`AstonVilla-AVL-xgi90-20260825-1`.** Villa lost 0-1 at home to Arsenal
+in GW2 (31 Aug) without registering a single shot on target, on roughly
+0.3 xG — Buendía's shot off the crossbar the closest they came. That is
+two matches, no goals, ~0.3 xG apiece; ESPN notes Villa have lost their
+opening two fixtures without scoring for the first time since 2002. The
+GW1 4-0 could be waved off as a chaotic ten-man game — GW2 was an
+ordinary eleven-a-side match and produced the same output, which is the
+more informative of the two. Two of the check's 3-4 fixtures are now in
+and both point the same way. This **corroborates** the accepted 0.70
+rather than re-sizing it; no new magnitude proposed. Logged as
+`AstonVilla-AVL-xgi90-20260901-1`.?
 
 **Accepted, Friday review 28 Aug 2026.** `AstonVilla-AVL-xgi90-20260825-1`
 accepted — `xgi90 mult 0.70` now live in the adjustments fence below, one
@@ -688,6 +755,36 @@ for unavailability, just never applied here. Treat any future "flows
 through live status directly, no fence entry" call on an owned-or-target
 player with suspicion: it is only true for `squad.json`, never for the
 optimiser.
+
+### 14. O.Dango (BRE, £6.5m, MID) — dropped for GW2, start-rate risk — **ALREADY OWNED, LIVE XI**
+
+**Logged 1 Sep 2026, daily sweep, pending Friday review.** Dango Ouattara
+was **dropped** for Brentford's GW2 trip to Leeds (30 Aug, 1-1) — Jaidon
+Anthony started in his place. This is a confirmed team sheet, not a
+predicted XI: Kelleher, Kayode, Ajer, Collins, Lewis-Potter, Janelt,
+Sangare, Schade, Damsgaard, Anthony, Thiago, with Dango among the subs
+and only appearing later (his shot blocked, per ESPN's report). Summer
+signing Mamadou Sangare went straight into the XI, adding competition for
+minutes in the same part of the pitch.
+
+**Why the model can't see this.** He sits in the live XI on an
+**81%-starts** assumption carried from the priors snapshot — a
+2025/26-derived number. A GW2 benching is exactly the kind of
+current-season role signal the last-16/season `stp` rate lags by design.
+One omission is not a trend, but a second would put his true start share
+below the 75% gate the model uses to include him at all, and he is a
+starting XI player rather than bench fodder — so this is worth watching
+closely rather than filing.
+
+**No magnitude proposed.** Nothing sourced puts a number on his expected
+start share under Keith Andrews, and one benched match is too thin to
+size an `stp` override from. Flagging the risk, not pricing it.
+
+**Falsifiable check:** does Dango start Brentford's GW3 fixture, or is
+Jaidon Anthony preferred again — and does his GW1-4 start share come in
+materially below the 81% the model assumes? Source:
+`Dango-BRE-stp-20260901-1`. Sources: Fantasy Football Scout 2pm team
+news, 30 Aug 2026; ESPN/Yahoo Leeds 1-1 Brentford match reports.?
 
 ---
 
