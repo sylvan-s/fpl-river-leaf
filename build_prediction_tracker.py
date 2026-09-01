@@ -721,8 +721,8 @@ if (!DATA.finished || DATA.finished.length === 0) {
     baseline, same number as the
     "prior" column.`,
    `<table class="cum-split"><thead><tr><th>metric</th><th>n (GW${latest})</th>
-     <th colspan="3" class="cum-gw-head">GW${latest} only</th>
-     <th colspan="3" class="cum-season-head cum-season-start">cumulative, season to date</th></tr>
+     <th colspan="3" class="cum-gw-head">Predictions for GW${latest} based on previous weeks</th>
+     <th colspan="3" class="cum-season-head cum-season-start">Pooled predictions across all GWs</th></tr>
      <tr><th></th><th></th>
      <th class="cum-gw">raw<span class="th-sub">(&mu;, &sigma;)</span></th>
      <th class="cum-gw">prior<span class="th-sub">(&mu;, &sigma;)</span></th>

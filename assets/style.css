@@ -34,6 +34,7 @@ font-weight:600}
 table.cum-split th.cum-gw,table.cum-split td.cum-gw{background:rgba(78,163,255,.08)}
 table.cum-split th.cum-season,table.cum-split td.cum-season{background:rgba(95,211,141,.08)}
 table.cum-split .cum-season-start{border-left:2px solid var(--line)}
+table.cum-split th.cum-gw-head,table.cum-split th.cum-season-head{text-align:center}
 .cum-gw-swatch,.cum-season-swatch{display:inline-block;width:9px;height:9px;
 border-radius:2px;margin:0 3px -1px 0}
 .cum-gw-swatch{background:var(--a)}
