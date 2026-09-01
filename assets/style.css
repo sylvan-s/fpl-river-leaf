@@ -29,6 +29,15 @@ th{color:var(--dim);font-weight:600;font-size:12px}
 font-weight:600}
 .tag.bad{background:rgba(255,107,107,.18);color:var(--d)}
 .tag.ok{background:rgba(95,211,141,.18);color:var(--c)}
+/* priors.html panel 1: GW-only vs cumulative-season-to-date column groups need
+   to read as two distinct blocks, not one continuous run of six numbers. */
+table.cum-split th.cum-gw,table.cum-split td.cum-gw{background:rgba(78,163,255,.08)}
+table.cum-split th.cum-season,table.cum-split td.cum-season{background:rgba(95,211,141,.08)}
+table.cum-split .cum-season-start{border-left:2px solid var(--line)}
+.cum-gw-swatch,.cum-season-swatch{display:inline-block;width:9px;height:9px;
+border-radius:2px;margin:0 3px -1px 0}
+.cum-gw-swatch{background:var(--a)}
+.cum-season-swatch{background:var(--c)}
 .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--dim);
 margin:10px 0 0}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;

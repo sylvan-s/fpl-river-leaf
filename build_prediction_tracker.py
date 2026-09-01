@@ -387,7 +387,9 @@ def walk_forward(boot, cache, finished, baselines):
     weeks = {}
     for gw in finished:
         stats = cache[str(gw)]
-        buckets = {k: {"raw": [], "base": [], "shrunk": [], "weights": []} for k in ALL_METRIC_KEYS}
+        buckets = {k: {"raw": [], "base": [], "shrunk": [], "weights": [],
+                       "raw_val": [], "base_val": [], "shrunk_val": []}
+                   for k in ALL_METRIC_KEYS}
         pool_now = {mk["key"]: defaultdict(list) for mk in METRICS + DC_METRICS}
         pool_now["stp"] = defaultdict(list)
         # Pass 1: gather this gameweek's live pool (rate-through-prev-GW, n)
@@ -437,22 +439,28 @@ def walk_forward(boot, cache, finished, baselines):
                     raw = cum[pid_s][short] / prev_n90
                     shrunk = (prev_n90 * raw + k * b) / (prev_n90 + k)
                     buckets[key]["raw"].append((raw - actual[short]) ** 2)
+                    buckets[key]["raw_val"].append(raw)
                     buckets[key]["weights"].append(prev_n90 / (prev_n90 + k))
                 else:
                     shrunk = b
                 buckets[key]["base"].append((b - actual[short]) ** 2)
+                buckets[key]["base_val"].append(b)
                 buckets[key]["shrunk"].append((shrunk - actual[short]) ** 2)
+                buckets[key]["shrunk_val"].append(shrunk)
             k, deg = k_by_pos[("stp", pos)]
             bstp = base["stp"]
             if prev_apps > 0:
                 raw = cum[pid_s]["starts"] / prev_apps
                 shrunk = (prev_apps * raw + k * bstp) / (prev_apps + k)
                 buckets["stp"]["raw"].append((raw - actual["stp"]) ** 2)
+                buckets["stp"]["raw_val"].append(raw)
                 buckets["stp"]["weights"].append(prev_apps / (prev_apps + k))
             else:
                 shrunk = bstp
             buckets["stp"]["base"].append((bstp - actual["stp"]) ** 2)
+            buckets["stp"]["base_val"].append(bstp)
             buckets["stp"]["shrunk"].append((shrunk - actual["stp"]) ** 2)
+            buckets["stp"]["shrunk_val"].append(shrunk)
 
             # accumulate AFTER scoring, so next week's "raw" includes this week
             c = cum[pid_s]
@@ -471,6 +479,8 @@ def walk_forward(boot, cache, finished, baselines):
         weeks[str(gw)] = {
             key: dict(n=len(b["shrunk"]), rmse_raw=rmse(b["raw"]), rmse_base=rmse(b["base"]),
                       rmse_shrunk=rmse(b["shrunk"]), mean_weight=mean(b["weights"]),
+                      avg_raw=mean(b["raw_val"]), avg_base=mean(b["base_val"]),
+                      avg_shrunk=mean(b["shrunk_val"]),
                       k_by_pos={p: round(k_by_pos[(key, p)][0], 2) for p in ("GKP", "DEF", "MID", "FWD")
                                 if (key, p) in k_by_pos},
                       degenerate=any(k_by_pos[(key, p)][1] for p in ("GKP", "DEF", "MID", "FWD")
@@ -660,7 +670,7 @@ if (!DATA.finished || DATA.finished.length === 0) {
 
   /* ---------- 1. which estimator predicts best \\u2014 latest GW + cumulative ---------- */
   function cum(mkey, uptoIdx){
-    let n=0, sr=0, sb=0, ss=0, nr=0, nb=0, ns=0;
+    let n=0, sr=0, sb=0, ss=0, nr=0, nb=0, ns=0, ar=0, ab=0, as_=0;
     for (let i=0;i<=uptoIdx;i++){
       const w = DATA.weeks[String(gws[i])][mkey];
       if (!w || !w.n) continue;
@@ -670,12 +680,22 @@ if (!DATA.finished || DATA.finished.length === 0) {
       // build it from), so GW1's n must not inflate raw's denominator even
       // though it inflates n above (n is still shown as "this metric's
       // sample size", which raw's own weeks don't fully cover early season).
-      if (w.rmse_raw!==null) { sr += w.rmse_raw*w.rmse_raw*w.n; nr += w.n; }
-      if (w.rmse_base!==null) { sb += w.rmse_base*w.rmse_base*w.n; nb += w.n; }
-      if (w.rmse_shrunk!==null) { ss += w.rmse_shrunk*w.rmse_shrunk*w.n; ns += w.n; }
+      // avg_* is pooled the same n-weighted way, for the same reason.
+      if (w.rmse_raw!==null) { sr += w.rmse_raw*w.rmse_raw*w.n; ar += w.avg_raw*w.n; nr += w.n; }
+      if (w.rmse_base!==null) { sb += w.rmse_base*w.rmse_base*w.n; ab += w.avg_base*w.n; nb += w.n; }
+      if (w.rmse_shrunk!==null) { ss += w.rmse_shrunk*w.rmse_shrunk*w.n; as_ += w.avg_shrunk*w.n; ns += w.n; }
     }
-    return {n, raw: nr?Math.sqrt(sr/nr):null, base: nb?Math.sqrt(sb/nb):null, shrunk: ns?Math.sqrt(ss/ns):null};
+    return {
+      n,
+      raw: nr?Math.sqrt(sr/nr):null, base: nb?Math.sqrt(sb/nb):null, shrunk: ns?Math.sqrt(ss/ns):null,
+      avgRaw: nr?ar/nr:null, avgBase: nb?ab/nb:null, avgShrunk: ns?as_/ns:null,
+    };
   }
+  // Every cell is (avg predicted value, RMSE against what actually happened) -
+  // the average alone can't tell you if an estimator is trustworthy (a wildly
+  // wrong prediction and a spot-on one can average to the same number), so it
+  // is always shown next to the error that actually measures that.
+  const pair = (avg, rmse) => `(${f3(avg)}, ${f3(rmse)})`;
   const rowsSum = METRIC_ORDER.map((k,i)=>{
     const wk = DATA.weeks[latest][k];
     const c = cum(k, gws.length-1);
@@ -683,26 +703,36 @@ if (!DATA.finished || DATA.finished.length === 0) {
     const bestCum = Math.min(c.raw??1e9, c.base??1e9, c.shrunk??1e9);
     const tag = (v,best) => v!==null && Math.abs(v-best)<1e-9 ? ' <span class="tag ok">best</span>' : '';
     return `<tr><td><b>${DATA.metric_labels[k]}</b></td><td class="mono">${wk.n}</td>
-      <td class="mono">${f3(wk.rmse_raw)}${tag(wk.rmse_raw,bestLatest)}</td>
-      <td class="mono">${f3(wk.rmse_base)}${tag(wk.rmse_base,bestLatest)}</td>
-      <td class="mono">${f3(wk.rmse_shrunk)}${tag(wk.rmse_shrunk,bestLatest)}</td>
-      <td class="mono">${f3(c.raw)}${tag(c.raw,bestCum)}</td>
-      <td class="mono">${f3(c.base)}${tag(c.base,bestCum)}</td>
-      <td class="mono">${f3(c.shrunk)}${tag(c.shrunk,bestCum)}</td></tr>`;
+      <td class="mono cum-gw">${pair(wk.avg_raw, wk.rmse_raw)}${tag(wk.rmse_raw,bestLatest)}</td>
+      <td class="mono cum-gw">${pair(wk.avg_base, wk.rmse_base)}${tag(wk.rmse_base,bestLatest)}</td>
+      <td class="mono cum-gw">${pair(wk.avg_shrunk, wk.rmse_shrunk)}${tag(wk.rmse_shrunk,bestLatest)}</td>
+      <td class="mono cum-season cum-season-start">${pair(c.avgRaw, c.raw)}${tag(c.raw,bestCum)}</td>
+      <td class="mono cum-season">${pair(c.avgBase, c.base)}${tag(c.base,bestCum)}</td>
+      <td class="mono cum-season">${pair(c.avgShrunk, c.shrunk)}${tag(c.shrunk,bestCum)}</td></tr>`;
   }).join('');
   panel('p1', '1 \\u00b7 Which estimator predicts best right now?',
-   `GW${latest} is the latest finished gameweek. Every column is RMSE against what actually
-    happened that week (lower is better; best of the three tagged per row) \\u2014 left three for
-    GW${latest} alone, right three cumulative across every gameweek this season, each estimator
-    pooled only over the weeks it was actually scored. Raw for GW1 is blank by design: there was
-    no season-so-far data yet to build a raw estimate from. Shrunk is NOT blank that week \\u2014
-    with zero own-season data to blend in it collapses to the prior baseline, same number as the
+   `GW${latest} is the latest finished gameweek. Every cell is (average predicted value, RMSE
+    against what actually happened that week) \\u2014 lower RMSE is better, best of the three
+    tagged per row. <span class="cum-gw-swatch"></span>GW${latest} only on the left,
+    <span class="cum-season-swatch"></span>cumulative across every gameweek this season on the
+    right, each estimator pooled only over the weeks it was actually scored. Raw for GW1 is blank
+    by design: there was no season-so-far data yet to build a raw estimate from. Shrunk is NOT
+    blank that week \\u2014 with zero own-season data to blend in it collapses to the prior
+    baseline, same number as the
     "prior" column.`,
-   `<table><thead><tr><th>metric</th><th>n (GW${latest})</th>
-     <th colspan="3">GW${latest} only</th><th colspan="3">cumulative, season to date</th></tr>
-     <tr><th></th><th></th><th>raw</th><th>prior</th><th>shrunk</th>
-     <th>raw</th><th>prior</th><th>shrunk</th></tr></thead>
+   `<table class="cum-split"><thead><tr><th>metric</th><th>n (GW${latest})</th>
+     <th colspan="3" class="cum-gw-head">GW${latest} only</th>
+     <th colspan="3" class="cum-season-head cum-season-start">cumulative, season to date</th></tr>
+     <tr><th></th><th></th>
+     <th class="cum-gw">raw</th><th class="cum-gw">prior</th><th class="cum-gw">shrunk</th>
+     <th class="cum-season cum-season-start">raw</th><th class="cum-season">prior</th>
+     <th class="cum-season">shrunk</th></tr></thead>
      <tbody>${rowsSum}</tbody></table>
+    <p class="tests" style="margin-top:6px">Each cell reads <span class="mono">(avg, rmse)</span>
+    \\u2014 avg is the mean value that estimator predicted across the players scored, rmse is its
+    error against what they actually did. Two players averaging to the same predicted rate can
+    still have wildly different rmse, so the average alone never tells you which estimator to
+    trust; it just tells you what it was predicting when you compare the errors.</p>
     <div class="find">Early season, "prior" (last season, or a positional fallback) often wins
     \\u2014 a handful of matches of noise can be worse than a full season of someone else's
     history. Watch for "shrunk" starting to beat "prior" consistently as gameweeks accumulate;
