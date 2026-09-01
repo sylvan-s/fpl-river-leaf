@@ -1,0 +1,11 @@
+# Dependencies for the standalone scripts in this repo (build_squad.py,
+# optimise_squad.py, build_squad_page.py, size_bench_value.py, etc.), run
+# under the default `python3` / base conda env.
+#
+# The MCP server (fpl_research_mcp.py) is intentionally NOT covered here —
+# it runs under its own dedicated `fpl-mcp` conda env with `mcp<2` and
+# `httpx` pinned in install_fpl_mcp.sh, to avoid a cryptography/OpenSSL
+# crash that SDK 2.x pulls in under conda. See that script and
+# fpl_research_mcp.py's "SDK compatibility" comment for why.
+
+pulp>=3.1
