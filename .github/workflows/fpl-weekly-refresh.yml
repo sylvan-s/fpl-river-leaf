@@ -1,19 +1,28 @@
 # Weekly FPL dashboard refresh — the mechanical half of the Tuesday routine.
 #
 # WHAT THIS DOES. Warms fpl_research_mcp.py's player_gw SQLite cache from the
-# live FPL API, writes the two live snapshots that cache feeds
-# (entry_summary, squad_actual_points), rebuilds all six dashboard pages, runs
-# both verification layers, and pushes docs/ if anything actually changed.
+# live FPL API, writes the three live snapshots that cache feeds
+# (entry_summary, squad_actual_points, captaincy_snapshot_refresh), rebuilds
+# all six dashboard pages, runs both verification layers, and pushes docs/ if
+# anything actually changed.
 #
 # WHAT THIS DOES NOT DO. Nothing here reasons about the season — no strategy,
-# no captaincy calls, no source-reliability judgment. That is deliberate: this
-# workflow is exactly Part A + Part B of
+# no source-reliability judgment, and no captaincy JUDGMENT. That is
+# deliberate: this workflow is exactly Part A + Part B of
 # ~/Documents/Claude/Scheduled/fpl-cache-history-weekly/SKILL.md, the halves
 # of that routine with no LLM judgment in them at all. The job-search briefs,
 # the Friday intel review, and the FPL weekly deadline brief stay on Cowork's
 # scheduler, because they need an agent actually reasoning (verifying live
 # postings, forming strategy options, having a review conversation) — GitHub
 # Actions has no way to do that and this workflow does not attempt to.
+# captaincy_snapshot_refresh() is the one narrow exception, and only because
+# it stays mechanical: it runs captaincy_odds's Poisson model over the
+# current squad.json XI and picks the top 3 by neutral E[pts], but writes
+# templated, numbers-only rationale — no chase/protect call, no reading of
+# ROLE_INTEL.md judgment beyond the capped multiplier captaincy_odds already
+# applies. It exists purely so the dashboard panel doesn't sit stale between
+# Sylvan's own reasoned captaincy_odds reviews (see
+# build_squad_page.py's captaincy_snapshot() docstring for both writers).
 #
 # WHY THIS RUNS HERE RATHER THAN IN COWORK OR ON A LOCAL CRON. A Cowork
 # session's sandbox has no filesystem route to ~/.fpl-mcp/ on Sylvan's own
@@ -120,6 +129,9 @@ jobs:
 
           print("\n=== squad_actual_points ===")
           print(m.squad_actual_points())
+
+          print("\n=== captaincy_snapshot_refresh ===")
+          print(m.captaincy_snapshot_refresh())
           PY
 
       - name: Build and verify all dashboard pages

@@ -188,12 +188,15 @@ def captaincy_snapshot():
     """Top-3 captaincy candidates with rationale — same PURE READ pattern as
     live_snapshot()/actual_route_snapshot(). captaincy_odds is a live MCP
     tool (Poisson haul/blank modelling over the actual fixture list), not
-    something this offline build script can call itself, so a Claude session
-    runs it and a small aggregate gets written to CAPTAINCY_SNAPSHOT — same
-    reasoning as every other live number on this page. Unlike entry_summary/
-    squad_actual_points there is no dedicated MCP tool writing this file yet;
-    it is refreshed by hand from captaincy_odds's neutral/chase/protect output
-    (see the file's own `source` field). Returns None if never written."""
+    something this offline build script can call itself, so CAPTAINCY_SNAPSHOT
+    is written elsewhere — same reasoning as every other live number on this
+    page. Two writers, either one legal: the weekly GitHub Actions rebuild
+    calls fpl_research_mcp.captaincy_snapshot_refresh() for a mechanical,
+    numbers-only top-3 (neutral mode, templated rationale, no chase/protect
+    judgment); a Claude session can instead run captaincy_odds by hand and
+    write a reasoned aggregate with hand-written rationale (see the file's own
+    `source` field to tell which kind you're looking at). Returns None if
+    never written."""
     if not os.path.exists(CAPTAINCY_SNAPSHOT):
         return None
     try:
@@ -724,9 +727,11 @@ def build():
     # --- Top 3 captaincy candidates, added 26 Aug 2026 ----------------------
     # captaincy_odds is a live MCP tool (Poisson haul/blank modelling against
     # the real fixture list) — this offline build script can't call it
-    # itself, so this panel reads a small hand-refreshed snapshot instead,
-    # same PURE READ discipline as live_snapshot()/actual_route_snapshot().
-    # See captaincy_snapshot()'s docstring for the refresh path.
+    # itself, so this panel reads a snapshot written elsewhere instead, same
+    # PURE READ discipline as live_snapshot()/actual_route_snapshot(). See
+    # captaincy_snapshot()'s docstring for the two writers (mechanical weekly
+    # refresh vs a hand-run reasoned read) — the rendering below is identical
+    # either way, it just quotes whatever `source` and `rationale` say.
     cap_snap = captaincy_snapshot()
     cap_html = ""
     if cap_snap:

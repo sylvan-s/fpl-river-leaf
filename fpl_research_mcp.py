@@ -2671,6 +2671,75 @@ def captaincy_odds(names: str, mode: str = "neutral", shrunk: bool = True,
     return "\n".join(out)
 
 
+_CAPTAINCY_SNAPSHOT_PATH = _os.path.join(_PRIORS_DIR, "docs", "data", "captaincy_snapshot.json")
+
+
+@mcp.tool(
+    description=(
+        "Mechanically refreshes docs/data/captaincy_snapshot.json — the 'Top 3 "
+        "captaincy candidates' panel on the dashboard — from the current "
+        "squad.json XI, using captaincy_odds's own Poisson model (neutral mode, "
+        "shrunk rates, intel adjustments applied) for the upcoming gameweek. "
+        "NUMBERS ONLY: rationale sentences are templated from the stats, not "
+        "reasoned chase/protect judgment — that call still belongs to a human/"
+        "Claude session running captaincy_odds directly. This just keeps the "
+        "dashboard panel from ever going stale between those reasoned reviews, "
+        "e.g. as part of the unattended Tuesday GitHub Actions rebuild."
+    )
+)
+def captaincy_snapshot_refresh(shrunk: bool = True, with_intel: bool = True) -> str:
+    import squad_state
+    st = squad_state.load()
+    names = ",".join(p["name"] for p in st.xi)
+    rows, _meta = _cap_rows(names, shrunk, with_intel)
+    if not rows:
+        return "No squad XI players matched captaincy_odds — snapshot not written."
+
+    rows.sort(key=lambda r: -r["exp"])
+    ev = _next_event()
+    next_gw = ev["id"] if ev else None
+
+    def rationale(r):
+        bits = [f"E[pts] {r['exp']:.2f}", f"P(haul) {r['haul']:.1f}%",
+                f"P(blank) {r['blank']:.1f}%", f"owned {r['own']:.1f}%",
+                f"DiffUp {r['diff']:.1f}"]
+        if r.get("intel"):
+            bits.append(f"intel: {r['intel']}")
+        return f"vs {r['opp']}. " + " · ".join(bits)
+
+    top3, rest = rows[:3], rows[3:]
+    snap = {
+        "entry": ENTRY_ID,
+        "next_gw": next_gw,
+        "fetched_utc": _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds"),
+        "source": (f"captaincy_odds (mechanical refresh), neutral mode, "
+                   f"shrunk={shrunk}, with_intel={with_intel}"),
+        "candidates": [
+            {
+                "rank": i + 1, "name": r["name"], "team": r["team"], "pos": r["pos"],
+                "opponent": r["opp"], "e_pts": round(r["exp"], 2),
+                "p_haul": round(r["haul"], 1), "p_blank": round(r["blank"], 1),
+                "own_pct": r["own"], "diffup": round(r["diff"], 1),
+                "sd": round(r["sd"], 2), "rationale": rationale(r),
+            }
+            for i, r in enumerate(top3)
+        ],
+        "also_considered": [{"name": r["name"], "note": rationale(r)} for r in rest[:2]],
+        "caveats": [
+            "Mechanically refreshed (numbers only, neutral mode) by the weekly "
+            "GitHub Actions build - no chase/protect judgment call and no "
+            "hand-written rationale. Run captaincy_odds yourself via the "
+            "fpl-research MCP for the reasoned weekly read before setting the "
+            "armband.",
+        ],
+    }
+    _write_dashboard_snapshot(snap, _CAPTAINCY_SNAPSHOT_PATH)
+    return (f"Captaincy snapshot refreshed for GW{next_gw}: top pick "
+            f"{top3[0]['name']} (E[pts] {top3[0]['exp']:.2f}, "
+            f"P(haul) {top3[0]['haul']:.1f}%). "
+            f"snapshot written: {_os.path.relpath(_CAPTAINCY_SNAPSHOT_PATH, _PRIORS_DIR)}")
+
+
 # ------------------------------------------------------------- calibration ---
 # A probabilistic model is only useful if its numbers mean what they say. If it
 # claims P(haul)=20%, hauls must occur ~20% of the time. That can only be checked
