@@ -2,8 +2,10 @@
 #
 # WHAT THIS DOES. Warms fpl_research_mcp.py's player_gw SQLite cache from the
 # live FPL API, writes the three live snapshots that cache feeds
-# (entry_summary, squad_actual_points, captaincy_snapshot_refresh), rebuilds
-# all six dashboard pages, runs both verification layers, and pushes docs/ if
+# (entry_summary, squad_actual_points, captaincy_snapshot_refresh),
+# best-effort fetches the gitignored CBIT/tackles archive so
+# build_dashboard.py's panel 2 isn't silently empty, rebuilds all six
+# dashboard pages, runs both verification layers, and pushes docs/ if
 # anything actually changed.
 #
 # WHAT THIS DOES NOT DO. Nothing here reasons about the season — no strategy,
@@ -133,6 +135,33 @@ jobs:
           print("\n=== captaincy_snapshot_refresh ===")
           print(m.captaincy_snapshot_refresh())
           PY
+
+      # .cache_merged_gw.csv is gitignored by design (fetch_gw_history.py:
+      # "FETCH, DO NOT VENDOR") - a fresh Actions checkout never has it, so
+      # without this step build_dashboard.py's load_cbit_hitrates() silently
+      # returned {} on every CI-built docs/analysis.html: all 311 players'
+      # cbit_hit10 came back null, wiping panel 2's CBIT hit-rate scatter to
+      # empty on every scheduled run, invisibly (verify_dashboard.js never
+      # checked it). --inspect is used DELIBERATELY, not the default mode:
+      # fetch() populates .cache_merged_gw.csv as a side effect either way,
+      # but --inspect stops there and reports rather than also matching
+      # against build_squad.py's pool and rewriting docs/data/players/*.json
+      # (the player-timeseries feed) - a second, unrelated side effect this
+      # step has no business triggering. No cache needed here unlike
+      # ~/.fpl-mcp above - this is one lightweight GET of a single file, not
+      # hundreds of API calls, so a fresh fetch every run is both cheap and
+      # the freshest data available, rather than reusing a copy that can go
+      # stale for weeks (exactly what happened locally: this file sat
+      # unrefreshed since 9 Aug on Sylvan's own Mac). SOFT-FAIL ON PURPOSE:
+      # fetch_gw_history.py hard-exits if the external community archive (a
+      # raw.githubusercontent.com file, not the official FPL API) is
+      # unreachable or renamed - that must not take down the whole weekly
+      # refresh. build_dashboard.py already tolerates a missing archive (the
+      # same graceful-degradation path a fresh local clone hits before ever
+      # running this script), so failing soft here just matches that.
+      - name: Fetch the CBIT/tackles archive (best-effort)
+        run: |
+          python3 fetch_gw_history.py --inspect || echo "::warning::fetch_gw_history.py failed - continuing without CBIT hit-rate data for this build (build_dashboard.py tolerates a missing .cache_merged_gw.csv)"
 
       - name: Build and verify all dashboard pages
         run: bash publish_dashboard.sh
