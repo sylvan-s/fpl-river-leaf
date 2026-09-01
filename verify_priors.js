@@ -100,8 +100,13 @@ const idle = run(both(Object.assign({}, payload, {
 // cached data — empty_state is a diagnostic string set on ANY fetch failure,
 // even when `finished` still holds a full season of real weeks (exactly what
 // shipped the first time: no httpx in the build environment, real GW1 data
-// underneath). Reproduced here from the actual committed payload, unmodified.
-const stale = run(both(payload, snapshot));
+// underneath). Synthesized rather than reused from the committed payload
+// unmodified — that payload's own empty_state clears back to null the next
+// time a live refresh succeeds, which would silently stop this branch from
+// testing anything at all.
+const stale = run(both(Object.assign({}, payload, {
+  empty_state: 'synthetic: live fetch failed, showing last cached build',
+}), snapshot));
 // 4. the JSON is missing or unreachable (the file:// case, and a bad deploy)
 const dead = run(() => Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) }));
 
