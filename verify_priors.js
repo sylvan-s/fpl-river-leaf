@@ -92,9 +92,17 @@ console.log('Deep verification: docs/priors.html (fetched-data page)\n');
 
 // 1. the weekly path — real payload, real snapshot, panels must appear
 const live = run(both(Object.assign({}, payload, { empty_state: null }), snapshot));
-// 2. between seasons — payload says there is nothing to score yet
-const idle = run(both(Object.assign({}, payload, { empty_state: 'no finished gameweeks' }), { rows: [] }));
-// 3. the JSON is missing or unreachable (the file:// case, and a bad deploy)
+// 2. genuinely between seasons — no finished gameweeks at all, not even cached
+const idle = run(both(Object.assign({}, payload, {
+  finished: [], weeks: {}, empty_state: 'no finished gameweeks',
+}), { rows: [] }));
+// 3. THE BUG THIS CAUGHT, 1 Sep 2026. A live fetch failing must not hide good
+// cached data — empty_state is a diagnostic string set on ANY fetch failure,
+// even when `finished` still holds a full season of real weeks (exactly what
+// shipped the first time: no httpx in the build environment, real GW1 data
+// underneath). Reproduced here from the actual committed payload, unmodified.
+const stale = run(both(payload, snapshot));
+// 4. the JSON is missing or unreachable (the file:// case, and a bad deploy)
 const dead = run(() => Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) }));
 
 setTimeout(() => {
@@ -109,10 +117,24 @@ setTimeout(() => {
     /data generated /.test(live.els.subMeta.textContent), live.els.subMeta.textContent || '(empty)');
   t('success: no error panel', !live.els.app.innerHTML.includes('Data not loaded'),
     'fell into the catch branch');
+  t('success: no stale-data banner when empty_state is null',
+    !live.els.app.innerHTML.includes('Showing last saved data'), 'banner shown with nothing stale');
 
   t('empty state: waiting panel only', ids(idle) === 'waiting', ids(idle) || '(none)');
   // pBody is never even looked up on this branch, so absent is the pass.
   t('empty state: no player table built', !(idle.els.pBody || {}).innerHTML, 'table built anyway');
+
+  t('stale-but-cached: does NOT fall back to the waiting panel',
+    ids(stale).includes('p1') && ids(stale).includes('p3'), ids(stale) || '(none)');
+  t('stale-but-cached: player table still populated',
+    (stale.els.pBody.innerHTML.match(/<tr>/g) || []).length > 0, '0 rows — real data got hidden');
+  // panel()/the warning div both go through appendChild, not app.innerHTML=
+  // (that assignment form is only used by the fetch-failure catch branch) —
+  // so look at what was actually appended, the same way ids() does.
+  const staleNote = stale.appended.find(c => c.id === 'stale');
+  t('stale-but-cached: shows a note that the fetch failed',
+    !!staleNote && staleNote.innerHTML.includes('Showing last saved data'),
+    staleNote ? 'wrong copy' : 'no stale-data warning appended');
 
   t('fetch failure: explains itself', dead.els.app.innerHTML.includes('Data not loaded'),
     dead.els.app.innerHTML.slice(0, 120) || '(blank)');

@@ -533,8 +533,17 @@ function panel(id, title, tests, body){
 }
 
 function render(DATA) {
-if (DATA.empty_state) {
-  panel('waiting', 'Waiting for gameweeks', DATA.empty_state,
+// NOT the same test. empty_state is a diagnostic string that gets set in TWO
+// different situations (see build_prediction_tracker.py's build()): truly no
+// gameweeks scored yet, OR a live fetch just failed and the page is falling
+// back to whatever was last persisted \\u2014 which can easily still be a full
+// season of real weeks. Gating on empty_state's truthiness conflated those:
+// a machine with no network, or missing httpx, silently hid GOOD cached data
+// behind a "waiting for gameweeks" panel instead of showing it with a warning.
+// The only question that panel should answer is "is there anything to show" \\u2014
+// that is DATA.finished, not empty_state.
+if (!DATA.finished || DATA.finished.length === 0) {
+  panel('waiting', 'Waiting for gameweeks', DATA.empty_state || 'No finished gameweeks yet.',
     `<div class="find">This page tracks, week by week, which of RAW (this season's own data),
      the HIERARCHICAL PRIOR (last season, or a positional fallback), or the SHRUNK blend of the
      two best predicts what a player actually does \\u2014 scored only after the fact, never on
@@ -543,6 +552,14 @@ if (DATA.empty_state) {
      <span class="mono">METHODOLOGY_ALTERNATIVES.md</span> ("Shrinkage backtest") for the
      retrospective check already run on 2025/26 that justified building this.</div>`);
 } else {
+  if (DATA.empty_state) {
+    const w = document.createElement('div'); w.className = 'panel'; w.id = 'stale';
+    w.innerHTML = `<h2>Showing last saved data</h2><p class="tests">${DATA.empty_state}</p>
+      <div class="find">The live fetch did not run this time, so the numbers below are from the
+      most recent successful build rather than just now \\u2014 still real, just not necessarily
+      current to the latest kickoff.</div>`;
+    document.getElementById('app').appendChild(w);
+  }
   const gws = DATA.finished;
   const latest = String(gws[gws.length-1]);
 
