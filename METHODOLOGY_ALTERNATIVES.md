@@ -1932,50 +1932,67 @@ against the archive directly, not assumed. Backtest covers the other five:
 xG90, xA90, xGC90, saves90, start rate.
 
 **Result — PER-GAMEWEEK RMSE (not cumulative/pooled), averaged across GW2-38,
-each gameweek scored on its own against that week's actual outcome:**
+scoring only appearances of 60+ minutes on the per-90 rate metrics:**
 
 | metric | avg raw | avg prior | avg shrunk | shrunk best-or-tied |
 |---|---|---|---|---|
-| xG per 90 | 1.067 | 1.041 | **1.040** | 21/38 weeks |
-| xA per 90 | 0.399 | 0.379 | **0.377** | 23/38 weeks |
-| xGC per 90 | 2.653 | 2.551 | **2.546** | 16/38 weeks |
-| Saves per 90 | 1.878 | 1.799 | **1.787** | 16/38 weeks |
-| Start rate | 0.400 | 0.454 | **0.398** | 26/38 weeks |
+| xG per 90 | 0.236 | 0.222 | **0.219** | 20/38 weeks |
+| xA per 90 | 0.139 | 0.132 | **0.130** | 27/38 weeks |
+| xGC per 90 | 0.905 | 0.765 | **0.756** | 23/38 weeks |
+| Saves per 90 | 1.776 | 1.712 | **1.696** | 15/38 weeks |
+| Start rate (ungated) | 0.400 | 0.454 | **0.398** | 26/38 weeks |
 
-A single gameweek's RMSE is noisy — one lucky hat-trick from a low-owned
-player or a flurry of red cards can spike any of the three estimators on any
-given week regardless of how good the underlying method is (see the xGC90
-trajectory: several weeks jump to 6-9 RMSE against a season average of ~2.6).
-Averaging across weeks smooths that out without cumulative pooling's own
-distortion (see the first version of this analysis, corrected below).
+Ordering is stable across all five: shrunk best, prior close behind, raw
+clearly worst — the expected empirical-Bayes result. Saves90 is the weakest
+case (shrunk wins outright in only 15/38 weeks, on the smallest sample —
+n≈15-22 keepers).
 
-Shrunk is only the week's single best estimator in 16-26 of 38 weeks
-depending on the metric — never a majority for xGC90/saves90, barely one for
-xG90 — but "best-or-tied" undersells how close it runs: even in weeks it
-loses, it is typically fractions of a percent behind whichever of raw/prior
-won that week, never dramatically worse. Start rate is again the standout:
-shrunk wins the week outright more often than the other four metrics AND
-carries the largest average margin over prior (0.398 vs 0.454, ~12%).
+**THE CAMEO GATE, and why the first two versions of this table were
+misleading.** Before the gate, prior and raw appeared to track each other
+almost exactly, with shrunk beating prior by fractions of a percent on four
+of five metrics. That was an artifact of scoring per-90 rates on tiny
+appearances. Measured on GW20's xG90 pool: the actual has sd 1.223 while the
+mean per-player gap between the raw and prior PREDICTIONS is only 0.077 — the
+error term was ~16x the difference being measured, so every estimator scored
+nearly the same. The noise is overwhelmingly a division artifact: a player
+with 2 minutes and one shot registers 19.35 xG/90 against a population mean
+near 0.21, and actual xG/90 has sd 2.445 among sub-30-minute appearances
+versus 0.227 among 60+ minute ones.
 
-**Correction, 2 Sep 2026.** This backtest originally reported CUMULATIVE
-(pooled since GW1) RMSE, not per-gameweek — the wrong statistic for "does the
-predictor get better week to week," since pooling folds 37 weeks of history
-into every point and mechanically flattens whatever is happening in the most
-recent week. Re-run with the fix: `historical_backtest_2025_26.py`'s
-trajectory is now genuinely per-gameweek, and the numbers above replace the
-original cumulative-RMSE table this section used to show.
+Gating at 60 minutes (`MIN_MINS_SCORE` in build_prediction_tracker.py, same
+threshold and reasoning as build_dashboard.py's CBIT loader — "a cameo is a
+different population") cuts full-season xG90 RMSE ~6x, from 1.467 to 0.240
+for raw, and WIDENS the relative gap between estimators from 3.7% to 6.3%.
+The estimators were always separable; cameo noise was drowning the signal.
 
-**Verdict.** For four of five metrics, shrunk and prior track each other
-closely week to week with shrunk usually a hair ahead — last season's rate is
-already a strong predictor and there is limited room for one week's worth of
-current-season data to improve on it, especially at the low weights `k`
-assigns early and mid-season. Start rate is the one metric where shrinkage
-earns a real, consistent, week-over-week edge. None of this means shrinkage is
-wrong to use — an empirical-Bayes blend is supposed to guarantee it is never
-much worse than either input, and it delivers that — but the live 2026/27
-tracker's own caption ("watch for shrunk to start beating prior") should be
-read as a real story for start rate and a marginal one for the rest, not a
-uniform crossover to expect across every row.
+**Start rate is deliberately NOT gated.** Its actual is binary (did he start,
+1 or 0), not a per-90 rate, so it carries no division artifact to correct —
+and gating it would systematically drop substitute appearances, which ARE the
+stp=0 cases. Measured: scored rows go from 72.7% stp=1 ungated to 99.5% at a
+60-minute gate, which would destroy the metric rather than clean it.
+
+**Two corrections, both 2 Sep 2026.** (1) This section originally reported
+CUMULATIVE (pooled-since-GW1) RMSE — the wrong statistic for "does the
+predictor get better week to week", since pooling folds every prior week into
+each point and flattens the most recent one. (2) It then reported ungated
+per-gameweek RMSE, which was dominated by the cameo artifact described above.
+The table above is the corrected version; both earlier tables are superseded,
+and the same gate now applies to the LIVE tracker, not just this backtest.
+
+**Verdict.** Once cameo noise is removed, shrinkage validates cleanly on a
+full real season against a real prior season: shrunk is the best of the three
+on every metric, prior second, raw worst, with the ordering stable rather
+than marginal. Prior still does most of the work — last season's rate is a
+strong predictor and the weight `k` assigns to current-season data stays
+modest for much of the season — so the shrunk-vs-prior margin is real but not
+dramatic on the rate metrics (1-2%). Start rate remains the standout at ~12%.
+
+The more important finding is methodological, not about shrinkage at all:
+**the live tracker was measuring cameo noise rather than predictor quality**,
+and had been since it was built (12 Aug 2026). Any conclusion drawn from
+`docs/priors.html`'s panel 1 before 2 Sep 2026 was reading a statistic
+dominated by two-minute substitute appearances. Fixed in the same commit as
+this note.
 
 **Data source caveat.** Both seasons are vaastav/Fantasy-Premier-League
 archives (community-maintained, not the official FPL API) — see

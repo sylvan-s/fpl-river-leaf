@@ -115,6 +115,26 @@ OUT = os.environ.get("FPL_PRIORS_OUT") or os.path.join(HERE, "docs", "priors.htm
 MIN_MINS_PRIOR = 900     # this project's standard "trust a season rate" gate
 MIN_POOL = 20             # below this, _estimate_k() already falls back safely
 
+# ADDED 2 Sep 2026. Minimum minutes for a gameweek appearance to be SCORED as
+# ground truth on the per-90 rate metrics. A per-90 rate computed off a cameo
+# is mostly a division artifact, not a measurement: a player with 2 minutes
+# and one shot registers 19.35 xG/90, against a population mean nearer 0.21.
+# Measured over the full 2025/26 season (historical_backtest_2025_26.py):
+# actual xG/90 has sd 2.445 among sub-30-minute appearances vs 0.227 among
+# 60+ minute ones, and gating at 60 cuts RMSE ~6x (1.467 -> 0.240 for raw)
+# while WIDENING the relative gap between estimators (3.7% -> 6.3%) - the
+# estimators were always separable, cameo noise was drowning the signal.
+# Same threshold and same reasoning as build_dashboard.py's CBIT hit-rate
+# loader ("a cameo is a different population").
+#
+# DELIBERATELY NOT APPLIED TO START RATE. stp's actual is binary (did he
+# start, 1 or 0), not a per-90 rate, so it carries no division artifact to
+# correct. Worse, gating it would systematically drop substitute appearances
+# - which ARE the stp=0 cases - and bias the population toward starters:
+# measured, the scored rows go from 72.7% stp=1 ungated to 99.5% at a
+# 60-minute gate, which would destroy the metric rather than clean it.
+MIN_MINS_SCORE = 60
+
 
 def _load(mod, fn):
     spec = importlib.util.spec_from_file_location(mod, os.path.join(HERE, fn))
@@ -429,7 +449,13 @@ def walk_forward(boot, cache, finished, baselines):
         for pid_s, pid, pos, mins, s, base, prev_n90, prev_apps in prepared:
             actual = _rates_from_totals(s, mins)
             actual["stp"] = 1.0 if _f(s.get("starts")) > 0 else 0.0
-            for mk in METRICS + DC_METRICS:
+            # Cameo gate - see MIN_MINS_SCORE. Applies to the per-90 rate
+            # metrics only; the start-rate block below is deliberately
+            # ungated. Gates SCORING, never ACCUMULATION: those cameo
+            # minutes are still real data about the player and still feed
+            # next week's raw/shrunk estimate further down this loop.
+            score_rates = mins >= MIN_MINS_SCORE
+            for mk in (METRICS + DC_METRICS) if score_rates else ():
                 if pos not in mk["positions"]:
                     continue
                 short, key = mk["short"], mk["key"]
@@ -607,7 +633,11 @@ def build():
     metric_labels["stp"] = "Start rate"
     payload = dict(finished=finished, weeks=weeks, empty_state=empty_state,
                     generated=f"{dt.datetime.now():%Y-%m-%d %H:%M}",
-                    metric_labels=metric_labels)
+                    metric_labels=metric_labels,
+                    # Carried in the payload rather than written into the JS as
+                    # a literal: the script below is a plain (non-f) string, so
+                    # a hardcoded copy there could drift from MIN_MINS_SCORE.
+                    min_mins_score=MIN_MINS_SCORE)
 
     # DATA IS FETCHED, NOT INLINED — changed 1 Sep 2026, see docs/adr/0002.
     # Everything below the payload write is STATIC: the emitted HTML depends on
@@ -723,7 +753,13 @@ if (!DATA.finished || DATA.finished.length === 0) {
     by design: there was no season-so-far data yet to build a raw estimate from. Shrunk is NOT
     blank that week \\u2014 with zero own-season data to blend in it collapses to the prior
     baseline, same number as the
-    "prior" column.`,
+    "prior" column. The per-90 rate metrics score only appearances of
+    ${DATA.min_mins_score}+ minutes: a rate computed off a cameo is mostly a division
+    artifact (2 minutes and one shot reads as 19 xG/90), and including them
+    buried the difference between the three estimators under noise none of
+    them can predict. Start rate is deliberately NOT gated \\u2014 it is a
+    binary did-he-start, and dropping substitutes would remove exactly the
+    zeroes it needs to measure.`,
    `<table class="cum-split"><thead><tr><th>metric</th><th>n (GW${latest})</th>
      <th colspan="3" class="cum-gw-head">Predictions for GW${latest} based on previous weeks</th>
      <th colspan="3" class="cum-season-head cum-season-start">Pooled predictions across all GWs</th></tr>
