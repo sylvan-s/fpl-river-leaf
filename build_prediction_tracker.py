@@ -701,14 +701,18 @@ if (!DATA.finished || DATA.finished.length === 0) {
     const c = cum(k, gws.length-1);
     const bestLatest = Math.min(wk.rmse_raw??1e9, wk.rmse_base??1e9, wk.rmse_shrunk??1e9);
     const bestCum = Math.min(c.raw??1e9, c.base??1e9, c.shrunk??1e9);
-    const tag = (v,best) => v!==null && Math.abs(v-best)<1e-9 ? ' <span class="tag ok">best</span>' : '';
+    // "best" now colors the tuple itself rather than appending a pill badge
+    // below it - a badge pushed the row taller and visually separated itself
+    // from the number it was describing.
+    const isBest = (v,best) => v!==null && Math.abs(v-best)<1e-9;
+    const bcls = (v,best) => isBest(v,best) ? ' best' : '';
     return `<tr><td><b>${DATA.metric_labels[k]}</b></td><td class="mono">${wk.n}</td>
-      <td class="mono cum-gw">${pair(wk.avg_raw, wk.rmse_raw)}${tag(wk.rmse_raw,bestLatest)}</td>
-      <td class="mono cum-gw">${pair(wk.avg_base, wk.rmse_base)}${tag(wk.rmse_base,bestLatest)}</td>
-      <td class="mono cum-gw">${pair(wk.avg_shrunk, wk.rmse_shrunk)}${tag(wk.rmse_shrunk,bestLatest)}</td>
-      <td class="mono cum-season cum-season-start">${pair(c.avgRaw, c.raw)}${tag(c.raw,bestCum)}</td>
-      <td class="mono cum-season">${pair(c.avgBase, c.base)}${tag(c.base,bestCum)}</td>
-      <td class="mono cum-season">${pair(c.avgShrunk, c.shrunk)}${tag(c.shrunk,bestCum)}</td></tr>`;
+      <td class="mono cum-gw${bcls(wk.rmse_raw,bestLatest)}">${pair(wk.avg_raw, wk.rmse_raw)}</td>
+      <td class="mono cum-gw${bcls(wk.rmse_base,bestLatest)}">${pair(wk.avg_base, wk.rmse_base)}</td>
+      <td class="mono cum-gw${bcls(wk.rmse_shrunk,bestLatest)}">${pair(wk.avg_shrunk, wk.rmse_shrunk)}</td>
+      <td class="mono cum-season cum-season-start${bcls(c.raw,bestCum)}">${pair(c.avgRaw, c.raw)}</td>
+      <td class="mono cum-season${bcls(c.base,bestCum)}">${pair(c.avgBase, c.base)}</td>
+      <td class="mono cum-season${bcls(c.shrunk,bestCum)}">${pair(c.avgShrunk, c.shrunk)}</td></tr>`;
   }).join('');
   panel('p1', '1 \\u00b7 Which estimator predicts best right now?',
    `GW${latest} is the latest finished gameweek. Every cell is (average predicted value, RMSE
