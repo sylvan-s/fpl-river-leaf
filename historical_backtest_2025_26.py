@@ -31,8 +31,12 @@ buckets internally (it always iterates every metric); this script's build()
 appends a CBIT_NOTE and callers should ignore those two keys in the output.
 
 Run:  python3 historical_backtest_2025_26.py
-Writes docs/data/historical_backtest_2025_26.json (trajectory across GW2-38
-for raw/prior/shrunk, the five valid metrics) and prints a summary.
+Writes historical_backtest_2025_26.json - PER-GAMEWEEK (not cumulative) RMSE
+across GW2-38 for raw/prior/shrunk, the five valid metrics - and prints a
+summary. Each gameweek's raw is scored using only the player's own average
+rate from the weeks before it, exactly as the live tracker does; it is not a
+running pool of every week's error, so one bad or noisy week does not drag
+down the read of a good one three weeks later.
 """
 import csv, io, json, os, re, sys, unicodedata, urllib.request
 from collections import defaultdict
@@ -197,24 +201,21 @@ def main():
     print("\nWalking forward through GW2-38 (build_prediction_tracker.walk_forward, unmodified)...")
     weeks, _cum = bpt.walk_forward(boot, cache, finished, baselines)
 
+    # PER-GAMEWEEK, not cumulative: each point is that single week's own RMSE
+    # (raw = the player's own rate through the PREVIOUS week only, prior =
+    # the 2024/25-derived baseline, shrunk = the blend), scored against that
+    # week's actual outcome. No pooling across weeks - a bad week doesn't drag
+    # down the read of a good one, and vice versa.
     trajectory = {k: {"gw": [], "raw": [], "prior": [], "shrunk": []} for k in VALID_METRICS}
     for k in VALID_METRICS:
-        nr = nb = ns = 0
-        sr = sb = ss = 0.0
         for gw in finished:
             w = weeks[str(gw)][k]
             if not w["n"]:
                 continue
-            if w["rmse_raw"] is not None:
-                sr += w["rmse_raw"]**2 * w["n"]; nr += w["n"]
-            if w["rmse_base"] is not None:
-                sb += w["rmse_base"]**2 * w["n"]; nb += w["n"]
-            if w["rmse_shrunk"] is not None:
-                ss += w["rmse_shrunk"]**2 * w["n"]; ns += w["n"]
             trajectory[k]["gw"].append(gw)
-            trajectory[k]["raw"].append((sr/nr)**0.5 if nr else None)
-            trajectory[k]["prior"].append((sb/nb)**0.5 if nb else None)
-            trajectory[k]["shrunk"].append((ss/ns)**0.5 if ns else None)
+            trajectory[k]["raw"].append(w["rmse_raw"])
+            trajectory[k]["prior"].append(w["rmse_base"])
+            trajectory[k]["shrunk"].append(w["rmse_shrunk"])
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     json.dump(dict(season="2025-26", prior_season=PRIOR_SEASON,
@@ -227,17 +228,13 @@ def main():
     print(f"\n{CBIT_NOTE}\n")
     for k in VALID_METRICS:
         t = trajectory[k]
-        raw_end = t["raw"][-1]
-        base_end, shrunk_end = t["prior"][-1], t["shrunk"][-1]
-        cross_gw = None
-        for i, gw in enumerate(t["gw"]):
-            if t["shrunk"][i] is not None and t["prior"][i] is not None and t["shrunk"][i] < t["prior"][i]:
-                cross_gw = gw
-                break
-        label = k
-        print(f"  {label:8s} final cumulative RMSE (GW38): raw {raw_end:.3f}  "
-              f"prior {base_end:.3f}  shrunk {shrunk_end:.3f}"
-              + (f"  -> shrunk overtook prior at GW{cross_gw}" if cross_gw else "  -> shrunk never beat prior"))
+        wins = sum(1 for r, p, s in zip(t["raw"], t["prior"], t["shrunk"])
+                   if s is not None and p is not None and s <= min(p, r if r is not None else 1e9))
+        n_weeks = len(t["gw"])
+        avg = lambda xs: sum(x for x in xs if x is not None) / len([x for x in xs if x is not None])
+        print(f"  {k:8s} shrunk best-or-tied in {wins}/{n_weeks} weeks  "
+              f"(avg per-week RMSE: raw {avg(t['raw']):.3f}  prior {avg(t['prior']):.3f}  "
+              f"shrunk {avg(t['shrunk']):.3f})")
 
 
 if __name__ == "__main__":

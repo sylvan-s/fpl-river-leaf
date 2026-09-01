@@ -1931,42 +1931,51 @@ launched with 2025/26, so there is no real prior for CBIT90/CBIRT90. Confirmed
 against the archive directly, not assumed. Backtest covers the other five:
 xG90, xA90, xGC90, saves90, start rate.
 
-**Result — final cumulative RMSE, GW38 (lower is better):**
+**Result — PER-GAMEWEEK RMSE (not cumulative/pooled), averaged across GW2-38,
+each gameweek scored on its own against that week's actual outcome:**
 
-| metric | raw | prior | shrunk |
-|---|---|---|---|
-| xG per 90 | 1.477 | 1.423 | **1.422** |
-| xA per 90 | 0.495 | 0.480 | **0.479** |
-| xGC per 90 | 3.258 | 3.159 | **3.157** |
-| Saves per 90 | 1.966 | 1.880 | **1.867** |
-| Start rate | 0.401 | 0.454 | **0.399** |
+| metric | avg raw | avg prior | avg shrunk | shrunk best-or-tied |
+|---|---|---|---|---|
+| xG per 90 | 1.067 | 1.041 | **1.040** | 21/38 weeks |
+| xA per 90 | 0.399 | 0.379 | **0.377** | 23/38 weeks |
+| xGC per 90 | 2.653 | 2.551 | **2.546** | 16/38 weeks |
+| Saves per 90 | 1.878 | 1.799 | **1.787** | 16/38 weeks |
+| Start rate | 0.400 | 0.454 | **0.398** | 26/38 weeks |
 
-Shrunk is at least tied-best on every metric across the full season, matching
-the earlier backtest's verdict. But the margin over prior is tiny for four of
-the five metrics (xG/xA/xGC/saves) — cumulative RMSE only nudges past prior by
-a fraction of a percent, nowhere near the gap either estimator has over raw.
-Start rate is the exception: shrunk clearly beats both raw and prior
-(0.399 vs 0.454, an ~12% RMSE improvement), separating from prior almost
-immediately and holding that gap the rest of the season.
+A single gameweek's RMSE is noisy — one lucky hat-trick from a low-owned
+player or a flurry of red cards can spike any of the three estimators on any
+given week regardless of how good the underlying method is (see the xGC90
+trajectory: several weeks jump to 6-9 RMSE against a season average of ~2.6).
+Averaging across weeks smooths that out without cumulative pooling's own
+distortion (see the first version of this analysis, corrected below).
 
-**Why cumulative understates it.** Per-week (not cumulative) RMSE late in the
-season shows the same pattern, not a pooling artifact: at GW35 and GW38, shrunk
-edges prior by only ~0.002 on xG90 despite `mean_weight` (the share of the
-blend coming from a player's own 2025/26 data) reaching ~0.38-0.40 by then.
-For these four metrics, last season's rate is already a strong predictor of
-this season's rate — there just isn't much room for blending in noisier
-current-season data to improve on it. Prior is doing most of the work; shrunk
-is a safety net against the cases where it isn't, not a consistent overall
-win.
+Shrunk is only the week's single best estimator in 16-26 of 38 weeks
+depending on the metric — never a majority for xGC90/saves90, barely one for
+xG90 — but "best-or-tied" undersells how close it runs: even in weeks it
+loses, it is typically fractions of a percent behind whichever of raw/prior
+won that week, never dramatically worse. Start rate is again the standout:
+shrunk wins the week outright more often than the other four metrics AND
+carries the largest average margin over prior (0.398 vs 0.454, ~12%).
 
-**Verdict.** The live tracker's own caption ("watch for shrunk to start
-beating prior consistently as gameweeks accumulate") holds cleanly for start
-rate and only marginally for the other four metrics on this evidence. That
-does not mean shrinkage is wrong to use — it is never worse than either input
-by more than a rounding error, which is exactly what an empirical-Bayes blend
-is supposed to guarantee — but for most of these metrics the crossover isn't a
-dramatic story, and the live 2026/27 tracker should not be expected to show
-one either, in most rows, most weeks.
+**Correction, 2 Sep 2026.** This backtest originally reported CUMULATIVE
+(pooled since GW1) RMSE, not per-gameweek — the wrong statistic for "does the
+predictor get better week to week," since pooling folds 37 weeks of history
+into every point and mechanically flattens whatever is happening in the most
+recent week. Re-run with the fix: `historical_backtest_2025_26.py`'s
+trajectory is now genuinely per-gameweek, and the numbers above replace the
+original cumulative-RMSE table this section used to show.
+
+**Verdict.** For four of five metrics, shrunk and prior track each other
+closely week to week with shrunk usually a hair ahead — last season's rate is
+already a strong predictor and there is limited room for one week's worth of
+current-season data to improve on it, especially at the low weights `k`
+assigns early and mid-season. Start rate is the one metric where shrinkage
+earns a real, consistent, week-over-week edge. None of this means shrinkage is
+wrong to use — an empirical-Bayes blend is supposed to guarantee it is never
+much worse than either input, and it delivers that — but the live 2026/27
+tracker's own caption ("watch for shrunk to start beating prior") should be
+read as a real story for start rate and a marginal one for the rest, not a
+uniform crossover to expect across every row.
 
 **Data source caveat.** Both seasons are vaastav/Fantasy-Premier-League
 archives (community-maintained, not the official FPL API) — see
