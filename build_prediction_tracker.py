@@ -41,7 +41,7 @@ then event/{gw}/live/ once per newly-finished gameweek (cheap: one call per
 GW, not per player). Run this wherever publish_dashboard.sh normally runs, on
 a machine with real internet access, not an offline sandbox.
 
-PERSISTENCE, THREE LAYERS.
+PERSISTENCE, FOUR LAYERS.
   live_gw_cache.json      raw per-gameweek FPL stats, keyed by gameweek. Only
                           FINISHED gameweeks are ever written — a live
                           gameweek is still changing, and caching a partial
@@ -69,6 +69,27 @@ PERSISTENCE, THREE LAYERS.
                           gated at GW6, and the 26 Aug 2026 entry there for
                           why this file exists ahead of that gate anyway
                           (observe now, activate later).
+  docs/data/priors_payload.json
+                          ADDED 1 Sep 2026, see docs/adr/0002. Everything
+                          panels 1 and 2 need — finished, weeks, metric
+                          labels, empty_state, generated — in the shape the
+                          page's JS wants it. Derived from prediction_tracker
+                          .json each run, not a second source of truth.
+                          It exists so the PAGE can stop carrying the numbers:
+                          docs/priors.html used to inline the whole payload as
+                          `const DATA = {...}` and weighed 256 KB, so every
+                          weekly refresh rewrote the entire file. Now the HTML
+                          is a 17 KB static shell that fetches this, and a
+                          data-only week leaves it byte-identical. The page
+                          fetches priors_player_snapshot.json separately for
+                          panel 3 rather than this file duplicating it.
+
+DO NOT PUT DATA BACK IN THE HTML. The point of the split is that the emitted
+page depends on the layout and the JS and nothing else — that is what keeps a
+weekly refresh out of the HTML diff. A build-time f-string that interpolates
+so much as a gameweek number into the shell silently undoes it. The generated
+stamp and "through GW n" in the subtitle are filled client-side from the
+payload for exactly this reason. verify_priors.js guards the runtime half.
 
 EMPTY-SEASON STATE. If bootstrap-static reports zero finished gameweeks (true
 as of this file's creation — GW1 hasn't happened yet), the page renders a
@@ -82,6 +103,7 @@ PRIORS_SNAP = os.path.join(HERE, "fpl_priors_2025_26_v2.json")
 LIVE_CACHE = os.path.join(HERE, "live_gw_cache.json")
 TRACKER = os.path.join(HERE, "prediction_tracker.json")
 SNAPSHOT = os.path.join(HERE, "docs", "data", "priors_player_snapshot.json")
+PAYLOAD = os.path.join(HERE, "docs", "data", "priors_payload.json")
 OUT = os.environ.get("FPL_PRIORS_OUT") or os.path.join(HERE, "docs", "priors.html")
 
 MIN_MINS_PRIOR = 900     # this project's standard "trust a season rate" gate
@@ -478,30 +500,40 @@ def build():
 
     metric_labels = {m["key"]: m["label"] for m in METRICS + DC_METRICS}
     metric_labels["stp"] = "Start rate"
-    payload = dict(finished=finished, weeks=weeks, snapshot=snapshot, empty_state=empty_state,
+    payload = dict(finished=finished, weeks=weeks, empty_state=empty_state,
                     generated=f"{dt.datetime.now():%Y-%m-%d %H:%M}",
                     metric_labels=metric_labels)
 
+    # DATA IS FETCHED, NOT INLINED — changed 1 Sep 2026, see docs/adr/0002.
+    # Everything below the payload write is STATIC: the emitted HTML depends on
+    # the layout and the JS, never on this week's numbers, so a data refresh
+    # rewrites JSON and leaves docs/priors.html byte-identical. `snapshot` is
+    # deliberately absent from the payload — it is already written to SNAPSHOT
+    # and the page fetches that file directly, rather than the build shipping a
+    # second copy of the same ~180 KB under a different name.
+    os.makedirs(os.path.dirname(PAYLOAD), exist_ok=True)
+    json.dump(payload, open(PAYLOAD, "w", encoding="utf-8"))
+
     body = '<div id="app"></div>'
-    script = f"""
+    script = """
 <script>
-const DATA = {json.dumps(payload)};
-const C = {{a:'#4ea3ff',b:'#ffc857',c:'#5fd38d',d:'#ff6b6b',e:'#c792ea',dim:'#8b98a5'}};
+const C = {a:'#4ea3ff',b:'#ffc857',c:'#5fd38d',d:'#ff6b6b',e:'#c792ea',dim:'#8b98a5'};
 const css = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
 Chart.defaults.color = css('--dim');
 Chart.defaults.borderColor = css('--grid');
 Chart.defaults.font.family = "ui-monospace,Menlo,monospace";
 const f3 = n => n===null||n===undefined ? '\\u2014' : n.toFixed(3);
 const METRIC_ORDER = ['xg90','xa90','xgc90','sv90','cbit90','cbirt90','stp'];
-const COLORS = {{xg90:C.a,xa90:C.b,xgc90:C.d,sv90:C.e,cbit90:C.c,cbirt90:'#7aa2ff',stp:'#e0a458'}};
+const COLORS = {xg90:C.a,xa90:C.b,xgc90:C.d,sv90:C.e,cbit90:C.c,cbirt90:'#7aa2ff',stp:'#e0a458'};
 
-function panel(id, title, tests, body){{
+function panel(id, title, tests, body){
   const d = document.createElement('div'); d.className='panel'; d.id=id;
-  d.innerHTML = `<h2>${{title}}</h2><p class="tests">${{tests}}</p>${{body}}`;
+  d.innerHTML = `<h2>${title}</h2><p class="tests">${tests}</p>${body}`;
   document.getElementById('app').appendChild(d); return d;
-}}
+}
 
-if (DATA.empty_state) {{
+function render(DATA) {
+if (DATA.empty_state) {
   panel('waiting', 'Waiting for gameweeks', DATA.empty_state,
     `<div class="find">This page tracks, week by week, which of RAW (this season's own data),
      the HIERARCHICAL PRIOR (last season, or a positional fallback), or the SHRUNK blend of the
@@ -510,47 +542,47 @@ if (DATA.empty_state) {{
      re-run. See <span class="mono">build_prediction_tracker.py</span> for the full method, and
      <span class="mono">METHODOLOGY_ALTERNATIVES.md</span> ("Shrinkage backtest") for the
      retrospective check already run on 2025/26 that justified building this.</div>`);
-}} else {{
+} else {
   const gws = DATA.finished;
   const latest = String(gws[gws.length-1]);
 
   /* ---------- 1. which estimator predicts best \\u2014 latest GW + cumulative ---------- */
-  function cum(mkey, uptoIdx){{
+  function cum(mkey, uptoIdx){
     let n=0, sr=0, sb=0, ss=0;
-    for (let i=0;i<=uptoIdx;i++){{
+    for (let i=0;i<=uptoIdx;i++){
       const w = DATA.weeks[String(gws[i])][mkey];
       if (!w || !w.n) continue;
       n += w.n;
       if (w.rmse_raw!==null) sr += w.rmse_raw*w.rmse_raw*w.n;
       if (w.rmse_base!==null) sb += w.rmse_base*w.rmse_base*w.n;
       if (w.rmse_shrunk!==null) ss += w.rmse_shrunk*w.rmse_shrunk*w.n;
-    }}
-    return {{n, raw: n?Math.sqrt(sr/n):null, base: n?Math.sqrt(sb/n):null, shrunk: n?Math.sqrt(ss/n):null}};
-  }}
-  const rowsSum = METRIC_ORDER.map((k,i)=>{{
+    }
+    return {n, raw: n?Math.sqrt(sr/n):null, base: n?Math.sqrt(sb/n):null, shrunk: n?Math.sqrt(ss/n):null};
+  }
+  const rowsSum = METRIC_ORDER.map((k,i)=>{
     const wk = DATA.weeks[latest][k];
     const c = cum(k, gws.length-1);
     const bestLatest = Math.min(wk.rmse_raw??1e9, wk.rmse_base??1e9, wk.rmse_shrunk??1e9);
     const bestCum = Math.min(c.raw??1e9, c.base??1e9, c.shrunk??1e9);
     const tag = (v,best) => v!==null && Math.abs(v-best)<1e-9 ? ' <span class="tag ok">best</span>' : '';
-    return `<tr><td><b>${{DATA.metric_labels[k]}}</b></td><td class="mono">${{wk.n}}</td>
-      <td class="mono">${{f3(wk.rmse_raw)}}${{tag(wk.rmse_raw,bestLatest)}}</td>
-      <td class="mono">${{f3(wk.rmse_base)}}${{tag(wk.rmse_base,bestLatest)}}</td>
-      <td class="mono">${{f3(wk.rmse_shrunk)}}${{tag(wk.rmse_shrunk,bestLatest)}}</td>
-      <td class="mono">${{f3(c.raw)}}${{tag(c.raw,bestCum)}}</td>
-      <td class="mono">${{f3(c.base)}}${{tag(c.base,bestCum)}}</td>
-      <td class="mono">${{f3(c.shrunk)}}${{tag(c.shrunk,bestCum)}}</td></tr>`;
-  }}).join('');
+    return `<tr><td><b>${DATA.metric_labels[k]}</b></td><td class="mono">${wk.n}</td>
+      <td class="mono">${f3(wk.rmse_raw)}${tag(wk.rmse_raw,bestLatest)}</td>
+      <td class="mono">${f3(wk.rmse_base)}${tag(wk.rmse_base,bestLatest)}</td>
+      <td class="mono">${f3(wk.rmse_shrunk)}${tag(wk.rmse_shrunk,bestLatest)}</td>
+      <td class="mono">${f3(c.raw)}${tag(c.raw,bestCum)}</td>
+      <td class="mono">${f3(c.base)}${tag(c.base,bestCum)}</td>
+      <td class="mono">${f3(c.shrunk)}${tag(c.shrunk,bestCum)}</td></tr>`;
+  }).join('');
   panel('p1', '1 \\u00b7 Which estimator predicts best right now?',
-   `GW${{latest}} is the latest finished gameweek. Every column is RMSE against what actually
+   `GW${latest} is the latest finished gameweek. Every column is RMSE against what actually
     happened that week (lower is better; best of the three tagged per row) \\u2014 left three for
-    GW${{latest}} alone, right three cumulative across every gameweek this season. Raw and shrunk
+    GW${latest} alone, right three cumulative across every gameweek this season. Raw and shrunk
     for GW1 are blank by design: there was no "season so far" yet to build them from.`,
-   `<table><thead><tr><th>metric</th><th>n (GW${{latest}})</th>
-     <th colspan="3">GW${{latest}} only</th><th colspan="3">cumulative, season to date</th></tr>
+   `<table><thead><tr><th>metric</th><th>n (GW${latest})</th>
+     <th colspan="3">GW${latest} only</th><th colspan="3">cumulative, season to date</th></tr>
      <tr><th></th><th></th><th>raw</th><th>prior</th><th>shrunk</th>
      <th>raw</th><th>prior</th><th>shrunk</th></tr></thead>
-     <tbody>${{rowsSum}}</tbody></table>
+     <tbody>${rowsSum}</tbody></table>
     <div class="find">Early season, "prior" (last season, or a positional fallback) often wins
     \\u2014 a handful of matches of noise can be worse than a full season of someone else's
     history. Watch for "shrunk" starting to beat "prior" consistently as gameweeks accumulate;
@@ -561,27 +593,27 @@ if (DATA.empty_state) {{
   panel('p2', '2 \\u00b7 Weight on a player\\'s own data, by gameweek',
    'weight = n90 / (n90 + k) \\u2014 the share of the shrunk estimate coming from THIS season\\'s observations rather than the prior. k is re-derived fresh each gameweek from that week\\'s live pool (not fixed from last season), so a fallback k early on is visible here rather than hidden. Averaged across every player with enough minutes to be scored that week.',
    `<div class="wrap"><canvas id="cWeight"></canvas></div>
-    <div class="legend">${{METRIC_ORDER.map(k=>`<span><i style="background:${{COLORS[k]}}"></i>${{DATA.metric_labels[k]}}</span>`).join('')}}</div>
+    <div class="legend">${METRIC_ORDER.map(k=>`<span><i style="background:${COLORS[k]}"></i>${DATA.metric_labels[k]}</span>`).join('')}</div>
     <div class="find" id="weightFind"></div>`);
   const labels = gws.map(g=>'GW'+g);
-  new Chart(cWeight, {{type:'line', data:{{labels, datasets: METRIC_ORDER.map(k=>({{
+  new Chart(cWeight, {type:'line', data:{labels, datasets: METRIC_ORDER.map(k=>({
     label: DATA.metric_labels[k], borderColor: COLORS[k], backgroundColor: COLORS[k],
     data: gws.map(g => DATA.weeks[String(g)][k].mean_weight),
-    spanGaps: true, pointRadius: 3, pointHoverRadius: 6, borderWidth: 2, tension: 0.2}})) }},
-   options:{{plugins:{{legend:{{display:false}}}},
-    scales:{{y:{{min:0,max:1,title:{{display:true,text:'weight on own data (0 = pure prior, 1 = pure raw)'}},grid:{{color:css('--grid')}}}},
-            x:{{title:{{display:true,text:'gameweek'}},grid:{{color:css('--grid')}}}}}}}}}});
+    spanGaps: true, pointRadius: 3, pointHoverRadius: 6, borderWidth: 2, tension: 0.2})) },
+   options:{plugins:{legend:{display:false}},
+    scales:{y:{min:0,max:1,title:{display:true,text:'weight on own data (0 = pure prior, 1 = pure raw)'},grid:{color:css('--grid')}},
+            x:{title:{display:true,text:'gameweek'},grid:{color:css('--grid')}}}}});
   const firstDeg = METRIC_ORDER.find(k => DATA.weeks[latest][k].degenerate);
   document.getElementById('weightFind').innerHTML = firstDeg
-    ? `<b>${{DATA.metric_labels[firstDeg]}}</b> is still on a fallback k as of GW${{latest}} \\u2014
+    ? `<b>${DATA.metric_labels[firstDeg]}</b> is still on a fallback k as of GW${latest} \\u2014
        not enough players have crossed the 270-minute (3 x 90) floor _estimate_k() requires for
        a trustworthy variance read yet. Expect the fallback tag to clear metric by metric as the
        season goes on, not all at once.`
-    : `Every metric has a properly-derived (non-fallback) k as of GW${{latest}}.`;
+    : `Every metric has a properly-derived (non-fallback) k as of GW${latest}.`;
 
   /* ---------- 3. per player \\u2014 look one up ---------- */
   panel('p3', '3 \\u00b7 One player: prior vs raw vs shrunk, right now',
-   `As of GW${{latest}}. Click any column header to sort by it (click again to reverse); starts
+   `As of GW${latest}. Click any column header to sort by it (click again to reverse); starts
     sorted by WEIGHT, highest first. <b>PRIOR</b> = last season\\'s rate, or a positional fallback
     for a mover/newcomer (see BASE). <b>RAW</b> = this player\\'s own 2026/27 rate so far \\u2014
     unstable on a handful of matches, shown for reference. <b>SHRUNK</b> = the blend the live
@@ -597,77 +629,110 @@ if (DATA.empty_state) {{
     typical for a newcomer or a mover the contaminated-prior check excluded).`,
    `<input id="pq" type="text" placeholder="Filter by name\\u2026" autocomplete="off"
       style="width:100%;box-sizing:border-box;padding:6px 8px;margin:6px 0;
-      background:${{css('--panel')}};color:inherit;border:1px solid ${{css('--grid')}};border-radius:4px;">
+      background:${css('--panel')};color:inherit;border:1px solid ${css('--grid')};border-radius:4px;">
     <div style="max-height:480px;overflow:auto">
     <table><thead><tr id="pHead"></tr></thead>
       <tbody id="pBody"></tbody></table></div>`);
   const SNAP_COLS = [
-    {{key:'name',    label:'player', type:'str'}},
-    {{key:'pos',     label:'pos',    type:'str'}},
-    {{key:'metric',  label:'metric', type:'str',
-      fmt: r => DATA.metric_labels[r.metric] || r.metric}},
-    {{key:'prior',   label:'prior',  type:'num'}},
-    {{key:'raw',     label:'raw',    type:'num'}},
-    {{key:'shrunk',  label:'shrunk', type:'num'}},
-    {{key:'ratio',   label:'shrunk/prior', type:'num',
+    {key:'name',    label:'player', type:'str'},
+    {key:'pos',     label:'pos',    type:'str'},
+    {key:'metric',  label:'metric', type:'str',
+      fmt: r => DATA.metric_labels[r.metric] || r.metric},
+    {key:'prior',   label:'prior',  type:'num'},
+    {key:'raw',     label:'raw',    type:'num'},
+    {key:'shrunk',  label:'shrunk', type:'num'},
+    {key:'ratio',   label:'shrunk/prior', type:'num',
       fmt: r => r.ratio===null ? '\\u2014'
-        : `<span style="color:${{r.ratio>1.02?css('--c'):r.ratio<0.98?css('--d'):'inherit'}}">`
-          +`${{r.ratio.toFixed(2)}}\\u00d7</span>`}},
-    {{key:'weight',  label:'weight', type:'num',
-      fmt: r => f3(r.weight) + (r.degenerate ? ' <span class="tag bad">fallback k</span>' : '')}},
-    {{key:'n',       label:'n',      type:'num'}},
-    {{key:'base_src',label:'base',   type:'str'}},
+        : `<span style="color:${r.ratio>1.02?css('--c'):r.ratio<0.98?css('--d'):'inherit'}">`
+          +`${r.ratio.toFixed(2)}\\u00d7</span>`},
+    {key:'weight',  label:'weight', type:'num',
+      fmt: r => f3(r.weight) + (r.degenerate ? ' <span class="tag bad">fallback k</span>' : '')},
+    {key:'n',       label:'n',      type:'num'},
+    {key:'base_src',label:'base',   type:'str'},
   ];
   let sortKey = 'weight', sortDir = -1;   // -1 = desc (matches the old default)
   document.getElementById('pHead').innerHTML = SNAP_COLS.map(c =>
-    `<th data-key="${{c.key}}" style="cursor:pointer;user-select:none">${{c.label}}`
-    + `<span class="sortmark" data-key="${{c.key}}"></span></th>`).join('');
-  function markSort() {{
-    document.querySelectorAll('#pHead .sortmark').forEach(el => {{
+    `<th data-key="${c.key}" style="cursor:pointer;user-select:none">${c.label}`
+    + `<span class="sortmark" data-key="${c.key}"></span></th>`).join('');
+  function markSort() {
+    document.querySelectorAll('#pHead .sortmark').forEach(el => {
       el.textContent = el.dataset.key === sortKey ? (sortDir === 1 ? ' \\u25b2' : ' \\u25bc') : '';
-    }});
-  }}
+    });
+  }
   const SNAP = (DATA.snapshot || []).slice();
-  function renderSnap(filter) {{
+  function renderSnap(filter) {
     const q = (filter||'').toLowerCase();
     const col = SNAP_COLS.find(c => c.key === sortKey);
-    const rows = (q ? SNAP.filter(r => r.name.toLowerCase().includes(q)) : SNAP).slice().sort((a,b) => {{
+    const rows = (q ? SNAP.filter(r => r.name.toLowerCase().includes(q)) : SNAP).slice().sort((a,b) => {
       let av = a[sortKey], bv = b[sortKey];
-      if (col.type === 'num') {{ av = av===null?-Infinity:av; bv = bv===null?-Infinity:bv; return sortDir*(av-bv); }}
+      if (col.type === 'num') { av = av===null?-Infinity:av; bv = bv===null?-Infinity:bv; return sortDir*(av-bv); }
       return sortDir*String(av).localeCompare(String(bv));
-    }}).slice(0, 400);
+    }).slice(0, 400);
     document.getElementById('pBody').innerHTML = rows.map(r => '<tr>' + SNAP_COLS.map(c =>
-      `<td class="${{c.key==='name'?'':'mono'}}">`
-      + `${{c.fmt ? c.fmt(r) : (c.type==='num' ? f3(r[c.key]) : (r[c.key]??'\\u2014'))}}</td>`).join('')
-      + '</tr>').join('') || `<tr><td colspan="${{SNAP_COLS.length}}">No match.</td></tr>`;
+      `<td class="${c.key==='name'?'':'mono'}">`
+      + `${c.fmt ? c.fmt(r) : (c.type==='num' ? f3(r[c.key]) : (r[c.key]??'\\u2014'))}</td>`).join('')
+      + '</tr>').join('') || `<tr><td colspan="${SNAP_COLS.length}">No match.</td></tr>`;
     markSort();
-  }}
-  document.getElementById('pHead').addEventListener('click', e => {{
+  }
+  document.getElementById('pHead').addEventListener('click', e => {
     const th = e.target.closest('th'); if (!th) return;
     const key = th.dataset.key;
     sortDir = (key === sortKey) ? -sortDir : -1;
     sortKey = key;
     renderSnap(document.getElementById('pq').value);
-  }});
+  });
   renderSnap('');
   document.getElementById('pq').addEventListener('input', e => renderSnap(e.target.value));
-}}
+}
+}
+
+fetch('data/priors_payload.json', {cache: 'no-store'})
+  .then(r => { if (!r.ok) throw new Error('priors_payload.json \u2014 HTTP ' + r.status); return r.json(); })
+  .then(payload =>
+    fetch('data/priors_player_snapshot.json', {cache: 'no-store'})
+      .then(r => r.ok ? r.json() : {rows: []})
+      .catch(() => ({rows: []}))
+      .then(snap => Object.assign(payload, {snapshot: snap.rows || []})))
+  .then(DATA => {
+    const m = document.getElementById('subMeta');
+    if (m) m.textContent = 'data generated ' + DATA.generated
+      + (DATA.finished && DATA.finished.length
+         ? ' \u00b7 through GW' + DATA.finished[DATA.finished.length - 1] : '');
+    render(DATA);
+  })
+  .catch(e => {
+    document.getElementById('app').innerHTML =
+      '<div class="panel"><h2>Data not loaded</h2>'
+      + '<p class="tests">' + e.message + '</p>'
+      + '<div class="find">This page reads its numbers from '
+      + '<span class="mono">data/priors_payload.json</span> at load time rather than carrying '
+      + 'them inline, so a weekly refresh rewrites JSON and leaves this file unchanged '
+      + '(see <span class="mono">docs/adr/0002</span>). The cost is that opening it straight '
+      + 'off disk on a <span class="mono">file://</span> URL can never work \u2014 browsers '
+      + 'refuse fetch there. Serve the folder instead: <span class="mono">python3 -m '
+      + 'http.server</span> from <span class="mono">docs/</span>, then open '
+      + '<span class="mono">localhost:8000/priors.html</span>.</div></div>';
+  });
 </script>"""
 
     html = page_shell.shell(
         title="Prior vs reality",
         active="priors",
-        subtitle=(f"Live weekly walk-forward tracker &middot; page generated {payload['generated']}"
-                   + (f" &middot; through GW{finished[-1]}" if finished else "")),
+        # No generated-at stamp or gameweek number here: both are data, and a
+        # data-dependent subtitle would put this file back in the weekly diff
+        # for the sake of two facts. render() fills #subMeta from the payload.
+        subtitle=('Live weekly walk-forward tracker &middot; '
+                   '<span id="subMeta">loading&hellip;</span>'),
         body=body,
         footer="Built by <span class='mono'>build_prediction_tracker.py</span>. Scores raw, prior, "
                "and shrunk against each gameweek only AFTER it finishes, using only data through "
-               "the gameweek before. See METHODOLOGY_ALTERNATIVES.md for the 2025/26 backtest that "
+               "the gameweek before. Numbers load from <span class='mono'>data/priors_payload.json</span>; "
+               "see METHODOLOGY_ALTERNATIVES.md for the 2025/26 backtest that "
                "validated the shrinkage mechanism before this live version was built.")
     html = html.replace("</body>", script + "\n</body>")
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     open(OUT, "w", encoding="utf-8").write(html)
-    return html, payload
+    return html, dict(payload, snapshot=snapshot)
 
 
 if __name__ == "__main__":

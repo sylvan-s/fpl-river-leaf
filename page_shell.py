@@ -7,6 +7,13 @@ sibling file. The pages that carry decisions must keep working when opened
 straight off disk, so the build INLINES the shared source into each page. One
 source, self-contained outputs — not a compromise between them.
 
+ONE PAGE NO LONGER OBEYS THIS. docs/priors.html fetches its numbers from
+docs/data/*.json instead of carrying them inline, so it does NOT work opened
+off disk — it must be served. That is a deliberate, scoped exception with its
+reasoning and its costs written down in docs/adr/0002; it is not drift, and it
+does not license the same move on the other pages. The CSS above is still
+inlined everywhere, priors.html included.
+
 THE CHART.JS TAG IS LOAD-BEARING AND EXACT. The artifact sandbox only permits a
 short allowlist of CDN URLs with matching integrity hashes. Point this anywhere
 else and the page renders COMPLETELY BLANK while `node --check` and
