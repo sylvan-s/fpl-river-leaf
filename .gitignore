@@ -21,6 +21,7 @@ _wtest.txt
 
 # fetched at build time, never committed — see DASHBOARD_PLAN.md
 .cache_merged_gw.csv
+.cache_merged_gw_*.csv
 
 # Secrets — never committed under any circumstance
 git_access.md

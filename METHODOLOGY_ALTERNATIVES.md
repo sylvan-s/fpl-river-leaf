@@ -1907,3 +1907,69 @@ kept as this note instead of an ongoing tab. `docs/priors.html` was rebuilt on
 that answers the *ongoing* version of this question once 2026/27 gameweeks
 start finishing — see that file's docstring for the walk-forward methodology,
 which differs from this backtest's fixed-split design.
+
+## Full-season walk-forward replay — 2025/26 GW2-38 vs a real 2024/25 prior, 2 Sep 2026
+
+**Question.** The GW1-8/GW9-38 backtest above used a POSITIONAL pool mean as
+its only baseline and split one season in half. Does the actual live
+methodology — a hierarchical prior (a player's own last-SEASON rate, falling
+back to a positional mean) walked forward week by week — hold up across an
+entire real season, using a genuine prior season rather than half of the same
+one?
+
+**Method.** `historical_backtest_2025_26.py` (kept, not retired — see its own
+docstring). Builds 2024/25 season baselines from vaastav's archive exactly
+like `build_prediction_tracker.build_baselines()` does from the frozen
+snapshot (900+ minute own-rate tier, positional-mean fallback), reshapes
+2025/26's archive into the same per-gameweek shape `walk_forward()` expects,
+and calls that function UNMODIFIED across all 38 rounds. Judged by the exact
+live code path, not a re-implementation.
+
+**Scope limit.** 2024/25's archive has no `clearances_blocks_interceptions` /
+`tackles` / `recoveries` columns — FPL's defensive-contribution category
+launched with 2025/26, so there is no real prior for CBIT90/CBIRT90. Confirmed
+against the archive directly, not assumed. Backtest covers the other five:
+xG90, xA90, xGC90, saves90, start rate.
+
+**Result — final cumulative RMSE, GW38 (lower is better):**
+
+| metric | raw | prior | shrunk |
+|---|---|---|---|
+| xG per 90 | 1.477 | 1.423 | **1.422** |
+| xA per 90 | 0.495 | 0.480 | **0.479** |
+| xGC per 90 | 3.258 | 3.159 | **3.157** |
+| Saves per 90 | 1.966 | 1.880 | **1.867** |
+| Start rate | 0.401 | 0.454 | **0.399** |
+
+Shrunk is at least tied-best on every metric across the full season, matching
+the earlier backtest's verdict. But the margin over prior is tiny for four of
+the five metrics (xG/xA/xGC/saves) — cumulative RMSE only nudges past prior by
+a fraction of a percent, nowhere near the gap either estimator has over raw.
+Start rate is the exception: shrunk clearly beats both raw and prior
+(0.399 vs 0.454, an ~12% RMSE improvement), separating from prior almost
+immediately and holding that gap the rest of the season.
+
+**Why cumulative understates it.** Per-week (not cumulative) RMSE late in the
+season shows the same pattern, not a pooling artifact: at GW35 and GW38, shrunk
+edges prior by only ~0.002 on xG90 despite `mean_weight` (the share of the
+blend coming from a player's own 2025/26 data) reaching ~0.38-0.40 by then.
+For these four metrics, last season's rate is already a strong predictor of
+this season's rate — there just isn't much room for blending in noisier
+current-season data to improve on it. Prior is doing most of the work; shrunk
+is a safety net against the cases where it isn't, not a consistent overall
+win.
+
+**Verdict.** The live tracker's own caption ("watch for shrunk to start
+beating prior consistently as gameweeks accumulate") holds cleanly for start
+rate and only marginally for the other four metrics on this evidence. That
+does not mean shrinkage is wrong to use — it is never worse than either input
+by more than a rounding error, which is exactly what an empirical-Bayes blend
+is supposed to guarantee — but for most of these metrics the crossover isn't a
+dramatic story, and the live 2026/27 tracker should not be expected to show
+one either, in most rows, most weeks.
+
+**Data source caveat.** Both seasons are vaastav/Fantasy-Premier-League
+archives (community-maintained, not the official FPL API) — see
+`fetch_gw_history.py`'s own caveat. `historical_backtest_2025_26.json` (repo
+root, gitignored cache files aside) holds the full per-gameweek trajectory for
+anyone who wants to re-chart it.
