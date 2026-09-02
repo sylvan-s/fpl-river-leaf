@@ -480,6 +480,29 @@ share rises; the differential case depends entirely on him playing.
 
 ## CHANGE HISTORY (newest first)
 
+### Wed 2 Sep 2026 — data correction, not a transfer — bank & squad value
+
+**Trigger.** Sylvan: bank should be £0.4m (Sarr's live sale price was £6.4m,
+not the £6.5m squad.json had tracked — flagged as "KNOWN DRIFT" in the 28 Aug
+entry's note the moment it happened, never applied to the actual field).
+
+**Live-checked via `get_squad` (fpl-research MCP, entry 1041614):** confirmed
+bank £0.4m. Cross-checking every player's price against that same call also
+found João Pedro's live price had risen 7.5 → 7.7 independently of the Sarr
+change — squad.json still had him at 7.5.
+
+**Applied:** `squad.json` — bank 0.5 → 0.4, João Pedro price 7.5 → 7.7,
+`squad_value` 99.5 → 99.7 (to match the corrected sum of all 15 prices, per
+`squad_state.py`'s own consistency check). Total (squad_value+bank) is now
+£100.1m, not £100.0m — correct, not a bug: a held player's price rising past
+what he cost you means the team's real value has grown past the original
+£100m, which only ever bound the squad at purchase time.
+
+**Also fixed `squad_state.py`'s validator**, which had been treating
+`squad_value + bank > £100m` as an error — wrong once prices can rise. The
+actual invariant that can never be violated is `bank >= 0`; the budget check
+was replaced with that.
+
 ### Wed 12 Aug 2026 — GW1 — FULL REBUILD via optimise_squad.py (6 transfers, 0 pts)
 
 **Trigger.** Sylvan: "update the squad selection based on the full optimisation

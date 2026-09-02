@@ -31,7 +31,6 @@ PATH = os.environ.get("FPL_SQUAD_JSON") or os.path.join(HERE, "squad.json")
 SQUAD_COMP = {"GKP": 2, "DEF": 5, "MID": 5, "FWD": 3}
 FORMATION = {"GKP": (1, 1), "DEF": (3, 5), "MID": (2, 5), "FWD": (1, 3)}
 MAX_CLUB = 3
-BUDGET = 100.0
 
 
 class SquadError(Exception):
@@ -126,9 +125,13 @@ def validate(st):
         errs.append(f"club cap exceeded: {over}")
 
     spend = sum(p["price"] for p in st.players)
-    if spend + st.bank > BUDGET + 1e-6:
-        errs.append(f"squad £{spend:.1f}m + bank £{st.bank:.1f}m = "
-                    f"£{spend + st.bank:.1f}m, over the £{BUDGET:.1f}m budget")
+    # NOT spend+bank<=100 — the £100m budget only binds at squad-construction
+    # time. A held player's price can rise after that, and real FPL team
+    # values routinely exceed £100m through organic appreciation; that is not
+    # an error. The only thing that IS always invalid is spending cash you
+    # don't have.
+    if st.bank < -1e-6:
+        errs.append(f"bank £{st.bank:.1f}m is negative — can't have spent more than owned")
 
     for who, label in ((st.captain, "captain"), (st.vice, "vice")):
         if who and who not in st.name_set:
