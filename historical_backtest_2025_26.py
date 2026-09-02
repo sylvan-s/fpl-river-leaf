@@ -120,6 +120,25 @@ def build_current_season():
     return boot, cache, finished
 
 
+def filter_by_position(boot, cache, positions):
+    """Restrict boot/cache to only the given POS codes (e.g. {'FWD'}) before
+    handing them to walk_forward() - NOT a post-hoc filter of its output.
+    This is exact, not an approximation: walk_forward()'s own k derivation
+    (Pass 1) already buckets pool_now BY POSITION internally, so a forward's
+    k already comes only from other forwards whether or not defenders/
+    midfielders are also present in the cache. Restricting the input to one
+    position changes nothing about how a forward's own raw/shrunk prediction
+    is computed - it just stops other positions' errors from being pooled
+    into the reported RMSE, which the live tracker's own METRICS positions
+    list already does per-metric (e.g. xgc90 is GKP/DEF only) but pools
+    every eligible position together within a metric otherwise."""
+    ids = {el["id"] for el in boot["elements"] if bpt.POS.get(el["element_type"]) in positions}
+    f_boot = {"elements": [el for el in boot["elements"] if el["id"] in ids]}
+    f_cache = {gw: {pid: s for pid, s in wk.items() if int(pid) in ids}
+               for gw, wk in cache.items()}
+    return f_boot, f_cache
+
+
 def build_prior_baselines(boot):
     """Hierarchical prior exactly like build_prediction_tracker.build_baselines(),
     sourced from 2024/25's archive instead of a frozen snapshot JSON. own-rate
@@ -289,16 +308,22 @@ def deviation_correlations(boot, cache, finished, baselines):
     return out
 
 
-def main():
-    print("Building 2025/26 season (own-progression source)...")
-    boot, cache, finished = build_current_season()
-    print("\nBuilding 2024/25 prior baselines...")
+# Position breakdowns beyond the full pooled population. Only FWD so far
+# (that is what was asked); xgc90/sv90 never apply to FWD (see bpt.METRICS'
+# own positions lists: xgc90 is GKP/DEF, sv90 is GKP), so its metric list is
+# deliberately narrower than VALID_METRICS. Add DEF/MID/GKP entries here the
+# same way if a similar breakdown is ever wanted for them.
+POSITION_FILTERS = {"FWD": (["xg90", "xa90"], {"FWD"})}
+
+
+def run_analysis(boot, cache, finished, metrics):
+    """baselines -> walk_forward -> per-gameweek trajectory (+ actual, +
+    deviation_corr) for one boot/cache pair. Shared by the full-population run
+    and every position-filtered one, so they can never quietly drift apart in
+    method - only the input differs."""
     baselines = build_prior_baselines(boot)
-    print("\nWalking forward through GW2-38 (build_prediction_tracker.walk_forward, unmodified)...")
     weeks, _cum = bpt.walk_forward(boot, cache, finished, baselines)
-    print("Computing actual per-90 averages (same 60-minute gate)...")
     actuals = actual_averages(boot, cache, finished)
-    print("Computing corr(raw-prior, actual-prior)...")
     deviation_corr = deviation_correlations(boot, cache, finished, baselines)
 
     # PER-GAMEWEEK, not cumulative: each point is that single week's own RMSE
@@ -307,8 +332,8 @@ def main():
     # week's actual outcome. No pooling across weeks - a bad week doesn't drag
     # down the read of a good one, and vice versa.
     trajectory = {k: {"gw": [], "raw": [], "prior": [], "shrunk": [], "actual": []}
-                  for k in VALID_METRICS}
-    for k in VALID_METRICS:
+                  for k in metrics}
+    for k in metrics:
         for gw in finished:
             w = weeks[str(gw)][k]
             if not w["n"]:
@@ -318,25 +343,19 @@ def main():
             trajectory[k]["prior"].append(w["rmse_base"])
             trajectory[k]["shrunk"].append(w["rmse_shrunk"])
             trajectory[k]["actual"].append(actuals[k][gw] if k in actuals else None)
+    return trajectory, deviation_corr
 
-    os.makedirs(os.path.dirname(OUT), exist_ok=True)
-    json.dump(dict(season="2025-26", prior_season=PRIOR_SEASON,
-                   metric_labels={k: v["label"] for k, v in
-                                  {m["key"]: m for m in bpt.METRICS}.items()},
-                   caveat=CBIT_NOTE, trajectory=trajectory,
-                   deviation_corr=deviation_corr),
-              open(OUT, "w", encoding="utf-8"), indent=1)
 
-    print(f"\nwritten: {os.path.relpath(OUT, HERE)}")
-    print(f"\n{CBIT_NOTE}\n")
+def _print_summary(label, trajectory, deviation_corr, metrics):
+    print(f"\n{label}")
     print("corr(raw-prior, actual-prior) - does a player's own-season rate")
     print("diverging from his prior-season rate anticipate the real outcome?")
-    for k in VALID_METRICS:
+    for k in metrics:
         c = deviation_corr[k]
         print(f"  {k:8s} r={c['corr']:.3f}  (n={c['n']})" if c["corr"] is not None
               else f"  {k:8s} not enough data")
     print()
-    for k in VALID_METRICS:
+    for k in metrics:
         t = trajectory[k]
         wins = sum(1 for r, p, s in zip(t["raw"], t["prior"], t["shrunk"])
                    if s is not None and p is not None and s <= min(p, r if r is not None else 1e9))
@@ -345,6 +364,37 @@ def main():
         print(f"  {k:8s} shrunk best-or-tied in {wins}/{n_weeks} weeks  "
               f"(avg per-week RMSE: raw {avg(t['raw']):.3f}  prior {avg(t['prior']):.3f}  "
               f"shrunk {avg(t['shrunk']):.3f})")
+
+
+def main():
+    print("Building 2025/26 season (own-progression source)...")
+    boot, cache, finished = build_current_season()
+    print("\nBuilding 2024/25 prior baselines and walking forward, all positions...")
+    trajectory, deviation_corr = run_analysis(boot, cache, finished, VALID_METRICS)
+
+    by_position = {}
+    for pos_label, (pos_metrics, pos_set) in POSITION_FILTERS.items():
+        print(f"\nRestricting to {pos_label} only...")
+        fboot, fcache = filter_by_position(boot, cache, pos_set)
+        f_trajectory, f_corr = run_analysis(fboot, fcache, finished, pos_metrics)
+        by_position[pos_label] = dict(n_players=len(fboot["elements"]),
+                                       trajectory=f_trajectory, deviation_corr=f_corr)
+
+    os.makedirs(os.path.dirname(OUT), exist_ok=True)
+    json.dump(dict(season="2025-26", prior_season=PRIOR_SEASON,
+                   metric_labels={k: v["label"] for k, v in
+                                  {m["key"]: m for m in bpt.METRICS}.items()},
+                   caveat=CBIT_NOTE, trajectory=trajectory,
+                   deviation_corr=deviation_corr, by_position=by_position),
+              open(OUT, "w", encoding="utf-8"), indent=1)
+
+    print(f"\nwritten: {os.path.relpath(OUT, HERE)}")
+    print(f"\n{CBIT_NOTE}")
+    _print_summary("ALL POSITIONS POOLED", trajectory, deviation_corr, VALID_METRICS)
+    for pos_label, (pos_metrics, _) in POSITION_FILTERS.items():
+        d = by_position[pos_label]
+        _print_summary(f"{pos_label} ONLY ({d['n_players']} players)",
+                        d["trajectory"], d["deviation_corr"], pos_metrics)
 
 
 if __name__ == "__main__":
