@@ -70,8 +70,6 @@ nav.top span.soon::after{content:" · planned";font-weight:400;font-size:11px}
 .diagram svg{display:block;max-width:100%;height:auto;margin:0 auto}
 </style>
 <style>
-.archetype td,.archetype th{text-align:left;vertical-align:top;padding:8px 10px;border-bottom:1px solid var(--line)}
-.archetype td:first-child,.archetype th:first-child{white-space:nowrap;width:48px}
 .squad-link{margin:-6px 0 10px}
 .squad-link a{font-size:13px;color:var(--dim);text-decoration:none;border-bottom:1px dotted var(--dim)}
 .squad-link a:hover{color:var(--tx);border-bottom-color:var(--tx)}
@@ -104,9 +102,9 @@ border-radius:9px;padding:9px 11px}
 
 <h1>River Leaf FC — squad</h1>
 <p class="squad-link"><a href="https://fantasy.premierleague.com/en/my-team" target="_blank" rel="noopener noreferrer">Open my team on fantasy.premierleague.com ↗</a></p>
-<p class="sub">GW2 · 3-4-3 · £99.7m + £0.4m bank · squad.json updated 2026-09-02T23:05:00Z · page generated 2026-09-03 00:06</p>
+<p class="sub">GW2 · 3-4-3 · £99.7m + £0.4m bank · squad.json updated 2026-09-02T23:05:00Z · page generated 2026-09-03 00:36</p>
 
-<p class="deadline-line"><b>Next team-choice lockdown: Gameweek 3 — Fri 04 Sep 2026, 17:30 UTC (1d 18h away)</b> <span class="kn" style="display:inline">(snapshot fetched 2026-09-01T17:51:47+00:00)</span></p>
+<p class="deadline-line"><b>Next team-choice lockdown: Gameweek 3 — Fri 04 Sep 2026, 17:30 UTC (1d 17h away)</b> <span class="kn" style="display:inline">(snapshot fetched 2026-09-01T17:51:47+00:00)</span></p>
 <div class="kpis"><div class="kpi"><div class="kv mono">£99.7m</div><div class="kl">Squad value</div></div><div class="kpi"><div class="kv mono">£0.4m</div><div class="kl">Bank value</div></div><div class="kpi"><div class="kv mono">4/4</div><div class="kl">Chips left</div><div class="kn">set 1 expires GW19</div></div></div>
 <div class="kpis"><div class="kpi"><div class="kv mono">55.9</div><div class="kl">xP XI per 90</div><div class="kn">what the optimiser maximises</div></div><div class="kpi"><div class="kv mono">49.9</div><div class="kl">xP XI per GW</div><div class="kn">11% never played</div></div><div class="kpi"><div class="kv mono">3.9</div><div class="kl">xP bench per GW</div><div class="kn">1.12 expected blanks</div></div><div class="kpi"><div class="kv mono">66.5</div><div class="kl">P per GW</div><div class="kn">2 GW played</div></div><div class="kpi"><div class="kv mono">133.0</div><div class="kl">Total points</div></div></div>
 
@@ -339,92 +337,9 @@ document.getElementById('rcMode').addEventListener('click', e => {
 rcRender('expected');
 </script>
 
-<div class="panel">
-  <h2>Squad shape — the archetype each position is bought for</h2>
-  <p class="tests">The qualitative read behind the xP formula: what a good pick
-  looks like at each position, and the trap that number alone can hide.</p>
-  <div class="find ok">
-    <b>This squad is built without Haaland — a standing, confirmed preference,
-    not an oversight.</b> Repriced on every build against the unconstrained
-    optimum (same intel+fixture-adjusted pool as the rest of this page):
-    <table style="margin:8px 0">
-      <tbody>
-        <tr><td>Unconstrained optimum (solver leaves him out anyway)</td>
-            <td class="mono">56.75 xP/90</td></tr>
-        <tr><td>With the no-Haaland preference held</td>
-            <td class="mono">56.75 xP/90</td></tr>
-        <tr><td><b>Cost of the preference</b></td>
-            <td class="mono"><b>+0.00</b></td></tr>
-      </tbody>
-    </table>
-    Well inside model error &mdash; effectively free. &pound;15.5m on Haaland buys almost exactly what the budget it frees up buys spread across the rest of the squad instead.
-  </div>
-  <table class="archetype">
-    <thead><tr><th>Pos</th><th>Buy for</th><th>The trap</th></tr></thead>
-    <tbody>
-      <tr><td><b>GK</b></td>
-        <td>Undisputed #1 first — everything else is void if he's benched.
-        Then low season xGC and save volume, a distant second.</td>
-        <td>Strong save stats on a keeper one bad week from losing the
-        gloves. Starts is the gate for a reason.</td></tr>
-      <tr><td><b>DEF</b></td>
-        <td><b>Both</b> legs at once — a side with genuinely low xGC / a real
-        clean sheet record, <b>and</b> the player's own CBIT clearing the
-        10+ per-match threshold reliably (his real hit-rate, not a season
-        average sitting near the line).</td>
-        <td>Either leg alone. A great individual defender on a leaky side
-        rarely banks the clean sheet. High CBIT on a leaky side is often a
-        player under siege, not a good defender.</td></tr>
-      <tr><td><b>MID</b></td>
-        <td>Attacking output first (xGI/90 — a goal pays 5, an assist 3,
-        near forward money) <b>plus</b> the clean sheet sitting on top for
-        free if his side is tight at the back too.</td>
-        <td>A rarer, lower-reliability route exists — a genuinely defensive
-        midfielder clearing 12+ CBIRT — but it's not worth building a pick
-        around.</td></tr>
-      <tr><td><b>FWD</b></td>
-        <td>Pure goals + assists + minutes. No clean sheet credit, and no
-        real defensive-contribution route either.</td>
-        <td>Reading a forward's CBIT/90 as if it predicts anything — 2025/26
-        data shows forwards essentially never clear 10+ CBIT in a match
-        (0% hit-rate across every matched forward in the pool), so there's
-        no variance left to explain.</td></tr>
-    </tbody>
-  </table>
-  <div class="find">
-    <b>What holding the no-Haaland preference actually requires — it is not free
-    to execute, even though it is priced as near-free above.</b>
-    <ul style="margin:8px 0 0 18px;padding:0">
-      <li><b>Captaincy has to be reviewed every week, not set once.</b> A
-      Haaland squad has a standing captain and the decision is mostly "anyone
-      beating him this week"; without a nailed 75%-owned explosive premium,
-      the armband goes to whoever's fixture and form line up that gameweek —
-      see <span class="mono">captaincy_odds</span> and the escalation check
-      each week, not a default name.</li>
-      <li><b>Triple Captain is structurally weaker.</b> TEAM_CHANGE_LOG.md
-      already flags this: most managers triple the nailed premium; the
-      realistic targets here (Thiago, B.Fernandes) are good, not explosive.
-      TC is purely a P(haul) maximisation, so this preference caps its
-      ceiling — a real cost the table above does not capture in xP/90 terms.</li>
-      <li><b>The budget freed up buys flexibility, not just depth.</b> No
-      single £15.5m anchor means more of the squad can turn over as form and
-      fixtures shift, and a genuinely emerging player (a breakout midfielder,
-      a new-signing forward finding his feet) can be worked in without first
-      funding him by selling a name that's still producing. A Haaland squad
-      effectively locks 15%+ of budget for the season; this one doesn't lock
-      any of it.</li>
-      <li><b>The trade-off is real, not just upside.</b> Spreading value across
-      the XI raises the floor and lowers variance — fewer explosive weeks, fewer
-      disaster weeks. Whether that trade is right depends on where in the mini-league
-      table this squad needs to be climbing from; it is a strategy choice, not a
-      free lunch the model found.</li>
-    </ul>
-  </div>
-</div>
-
 
 <div class="panel">
-  <h2>Alternative 1 — same fifteen, different eleven</h2>
+  <h2>GW3 — no transfers</h2>
   <p class="tests">Free. Costs nothing, needs no transfer, and is the decision most
   often left unexamined.</p>
   <table><tbody>
@@ -438,39 +353,31 @@ rcRender('expected');
 </div>
 
 <div class="panel">
-  <h2>Alternative 2 — one transfer</h2>
+  <h2>GW3 — one transfer</h2>
   <p class="tests">The current fifteen against the <b>next-best forced swap</b> — the
   optimiser is required to change exactly one player, so this shows the best move
-  available even when the honest answer is to hold, priced on both objectives and
-  with its knock-on effect on the bench. The recommendation below the table, not
-  this row, is where "hold" actually gets said.</p>
+  available even when the honest answer is to hold. Priced three times, once per
+  data-source estimator (the same <span class="mono">actual</span>/
+  <span class="mono">prior</span>/<span class="mono">shrunken</span> choice
+  <span class="mono">optimise_squad.py --estimator</span> offers), because this is
+  exactly the kind of call the three have been shown to disagree on early in a
+  season.</p>
   <div class="find">Every score on this page, including this table, runs through
   the ROLE_INTEL.md adjustment layer — set-piece duty, availability overrides
   like an injury opening up minutes, and the guardrailed 0.5x&ndash;1.5x role
-  multipliers — and through shrinkage on each player's observed rate stats,
-  which blends a small early-season sample toward a positional baseline rather
-  than trusting a handful of matches at face value. Both exist so this table
-  can't recommend selling a player for a reason the model already has better
-  information about, like an injury to the man ahead of him.</div>
+  multipliers. The three rows below differ only in how each player's underlying
+  rate stats are estimated: <span class="mono">actual</span> is this season's
+  live numbers taken at face value, <span class="mono">prior</span> is last
+  season's rates with no live data at all, <span class="mono">shrunken</span>
+  blends the two, weighted by how much live evidence exists.</div>
   <table>
-    <thead><tr><th>&nbsp;</th><th>XI xP/90</th><th>XI xP/GW</th><th>Bench</th><th>Total /GW</th></tr></thead>
+    <thead><tr><th>&nbsp;</th><th>Recommended transfer</th><th>&Delta; xP/GW</th></tr></thead>
     <tbody>
-      <tr><td>Current</td><td class="mono">55.87</td><td class="mono">49.93</td>
-          <td class="mono">3.86</td><td class="mono">53.79</td></tr>
-      <tr><td>Schade → Scott</td>
-          <td class="mono">55.91</td><td class="mono">50.88</td>
-          <td class="mono">3.28</td><td class="mono">54.15</td></tr>
-      <tr><td><b>Change</b></td><td class="mono">+0.05</td>
-          <td class="mono">+0.95</td><td class="mono">-0.59</td>
-          <td class="mono"><b>+0.36</b></td></tr>
+      <tr><td>Optimised using actual scores</td><td>Schade &rarr; Scott</td><td class='mono'>+1.52</td></tr><tr><td>Optimised using prior scores</td><td>Schade &rarr; Scott</td><td class='mono'>+0.95</td></tr><tr><td>Optimised using shrunken scores</td><td>Schade &rarr; Scott</td><td class='mono'>+0.98</td></tr>
     </tbody></table>
-  <div class="find bad">
-    <b>Recommendation: transfer.</b>
-    Schade &rarr; Scott clears the 0.01 xP/90 noise floor by +0.05. Worth making, hit cost permitting.
+  <div class="find ok">
+    <b>All three estimators agree:</b> Schade &rarr; Scott, whichever data source you trust.
   </div>
-  <div class="find">Read the last column, not the first. Mixing an XI measured per 90
-  with a bench measured per gameweek produced a confident, entirely false answer once
-  already — the two must share a unit before they are added.</div>
 </div>
 
 <div class="panel">

@@ -473,30 +473,46 @@ def build():
 
     # force=True: always return the best SINGLE swap, even if its impact is
     # small or negative, rather than letting the solver hand back the current
-    # squad unchanged. The table should show "what's the next-best move if
-    # you had to make one", not silently collapse to nothing - the actual
-    # hold-vs-transfer call is made separately below via MIN_GAIN, and stated
-    # explicitly in its own recommendation line rather than implied by a
-    # blank row.
-    res = opt.optimise_transfers(pool, state.name_set, state.bank, 1,
-                                  allow_haaland=False, force=True)
-    t_xi, t_bench, _ = res
-    t_out = sorted(state.name_set - {p["name"] for p in t_xi + t_bench})
-    t_in = sorted({p["name"] for p in t_xi + t_bench} - state.name_set)
-    t_b, _r, _d = sz.bench_value(t_xi, t_bench)
-    t_90 = sum(p["score"] for p in t_xi)
-    t_gw = sum(p["stp"] * p["score"] for p in t_xi)
-    # Same threshold optimise_squad.py's CLI uses (transfer_mode()'s
-    # MIN_GAIN) - a swap worth less than this on XI xP/90 is noise, not a
-    # recommendation, however clean the arithmetic looks in the table above it.
-    MIN_GAIN = 0.01
-    t_gain = t_90 - xi90
-    t_hold = t_gain < MIN_GAIN
+    # squad unchanged. The table shows "what's the next-best move if you had
+    # to make one", not a silently-collapsed blank row.
+    #
+    # Priced under all THREE data-source estimators (added 3 Sep 2026 -
+    # same "actual"/"prior"/"shrunken" choice optimise_squad.py's --estimator
+    # flag offers), because the one-transfer question this table exists to
+    # answer is exactly the one where prior/raw/shrunk have been shown to
+    # disagree - see the captaincy estimator-sensitivity discussion this same
+    # week. Each estimator gets its OWN fully independent pool (intel +
+    # fixture adjustment applied identically to build()'s main pool above),
+    # so a row's recommended transfer and its xP/GW delta are always priced
+    # on the same numbers - never a transfer chosen under one estimator and
+    # then measured against another's baseline.
+    ALT2_ESTIMATORS = [("raw", "actual"), ("prior", "prior"), ("shrunk", "shrunken")]
 
-    # Alternative 3's own hold/move call — same "read the last column, not
-    # the first" discipline as Alternative 2 (Total /GW, over a 5-GW hold,
-    # net of the hit) since two transfers realistically means a hit unless a
-    # second free transfer happens to be banked.
+    def _alt2_row(estimator):
+        p = bs.load(intel=True, estimator=estimator)
+        fa.adjust(p)
+        for r in p:
+            r["score"] = r["xp_adj"]
+        by_e = {r["name"]: r for r in p}
+        missing_e = [nm for nm in state.name_set if nm not in by_e]
+        if missing_e:
+            raise SystemExit(f"squad players absent from the {estimator} pool: {missing_e}")
+        cur_gw_e = sum(by_e[pl["name"]]["stp"] * by_e[pl["name"]]["score"] for pl in state.xi)
+        xi_e, bench_e, _ = opt.optimise_transfers(
+            p, state.name_set, state.bank, 1, allow_haaland=False, force=True)
+        out_e = sorted(state.name_set - {r["name"] for r in xi_e + bench_e})
+        in_e = sorted({r["name"] for r in xi_e + bench_e} - state.name_set)
+        new_gw_e = sum(r["stp"] * r["score"] for r in xi_e)
+        return out_e, in_e, new_gw_e - cur_gw_e
+
+    alt2_rows = [(label, *_alt2_row(estimator)) for estimator, label in ALT2_ESTIMATORS]
+    alt2_agree = len({(tuple(o), tuple(i)) for _, o, i, _ in alt2_rows}) == 1
+
+    # Alternative 3's own hold/move call — reads Total /GW, over a 5-GW hold,
+    # net of the hit, since two transfers realistically means a hit unless a
+    # second free transfer happens to be banked. (One-transfer's own table
+    # above moved to a per-estimator xP/GW delta on 3 Sep 2026 and no longer
+    # shares this XI/bench-split shape.)
     t2_total_change = (t2_gw + t2_b) - (xigw + bench_pts)
     t2_net_5gw = t2_total_change * 5 - t2_hits
     t2_worth = t2_net_5gw > 0
@@ -523,20 +539,6 @@ def build():
                 + "</li>")
         return "".join(lines)
     t2_explain_html = _t2_explain()
-
-    # --- the no-Haaland preference, repriced on every run -------------------
-    # TEAM_CHANGE_LOG.md's "STANDING PREFERENCES" section carries the dated
-    # decision (confirmed 9 Aug 2026, cost 0.06 xP/90 then) and the trigger to
-    # revisit it (cost above ~0.30 xP/90). This block does not read that file -
-    # it recomputes the cost live, on the same intel+fixture-adjusted pool the
-    # rest of this page uses, so the number on the page can never go stale
-    # relative to the number that decision was actually made on.
-    h_noH_xi, h_noH_bench, _ = opt.optimise(pool, allow_haaland=False)
-    h_H_xi, h_H_bench, _ = opt.optimise(pool, allow_haaland=True)
-    h_noH_90 = sum(p["score"] for p in h_noH_xi)
-    h_H_90 = sum(p["score"] for p in h_H_xi)
-    h_cost = h_H_90 - h_noH_90
-    h_picked = "Haaland" in {p["name"] for p in h_H_xi + h_H_bench}
 
     # --- chip strategy, plan from TEAM_CHANGE_LOG.md + live status from squad.json
     cp = chip_plan()
@@ -609,7 +611,7 @@ def build():
 
     alt_html = f"""
 <div class="panel">
-  <h2>Alternative 1 — same fifteen, different eleven</h2>
+  <h2>GW{live['next_gw'] if live else '?'} — no transfers</h2>
   <p class="tests">Free. Costs nothing, needs no transfer, and is the decision most
   often left unexamined.</p>
   <table><tbody>
@@ -627,44 +629,41 @@ def build():
 </div>
 
 <div class="panel">
-  <h2>Alternative 2 — one transfer</h2>
+  <h2>GW{live['next_gw'] if live else '?'} — one transfer</h2>
   <p class="tests">The current fifteen against the <b>next-best forced swap</b> — the
   optimiser is required to change exactly one player, so this shows the best move
-  available even when the honest answer is to hold, priced on both objectives and
-  with its knock-on effect on the bench. The recommendation below the table, not
-  this row, is where "hold" actually gets said.</p>
+  available even when the honest answer is to hold. Priced three times, once per
+  data-source estimator (the same <span class="mono">actual</span>/
+  <span class="mono">prior</span>/<span class="mono">shrunken</span> choice
+  <span class="mono">optimise_squad.py --estimator</span> offers), because this is
+  exactly the kind of call the three have been shown to disagree on early in a
+  season.</p>
   <div class="find">Every score on this page, including this table, runs through
   the ROLE_INTEL.md adjustment layer — set-piece duty, availability overrides
   like an injury opening up minutes, and the guardrailed 0.5x&ndash;1.5x role
-  multipliers — and through shrinkage on each player's observed rate stats,
-  which blends a small early-season sample toward a positional baseline rather
-  than trusting a handful of matches at face value. Both exist so this table
-  can't recommend selling a player for a reason the model already has better
-  information about, like an injury to the man ahead of him.</div>
+  multipliers. The three rows below differ only in how each player's underlying
+  rate stats are estimated: <span class="mono">actual</span> is this season's
+  live numbers taken at face value, <span class="mono">prior</span> is last
+  season's rates with no live data at all, <span class="mono">shrunken</span>
+  blends the two, weighted by how much live evidence exists.</div>
   <table>
-    <thead><tr><th>&nbsp;</th><th>XI xP/90</th><th>XI xP/GW</th><th>Bench</th><th>Total /GW</th></tr></thead>
+    <thead><tr><th>&nbsp;</th><th>Recommended transfer</th><th>&Delta; xP/GW</th></tr></thead>
     <tbody>
-      <tr><td>Current</td><td class="mono">{xi90:.2f}</td><td class="mono">{xigw:.2f}</td>
-          <td class="mono">{bench_pts:.2f}</td><td class="mono">{xigw+bench_pts:.2f}</td></tr>
-      <tr><td>{esc(' · '.join(t_out))} → {esc(' · '.join(t_in))}</td>
-          <td class="mono">{t_90:.2f}</td><td class="mono">{t_gw:.2f}</td>
-          <td class="mono">{t_b:.2f}</td><td class="mono">{t_gw+t_b:.2f}</td></tr>
-      <tr><td><b>Change</b></td><td class="mono">{t_90-xi90:+.2f}</td>
-          <td class="mono">{t_gw-xigw:+.2f}</td><td class="mono">{t_b-bench_pts:+.2f}</td>
-          <td class="mono"><b>{(t_gw+t_b)-(xigw+bench_pts):+.2f}</b></td></tr>
+      {"".join(
+        f"<tr><td>Optimised using {label} scores</td>"
+        f"<td>{esc(' · '.join(out_e))} &rarr; {esc(' · '.join(in_e))}</td>"
+        f"<td class='mono'>{delta:+.2f}</td></tr>"
+        for label, out_e, in_e, delta in alt2_rows)}
     </tbody></table>
-  <div class="find {'ok' if t_hold else 'bad'}">
-    <b>Recommendation: {'HOLD' if t_hold else 'transfer'}.</b>
-    {f"The best available swap ({esc(' · '.join(t_out))} &rarr; {esc(' · '.join(t_in))}) "
-     f"moves XI xP/90 by {t_gain:+.2f} &mdash; under the {MIN_GAIN:.2f} xP/90 noise floor, "
-     f"so it is not a real edge, just the least-bad forced move. Keep the fifteen as is."
-     if t_hold else
-     f"{esc(' · '.join(t_out))} &rarr; {esc(' · '.join(t_in))} clears the {MIN_GAIN:.2f} "
-     f"xP/90 noise floor by {t_gain:+.2f}. Worth making, hit cost permitting."}
+  <div class="find {'ok' if alt2_agree else 'bad'}">
+    {f"<b>All three estimators agree:</b> {esc(' · '.join(alt2_rows[0][1]))} &rarr; "
+     f"{esc(' · '.join(alt2_rows[0][2]))}, whichever data source you trust."
+     if alt2_agree else
+     "<b>The estimators do not agree on the transfer.</b> Which one to act on is a "
+     "judgement call, not something this table can resolve for you — see the "
+     "captaincy estimator-sensitivity discussion for how thin the underlying "
+     "evidence usually is this early in a season."}
   </div>
-  <div class="find">Read the last column, not the first. Mixing an XI measured per 90
-  with a bench measured per gameweek produced a confident, entirely false answer once
-  already — the two must share a unit before they are added.</div>
 </div>
 
 <div class="panel">
@@ -988,93 +987,6 @@ rcRender('expected');
 
 {route_chart_html}
 
-<div class="panel">
-  <h2>Squad shape — the archetype each position is bought for</h2>
-  <p class="tests">The qualitative read behind the xP formula: what a good pick
-  looks like at each position, and the trap that number alone can hide.</p>
-  <div class="find {'ok' if h_cost < 0.30 else 'bad'}">
-    <b>This squad is built without Haaland — a standing, confirmed preference,
-    not an oversight.</b> Repriced on every build against the unconstrained
-    optimum (same intel+fixture-adjusted pool as the rest of this page):
-    <table style="margin:8px 0">
-      <tbody>
-        <tr><td>Unconstrained optimum{' (Haaland IS in it)' if h_picked else ' (solver leaves him out anyway)'}</td>
-            <td class="mono">{h_H_90:.2f} xP/90</td></tr>
-        <tr><td>With the no-Haaland preference held</td>
-            <td class="mono">{h_noH_90:.2f} xP/90</td></tr>
-        <tr><td><b>Cost of the preference</b></td>
-            <td class="mono"><b>{h_cost:+.2f}</b></td></tr>
-      </tbody>
-    </table>
-    {"Well inside model error &mdash; effectively free. &pound;15.5m on Haaland buys "
-     "almost exactly what the budget it frees up buys spread across the rest of the "
-     "squad instead." if h_cost < 0.30 else
-     "This has drifted past the ~0.30 xP/90 trigger TEAM_CHANGE_LOG.md set for "
-     "revisiting the preference &mdash; worth an explicit re-check, not a silent hold."}
-  </div>
-  <table class="archetype">
-    <thead><tr><th>Pos</th><th>Buy for</th><th>The trap</th></tr></thead>
-    <tbody>
-      <tr><td><b>GK</b></td>
-        <td>Undisputed #1 first — everything else is void if he's benched.
-        Then low season xGC and save volume, a distant second.</td>
-        <td>Strong save stats on a keeper one bad week from losing the
-        gloves. Starts is the gate for a reason.</td></tr>
-      <tr><td><b>DEF</b></td>
-        <td><b>Both</b> legs at once — a side with genuinely low xGC / a real
-        clean sheet record, <b>and</b> the player's own CBIT clearing the
-        10+ per-match threshold reliably (his real hit-rate, not a season
-        average sitting near the line).</td>
-        <td>Either leg alone. A great individual defender on a leaky side
-        rarely banks the clean sheet. High CBIT on a leaky side is often a
-        player under siege, not a good defender.</td></tr>
-      <tr><td><b>MID</b></td>
-        <td>Attacking output first (xGI/90 — a goal pays 5, an assist 3,
-        near forward money) <b>plus</b> the clean sheet sitting on top for
-        free if his side is tight at the back too.</td>
-        <td>A rarer, lower-reliability route exists — a genuinely defensive
-        midfielder clearing 12+ CBIRT — but it's not worth building a pick
-        around.</td></tr>
-      <tr><td><b>FWD</b></td>
-        <td>Pure goals + assists + minutes. No clean sheet credit, and no
-        real defensive-contribution route either.</td>
-        <td>Reading a forward's CBIT/90 as if it predicts anything — 2025/26
-        data shows forwards essentially never clear 10+ CBIT in a match
-        (0% hit-rate across every matched forward in the pool), so there's
-        no variance left to explain.</td></tr>
-    </tbody>
-  </table>
-  <div class="find">
-    <b>What holding the no-Haaland preference actually requires — it is not free
-    to execute, even though it is priced as near-free above.</b>
-    <ul style="margin:8px 0 0 18px;padding:0">
-      <li><b>Captaincy has to be reviewed every week, not set once.</b> A
-      Haaland squad has a standing captain and the decision is mostly "anyone
-      beating him this week"; without a nailed 75%-owned explosive premium,
-      the armband goes to whoever's fixture and form line up that gameweek —
-      see <span class="mono">captaincy_odds</span> and the escalation check
-      each week, not a default name.</li>
-      <li><b>Triple Captain is structurally weaker.</b> TEAM_CHANGE_LOG.md
-      already flags this: most managers triple the nailed premium; the
-      realistic targets here (Thiago, B.Fernandes) are good, not explosive.
-      TC is purely a P(haul) maximisation, so this preference caps its
-      ceiling — a real cost the table above does not capture in xP/90 terms.</li>
-      <li><b>The budget freed up buys flexibility, not just depth.</b> No
-      single £15.5m anchor means more of the squad can turn over as form and
-      fixtures shift, and a genuinely emerging player (a breakout midfielder,
-      a new-signing forward finding his feet) can be worked in without first
-      funding him by selling a name that's still producing. A Haaland squad
-      effectively locks 15%+ of budget for the season; this one doesn't lock
-      any of it.</li>
-      <li><b>The trade-off is real, not just upside.</b> Spreading value across
-      the XI raises the floor and lowers variance — fewer explosive weeks, fewer
-      disaster weeks. Whether that trade is right depends on where in the mini-league
-      table this squad needs to be climbing from; it is a strategy choice, not a
-      free lunch the model found.</li>
-    </ul>
-  </div>
-</div>
-
 {alt_html}
 {chip_html}
 {cap_html}
@@ -1082,8 +994,6 @@ rcRender('expected');
 
     extra_css = """
 <style>
-.archetype td,.archetype th{text-align:left;vertical-align:top;padding:8px 10px;border-bottom:1px solid var(--line)}
-.archetype td:first-child,.archetype th:first-child{white-space:nowrap;width:48px}
 .squad-link{margin:-6px 0 10px}
 .squad-link a{font-size:13px;color:var(--dim);text-decoration:none;border-bottom:1px dotted var(--dim)}
 .squad-link a:hover{color:var(--tx);border-bottom-color:var(--tx)}
