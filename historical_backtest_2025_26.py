@@ -191,6 +191,29 @@ def build_prior_baselines(boot):
 
 
 VALID_METRICS = ["xg90", "xa90", "xgc90", "sv90", "stp"]
+RATE_METRICS = ["xg90", "xa90", "xgc90", "sv90"]  # stp is binary, no "actual per 90" bar to show
+
+
+def actual_averages(boot, cache, finished):
+    """Mean ACTUAL per-90 value per gameweek, for context alongside the RMSE
+    lines - same MIN_MINS_SCORE gate as walk_forward()'s own scoring, so a
+    gameweek's bar and its RMSE points are computed over the identical
+    population. walk_forward() itself never returns this (it only tracks
+    avg PREDICTED value), so it is recomputed here directly."""
+    id_pos = {el["id"]: bpt.POS.get(el["element_type"]) for el in boot["elements"]}
+    out = {k: {} for k in RATE_METRICS}
+    for mk in bpt.METRICS:
+        key, field, positions = mk["key"], mk["field"], mk["positions"]
+        for gw in finished:
+            vals = []
+            for pid_s, s in cache[str(gw)].items():
+                pos = id_pos.get(int(pid_s))
+                mins = bpt._f(s.get("minutes"))
+                if pos not in positions or mins < bpt.MIN_MINS_SCORE:
+                    continue
+                vals.append(bpt._f(s.get(field)) / (mins / 90.0))
+            out[key][gw] = sum(vals) / len(vals) if vals else None
+    return out
 
 
 def main():
@@ -200,13 +223,16 @@ def main():
     baselines = build_prior_baselines(boot)
     print("\nWalking forward through GW2-38 (build_prediction_tracker.walk_forward, unmodified)...")
     weeks, _cum = bpt.walk_forward(boot, cache, finished, baselines)
+    print("Computing actual per-90 averages (same 60-minute gate)...")
+    actuals = actual_averages(boot, cache, finished)
 
     # PER-GAMEWEEK, not cumulative: each point is that single week's own RMSE
     # (raw = the player's own rate through the PREVIOUS week only, prior =
     # the 2024/25-derived baseline, shrunk = the blend), scored against that
     # week's actual outcome. No pooling across weeks - a bad week doesn't drag
     # down the read of a good one, and vice versa.
-    trajectory = {k: {"gw": [], "raw": [], "prior": [], "shrunk": []} for k in VALID_METRICS}
+    trajectory = {k: {"gw": [], "raw": [], "prior": [], "shrunk": [], "actual": []}
+                  for k in VALID_METRICS}
     for k in VALID_METRICS:
         for gw in finished:
             w = weeks[str(gw)][k]
@@ -216,6 +242,7 @@ def main():
             trajectory[k]["raw"].append(w["rmse_raw"])
             trajectory[k]["prior"].append(w["rmse_base"])
             trajectory[k]["shrunk"].append(w["rmse_shrunk"])
+            trajectory[k]["actual"].append(actuals[k][gw] if k in actuals else None)
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     json.dump(dict(season="2025-26", prior_season=PRIOR_SEASON,
