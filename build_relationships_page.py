@@ -62,6 +62,17 @@ _INDEX = json.load(open(os.path.join(HERE, "docs", "data", "index.json"), encodi
 _SLUG_BY_KEY = {(r["name"], r["team"]): r["slug"] for r in _INDEX}
 _POS_BY_SLUG = {r["slug"]: r["pos"] for r in _INDEX}
 
+# Panel 4, added 2 Sep 2026. historical_backtest_2025_26.py's one-off replay
+# of build_prediction_tracker.walk_forward() across the full completed
+# 2025/26 season - a frozen historical result (both seasons are finished),
+# never rebuilt by this page's own pipeline, just read like any other static
+# input. Tolerant of a missing file, same as every other optional panel here.
+try:
+    BACKTEST = json.load(open(os.path.join(HERE, "historical_backtest_2025_26.json"),
+                              encoding="utf-8"))
+except FileNotFoundError:
+    BACKTEST = None
+
 
 def _player_gw(slug):
     """{round: [minutes, points]} for one player, DGW fixtures summed into
@@ -229,8 +240,102 @@ DATA["posdist"] = {"pools": _POOLS, "qualifiers": _QUALIFIERS,
 DATA["squad_replay"] = _squad_replay()
 
 
+_PAL = dict(a='#4ea3ff', b='#ffc857', c='#5fd38d', dim='#8b98a5')  # mirrors JS const C below
+
+
+def _backtest_panel():
+    """Panel 4: historical_backtest_2025_26.py's per-gameweek RMSE trajectory
+    (raw/prior/shrunk) plus the actual per-90 value, for the four metrics
+    that have a real 2024/25 prior. Built as its own function, not inline in
+    build(), so the f-string brace-doubling for the JS below stays isolated
+    from the rest of the script. Returns '' if the backtest file is missing -
+    same tolerant pattern as every other optional panel on this page."""
+    if not BACKTEST:
+        return ""
+    keys = [k for k in ("xg90", "xa90", "xgc90", "sv90") if k in BACKTEST["trajectory"]]
+    labels = {k: BACKTEST["metric_labels"].get(k, k) for k in keys}
+    bt = {k: BACKTEST["trajectory"][k] for k in keys}
+    corr = BACKTEST.get("deviation_corr", {})
+    corr_out = {k: corr.get(k) for k in keys + ["stp"]}
+    a, b, c, dim = _PAL["a"], _PAL["b"], _PAL["c"], _PAL["dim"]
+    return f"""
+/* ---------- 4. full-season backtest: does own-season data actually help? (added 2 Sep 2026) ---------- */
+const BT = {json.dumps(bt)};
+const BTLABELS = {json.dumps(labels)};
+const BTCORR = {json.dumps(corr_out)};
+panel('p9','4 \\u00b7 Full-season backtest: does own-season data actually predict reality?',
+ `historical_backtest_2025_26.py replays build_prediction_tracker.py's own walk_forward()
+  UNMODIFIED across every real 2025/26 gameweek, using a genuine 2024/25-derived prior \\u2014
+  not the 2-gameweek sample the live tracker has to work with on the season actually being
+  played. Each point is that single gameweek's own RMSE (not pooled with other weeks), scoring
+  only 60+ minute appearances; raw is additionally scored only once a player carries 1.0+ full
+  match-equivalents of PRIOR minutes, so a single early cameo can't explode the prediction the
+  moment he plays a real game. CBIT/CBIRT are excluded \\u2014 2024/25's archive has no
+  clearances_blocks_interceptions/tackles/recoveries columns, so there is no real prior for them.`,
+ `<div style="display:flex;align-items:center;gap:14px;margin:0 0 14px;flex-wrap:wrap">
+    <span style="font-size:13px;color:var(--dim)">Metric</span>
+    <span id="p9m" style="display:flex;gap:6px"></span>
+  </div>
+  <div class="wrap"><canvas id="c9"></canvas></div>
+  <div class="legend">
+   <span><i style="background:{a}"></i>raw RMSE</span>
+   <span><i style="background:{b}"></i>prior RMSE</span>
+   <span><i style="background:{c}"></i>shrunk RMSE</span>
+   <span><i style="background:{dim}"></i>actual, avg per-90 (right axis)</span>
+  </div>
+  <div class="find" id="p9find"></div>`);
+const P9KEYS = {json.dumps(keys)};
+let p9k = 'xgc90';
+document.getElementById('p9m').innerHTML = P9KEYS.map(k=>
+  `<button data-k="${{k}}" style="font-size:12px;padding:4px 10px;border-radius:6px;cursor:pointer;border:1px solid var(--line);background:${{k===p9k?C.a:'transparent'}};color:${{k===p9k?'#fff':'var(--tx)'}}">${{BTLABELS[k]}}</button>`).join('');
+let ch9;
+function p9Upd(k){{
+  p9k = k;
+  document.querySelectorAll('#p9m button').forEach(btn=>{{
+    const on = btn.dataset.k===p9k;
+    btn.style.background = on ? C.a : 'transparent';
+    btn.style.color = on ? '#fff' : 'var(--tx)';
+  }});
+  const d = BT[k];
+  const labels = d.gw.map(g=>'GW'+g);
+  const mkLine = (arr,color) => ({{type:'line',data:arr,borderColor:color,backgroundColor:color,
+    pointRadius:0,borderWidth:2,spanGaps:true,tension:0.2,yAxisID:'y'}});
+  const barDs = {{type:'bar',data:d.actual,backgroundColor:C.dim+'55',borderWidth:0,
+    yAxisID:'y1',order:3,barPercentage:0.6}};
+  if (ch9) ch9.destroy();
+  ch9 = new Chart(c9,{{data:{{labels,datasets:[
+      Object.assign(mkLine(d.raw,C.a),{{order:0}}),
+      Object.assign(mkLine(d.prior,C.b),{{order:1}}),
+      Object.assign(mkLine(d.shrunk,C.c),{{order:2}}),
+      barDs
+    ]}},
+    options:{{plugins:{{legend:{{display:false}},tooltip:{{mode:'index',intersect:false}}}},
+      scales:{{
+        y:{{position:'left',title:{{display:true,text:'RMSE this gameweek'}},grid:{{color:css('--grid')}}}},
+        y1:{{position:'right',title:{{display:true,text:'actual, avg per-90'}},grid:{{display:false}},beginAtZero:true}},
+        x:{{ticks:{{maxTicksLimit:10}},grid:{{display:false}}}}
+      }}}}}});
+  const cr = BTCORR[k];
+  document.getElementById('p9find').innerHTML =
+    `<b>Why shrunk stays close to prior here:</b> corr(raw&minus;prior, actual&minus;prior) =
+     <span class="mono">${{cr.corr.toFixed(3)}}</span> (n=${{cr.n}}) &mdash; when a player's own-season
+     rate diverges from his 2024/25 rate, that barely predicts which way reality actually moves.
+     A high blend weight still leaves shrunk glued near prior, because raw's extra information is
+     close to noise for this metric. Start rate is the outlier at r=${{BTCORR.stp.corr.toFixed(3)}},
+     which is why it shows a real, sustained crossover instead (not charted here \\u2014 it is a
+     binary metric with no per-90 actual to bar).`;
+}}
+document.getElementById('p9m').addEventListener('click', e=>{{
+  if (!e.target.dataset.k) return;
+  p9Upd(e.target.dataset.k);
+}});
+p9Upd('xgc90');
+"""
+
+
 def build():
     body = '<div id="app"></div>'
+    backtest_panel = _backtest_panel()
 
     script = f"""
 <script>
@@ -414,6 +519,8 @@ new Chart(c8,{{type:'bar',data:{{labels:['0-4','5-9','10-14','15-19','20-24','25
  options:{{plugins:{{legend:{{display:false}}}},
   scales:{{x:{{title:{{display:true,text:'points scored that gameweek'}},grid:{{display:false}}}},
           y:{{title:{{display:true,text:'% of gameweeks'}},grid:{{color:css('--grid')}}}}}}}}}});
+
+{backtest_panel}
 </script>"""
 
     html = page_shell.shell(

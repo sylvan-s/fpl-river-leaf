@@ -216,6 +216,79 @@ def actual_averages(boot, cache, finished):
     return out
 
 
+def _corr(a, b):
+    n = len(a)
+    ma, mb = sum(a) / n, sum(b) / n
+    num = sum((x - ma) * (y - mb) for x, y in zip(a, b))
+    da = sum((x - ma) ** 2 for x in a) ** 0.5
+    db = sum((y - mb) ** 2 for y in b) ** 0.5
+    return num / (da * db) if da * db else 0.0
+
+
+def deviation_correlations(boot, cache, finished, baselines):
+    """corr(raw - prior, actual - prior), pooled across the whole season -
+    ANSWERS why shrunk stays close to prior's RMSE all season even once the
+    blend weight climbs toward ~50%: this measures whether a player's
+    own-season rate diverging from his prior-season rate actually anticipates
+    which way his real outcome diverges from that same prior. Same gates as
+    everywhere else in this file (MIN_MINS_SCORE on the actual, MIN_N90_RAW
+    on raw's own denominator) so this is computed over the identical
+    population walk_forward() itself scores.
+
+    Low r (rate metrics, ~0.12-0.23) means raw's extra information over prior
+    is close to noise for predicting what actually happens - which is why a
+    high blend weight still leaves shrunk's RMSE glued near prior's. High r
+    (start rate, ~0.49) is why that metric shows a real, sustained crossover
+    instead."""
+    id_pos = {el["id"]: bpt.POS.get(el["element_type"]) for el in boot["elements"]}
+    out = {}
+    for mk in bpt.METRICS:
+        key, short, field, positions = mk["key"], mk["short"], mk["field"], mk["positions"]
+        cum, rmp, amp = defaultdict(lambda: dict(mins=0.0, val=0.0)), [], []
+        for gw in finished:
+            for pid_s, s in cache[str(gw)].items():
+                pos = id_pos.get(int(pid_s))
+                if pos not in positions:
+                    continue
+                b = baselines.get(pid_s)
+                mins = bpt._f(s.get("minutes"))
+                c = cum[pid_s]
+                if mins >= bpt.MIN_MINS_SCORE and b is not None:
+                    prev_n90 = c["mins"] / 90.0
+                    if prev_n90 >= bpt.MIN_N90_RAW:
+                        act = bpt._f(s.get(field)) / (mins / 90.0)
+                        prior, raw = b["rates"][short], c["val"] / prev_n90
+                        rmp.append(raw - prior)
+                        amp.append(act - prior)
+                if mins > 0:
+                    c["mins"] += mins
+                    c["val"] += bpt._f(s.get(field))
+        out[key] = dict(n=len(rmp), corr=_corr(rmp, amp) if len(rmp) > 2 else None)
+
+    # start rate: same question, its own denominator (apps, not minutes) and
+    # deliberately no MIN_MINS_SCORE (see the live tracker's own reasoning) -
+    # only needs at least one prior appearance for "raw" to mean anything.
+    cum, rmp, amp = defaultdict(lambda: dict(apps=0, starts=0.0)), [], []
+    for gw in finished:
+        for pid_s, s in cache[str(gw)].items():
+            pos = id_pos.get(int(pid_s))
+            if pos is None:
+                continue
+            b = baselines.get(pid_s)
+            mins = bpt._f(s.get("minutes"))
+            c = cum[pid_s]
+            if mins > 0 and b is not None and c["apps"] >= 1:
+                act = 1.0 if bpt._f(s.get("starts")) > 0 else 0.0
+                prior, raw = b["stp"], c["starts"] / c["apps"]
+                rmp.append(raw - prior)
+                amp.append(act - prior)
+            if mins > 0:
+                c["apps"] += 1
+                c["starts"] += bpt._f(s.get("starts"))
+    out["stp"] = dict(n=len(rmp), corr=_corr(rmp, amp) if len(rmp) > 2 else None)
+    return out
+
+
 def main():
     print("Building 2025/26 season (own-progression source)...")
     boot, cache, finished = build_current_season()
@@ -225,6 +298,8 @@ def main():
     weeks, _cum = bpt.walk_forward(boot, cache, finished, baselines)
     print("Computing actual per-90 averages (same 60-minute gate)...")
     actuals = actual_averages(boot, cache, finished)
+    print("Computing corr(raw-prior, actual-prior)...")
+    deviation_corr = deviation_correlations(boot, cache, finished, baselines)
 
     # PER-GAMEWEEK, not cumulative: each point is that single week's own RMSE
     # (raw = the player's own rate through the PREVIOUS week only, prior =
@@ -248,11 +323,19 @@ def main():
     json.dump(dict(season="2025-26", prior_season=PRIOR_SEASON,
                    metric_labels={k: v["label"] for k, v in
                                   {m["key"]: m for m in bpt.METRICS}.items()},
-                   caveat=CBIT_NOTE, trajectory=trajectory),
+                   caveat=CBIT_NOTE, trajectory=trajectory,
+                   deviation_corr=deviation_corr),
               open(OUT, "w", encoding="utf-8"), indent=1)
 
     print(f"\nwritten: {os.path.relpath(OUT, HERE)}")
     print(f"\n{CBIT_NOTE}\n")
+    print("corr(raw-prior, actual-prior) - does a player's own-season rate")
+    print("diverging from his prior-season rate anticipate the real outcome?")
+    for k in VALID_METRICS:
+        c = deviation_corr[k]
+        print(f"  {k:8s} r={c['corr']:.3f}  (n={c['n']})" if c["corr"] is not None
+              else f"  {k:8s} not enough data")
+    print()
     for k in VALID_METRICS:
         t = trajectory[k]
         wins = sum(1 for r, p, s in zip(t["raw"], t["prior"], t["shrunk"])

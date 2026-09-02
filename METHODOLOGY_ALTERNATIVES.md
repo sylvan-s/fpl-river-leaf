@@ -1996,13 +1996,56 @@ vulnerable to the symmetric raw-side artifact above. The table above is the
 corrected version; all three gates now apply to the LIVE tracker, not just
 this backtest.
 
+**WHY SHRUNK STAYS SO CLOSE TO PRIOR ALL SEASON, 2 Sep 2026.** The natural
+expectation - shrunk looks like prior early, drifts toward raw as gameweeks
+accumulate - is only half right. The BLEND WEIGHT does climb as expected
+(xGC90, DEF pool): GW2 0.09, GW10 0.34, GW25 0.51, GW38 0.49 - by late season
+shrunk is roughly a 50/50 blend of raw and prior. Individually, raw and prior
+really do diverge per player, substantially and all season (mean absolute
+|raw-prior| per DEF/GKP: 0.33 at GW10, 0.24 at GW38 on xGC90) - it is not that
+raw and prior converge to the same number.
+
+What breaks the intuition: those per-player deviations barely predict which
+way reality actually moves. Measuring corr(raw-prior, actual-prior) - does a
+player's own-season rate diverging from his prior-season rate actually
+anticipate which direction his ACTUAL outcome will diverge from that same
+prior:
+
+| metric | corr(raw-prior, actual-prior) |
+|---|---|
+| xGC per 90 | 0.121 |
+| Saves per 90 | 0.141 |
+| xG per 90 | 0.169 |
+| xA per 90 | 0.231 |
+| Start rate | **0.491** |
+
+For the four rate metrics, r ~ 0.12-0.23 means raw's extra information beyond
+prior explains roughly 1-5% of the variance in how far reality actually sits
+from the prior baseline - close to noise. A 50%-
+weighted blend shifts every player's prediction substantially, but errors it
+fixes and errors it introduces roughly cancel in the RMSE average, so shrunk's
+line stays glued near prior's regardless of how much weight raw earns. Start
+rate is the outlier precisely because its own-season signal (rotation,
+injury, a manager change, lost first-team status) is genuinely more
+predictive than a positional-and-last-season baseline, at r=0.49 - which is
+exactly why it is the one metric with a visible, sustained crossover on the
+chart above.
+
+This reframes the earlier "prior does most of the work" line: it is not that
+shrinkage under-weights current-season data (weight climbs to ~50% same as
+any player who has played most of the season would expect), it is that for
+most of these metrics, own-season progression genuinely carries little
+predictive signal beyond what a positional-and-last-season prior already
+captures - a property of the underlying football statistics, not a tuning
+problem with `_estimate_k()`.
+
 **Verdict.** Once cameo noise is removed, shrinkage validates cleanly on a
 full real season against a real prior season: shrunk is the best of the three
 on every metric, prior second, raw worst, with the ordering stable rather
-than marginal. Prior still does most of the work — last season's rate is a
-strong predictor and the weight `k` assigns to current-season data stays
-modest for much of the season — so the shrunk-vs-prior margin is real but not
-dramatic on the rate metrics (1-2%). Start rate remains the standout at ~12%.
+than marginal. The shrunk-vs-prior margin is real but not dramatic on the
+rate metrics (1-2%) because raw's own extra information is weakly predictive
+for those metrics, not because the blend under-weights it. Start rate remains
+the standout at ~12%, for the same underlying reason it explains.
 
 The more important finding is methodological, not about shrinkage at all:
 **the live tracker was measuring cameo noise rather than predictor quality**,
