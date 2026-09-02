@@ -35,6 +35,18 @@ th{color:var(--dim);font-weight:600;font-size:12px}
 font-weight:600}
 .tag.bad{background:rgba(255,107,107,.18);color:var(--d)}
 .tag.ok{background:rgba(95,211,141,.18);color:var(--c)}
+/* priors.html panel 1: GW-only vs cumulative-season-to-date column groups need
+   to read as two distinct blocks, not one continuous run of six numbers. */
+table.cum-split th.cum-gw,table.cum-split td.cum-gw{background:rgba(78,163,255,.08)}
+table.cum-split th.cum-season,table.cum-split td.cum-season{background:rgba(95,211,141,.08)}
+table.cum-split .cum-season-start{border-left:2px solid var(--line)}
+table.cum-split th.cum-gw-head,table.cum-split th.cum-season-head{text-align:center}
+table.cum-split td.best{color:var(--c);font-weight:600}
+.cum-gw-swatch,.cum-season-swatch{display:inline-block;width:9px;height:9px;
+border-radius:2px;margin:0 3px -1px 0}
+.cum-gw-swatch{background:var(--a)}
+.cum-season-swatch{background:var(--c)}
+.th-sub{display:block;font-weight:400;font-size:10px;opacity:.75;margin-top:1px}
 .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--dim);
 margin:10px 0 0}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;
@@ -91,9 +103,9 @@ border-radius:9px;padding:9px 11px}
 
 <h1>River Leaf FC — squad</h1>
 <p class="squad-link"><a href="https://fantasy.premierleague.com/en/my-team" target="_blank" rel="noopener noreferrer">Open my team on fantasy.premierleague.com ↗</a></p>
-<p class="sub">GW2 · 3-4-3 · £99.5m + £0.5m bank · squad.json updated 2026-08-28T11:10:00Z · page generated 2026-09-01 19:08</p>
+<p class="sub">GW2 · 3-4-3 · £99.5m + £0.5m bank · squad.json updated 2026-08-28T11:10:00Z · page generated 2026-09-02 14:23</p>
 
-<p class="deadline-line"><b>Next team-choice lockdown: Gameweek 3 — Fri 04 Sep 2026, 17:30 UTC (2d 23h away)</b> <span class="kn" style="display:inline">(snapshot fetched 2026-09-01T17:51:47+00:00)</span></p>
+<p class="deadline-line"><b>Next team-choice lockdown: Gameweek 3 — Fri 04 Sep 2026, 17:30 UTC (2d 4h away)</b> <span class="kn" style="display:inline">(snapshot fetched 2026-09-01T17:51:47+00:00)</span></p>
 <div class="kpis"><div class="kpi"><div class="kv mono">£99.5m</div><div class="kl">Squad value</div><div class="kn">bank £0.5m</div></div><div class="kpi"><div class="kv mono">55.9</div><div class="kl">XI xP per 90</div><div class="kn">what the optimiser maximises</div></div><div class="kpi"><div class="kv mono">49.9</div><div class="kl">XI xP per gameweek</div><div class="kn">11% never played</div></div><div class="kpi"><div class="kv mono">3.9</div><div class="kl">Bench value</div><div class="kn">1.12 expected blanks</div></div><div class="kpi"><div class="kv mono">4/4</div><div class="kl">Chips left</div><div class="kn">set 1 expires GW19</div></div><div class="kpi"><div class="kv mono">133.0</div><div class="kl">Total points</div><div class="kn">66.5 avg/GW · 2 GW played</div></div></div>
 
 <div class="panel">
@@ -207,6 +219,7 @@ border-radius:9px;padding:9px 11px}
     <span id="rcNote" class="mono" style="font-size:12px;color:var(--dim)"></span>
   </div>
   <div class="wrap tiny"><canvas id="routeChart"></canvas></div>
+  <div id="rcLegend"></div>
   <div class="find ok">Bonus shrinkage constant this build:
       k=8.3, fitted from observed variance rather than a fallback/clamp
       value — no flag needed on the segment below.</div>
@@ -251,7 +264,11 @@ const routeChart = new Chart(document.getElementById('routeChart'), {
       y: { stacked: true, grid: { display: false } },
     },
     plugins: {
-      legend: { position: 'bottom' },
+      // Built-in legend replaced by the two hand-built .legend rows below
+      // (#rcLegend) - Chart.js's own legend wraps wherever the viewport
+      // happens to break, mixing earned and deducted categories on the same
+      // line. Two separate rows guarantee the split every time.
+      legend: { display: false },
       tooltip: { callbacks: { label: cx => {
         const flagged = rcMode === 'expected' && cx.dataset.label === 'Bonus' && RC.bonusUnvalidated;
         return `${cx.dataset.label}: ${cx.raw.toFixed(2)} pts` + (flagged ? '  (unvalidated shrinkage — ADR 0001)' : '');
@@ -259,6 +276,18 @@ const routeChart = new Chart(document.getElementById('routeChart'), {
     },
   },
 });
+// Two-row legend: earned categories on line 1, deducted (negative-points)
+// categories on line 2 - two separate .legend rows rather than one, so the
+// split is fixed regardless of viewport width (see the plugins.legend note
+// above).
+document.getElementById('rcLegend').innerHTML =
+  `<div class="legend">${earnedDS.map(ds => {
+    const flagged = ds.label === 'Bonus' && RC.bonusUnvalidated;
+    return `<span><i style="background:${ds.backgroundColor}${flagged ? ';border:1px dashed #ff6b6b' : ''}"></i>${ds.label}</span>`;
+  }).join('')}</div>
+   <div class="legend">${dedDS.map(ds =>
+    `<span><i style="background:${ds.backgroundColor}"></i>${ds.label}</span>`
+  ).join('')}</div>`;
 function rcRender(mode) {
   rcMode = mode;
   const d = RC[mode];

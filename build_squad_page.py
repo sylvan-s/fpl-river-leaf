@@ -838,6 +838,7 @@ def build():
     <span id="rcNote" class="mono" style="font-size:12px;color:var(--dim)"></span>
   </div>
   <div class="wrap tiny"><canvas id="routeChart"></canvas></div>
+  <div id="rcLegend"></div>
   {bonus_note}
   <div class="find">Composition only, not a risk measure — showing where the
   points come from doesn't yet say how sure the model is about each Expected
@@ -880,7 +881,11 @@ const routeChart = new Chart(document.getElementById('routeChart'), {{
       y: {{ stacked: true, grid: {{ display: false }} }},
     }},
     plugins: {{
-      legend: {{ position: 'bottom' }},
+      // Built-in legend replaced by the two hand-built .legend rows below
+      // (#rcLegend) - Chart.js's own legend wraps wherever the viewport
+      // happens to break, mixing earned and deducted categories on the same
+      // line. Two separate rows guarantee the split every time.
+      legend: {{ display: false }},
       tooltip: {{ callbacks: {{ label: cx => {{
         const flagged = rcMode === 'expected' && cx.dataset.label === 'Bonus' && RC.bonusUnvalidated;
         return `${{cx.dataset.label}}: ${{cx.raw.toFixed(2)}} pts` + (flagged ? '  (unvalidated shrinkage — ADR 0001)' : '');
@@ -888,6 +893,18 @@ const routeChart = new Chart(document.getElementById('routeChart'), {{
     }},
   }},
 }});
+// Two-row legend: earned categories on line 1, deducted (negative-points)
+// categories on line 2 - two separate .legend rows rather than one, so the
+// split is fixed regardless of viewport width (see the plugins.legend note
+// above).
+document.getElementById('rcLegend').innerHTML =
+  `<div class="legend">${{earnedDS.map(ds => {{
+    const flagged = ds.label === 'Bonus' && RC.bonusUnvalidated;
+    return `<span><i style="background:${{ds.backgroundColor}}${{flagged ? ';border:1px dashed #ff6b6b' : ''}}"></i>${{ds.label}}</span>`;
+  }}).join('')}}</div>
+   <div class="legend">${{dedDS.map(ds =>
+    `<span><i style="background:${{ds.backgroundColor}}"></i>${{ds.label}}</span>`
+  ).join('')}}</div>`;
 function rcRender(mode) {{
   rcMode = mode;
   const d = RC[mode];
