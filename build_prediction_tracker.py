@@ -135,6 +135,22 @@ MIN_POOL = 20             # below this, _estimate_k() already falls back safely
 # 60-minute gate, which would destroy the metric rather than clean it.
 MIN_MINS_SCORE = 60
 
+# ADDED 2 Sep 2026 - the SYMMETRIC gate. MIN_MINS_SCORE fixes the actual
+# side of the fraction; this fixes the PREDICTION side. raw = cumulative
+# stat / prev_n90 has no floor on prev_n90, so a player with a single
+# 2-minute cameo behind him (prev_n90=0.022) produces the same division
+# explosion the moment he gets a real game: 2 minutes and a stray shot
+# reads as 27.90 xGC/90. Found via historical_backtest_2025_26.py - one
+# player (prev_n90=0.022) accounted for 72% of GW18's raw xGC90 RMSE
+# (2.831 -> 0.795 excluding him alone, n=99). shrunk was unaffected -
+# weight=prev_n90/(prev_n90+k) is already ~0 at this sample size, so the
+# blend formula naturally discounts it - but raw's own RMSE bucket scored
+# a prediction the system already knows not to trust, which is not a
+# fair comparison against prior/shrunk. 1.0 = one full match-equivalent
+# of prior minutes, the natural cumulative counterpart to MIN_MINS_SCORE
+# gating a single appearance.
+MIN_N90_RAW = 1.0
+
 
 def _load(mod, fn):
     spec = importlib.util.spec_from_file_location(mod, os.path.join(HERE, fn))
@@ -464,8 +480,12 @@ def walk_forward(boot, cache, finished, baselines):
                 if prev_n90 > 0:
                     raw = cum[pid_s][short] / prev_n90
                     shrunk = (prev_n90 * raw + k * b) / (prev_n90 + k)
-                    buckets[key]["raw"].append((raw - actual[short]) ** 2)
-                    buckets[key]["raw_val"].append(raw)
+                    # MIN_N90_RAW gates raw's OWN bucket only - shrunk above
+                    # already self-corrects at low prev_n90 (weight -> 0), so
+                    # it is computed and scored the same regardless.
+                    if prev_n90 >= MIN_N90_RAW:
+                        buckets[key]["raw"].append((raw - actual[short]) ** 2)
+                        buckets[key]["raw_val"].append(raw)
                     buckets[key]["weights"].append(prev_n90 / (prev_n90 + k))
                 else:
                     shrunk = b
@@ -637,7 +657,7 @@ def build():
                     # Carried in the payload rather than written into the JS as
                     # a literal: the script below is a plain (non-f) string, so
                     # a hardcoded copy there could drift from MIN_MINS_SCORE.
-                    min_mins_score=MIN_MINS_SCORE)
+                    min_mins_score=MIN_MINS_SCORE, min_n90_raw=MIN_N90_RAW)
 
     # DATA IS FETCHED, NOT INLINED — changed 1 Sep 2026, see docs/adr/0002.
     # Everything below the payload write is STATIC: the emitted HTML depends on
@@ -759,7 +779,14 @@ if (!DATA.finished || DATA.finished.length === 0) {
     buried the difference between the three estimators under noise none of
     them can predict. Start rate is deliberately NOT gated \\u2014 it is a
     binary did-he-start, and dropping substitutes would remove exactly the
-    zeroes it needs to measure.`,
+    zeroes it needs to measure. Raw itself is also gated on the OTHER side of
+    the fraction: it is only scored for a player with ${DATA.min_n90_raw}+
+    full match-equivalents of PRIOR minutes behind him \\u2014 without that, a
+    single early cameo produces the same explosion once he gets a real game
+    (2 minutes and a stray shot read back as 28 xGC/90 the next time he
+    starts). Shrunk is unaffected either way: at that little prior data its
+    blend weight is already near zero, so it barely moves off the prior
+    baseline regardless.`,
    `<table class="cum-split"><thead><tr><th>metric</th><th>n (GW${latest})</th>
      <th colspan="3" class="cum-gw-head">Predictions for GW${latest} based on previous weeks</th>
      <th colspan="3" class="cum-season-head cum-season-start">Pooled predictions across all GWs</th></tr>

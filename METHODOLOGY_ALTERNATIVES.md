@@ -1932,19 +1932,20 @@ against the archive directly, not assumed. Backtest covers the other five:
 xG90, xA90, xGC90, saves90, start rate.
 
 **Result — PER-GAMEWEEK RMSE (not cumulative/pooled), averaged across GW2-38,
-scoring only appearances of 60+ minutes on the per-90 rate metrics:**
+scoring only appearances of 60+ minutes, raw itself scored only once a player
+carries 1.0+ full match-equivalents of PRIOR minutes:**
 
 | metric | avg raw | avg prior | avg shrunk | shrunk best-or-tied |
 |---|---|---|---|---|
-| xG per 90 | 0.236 | 0.222 | **0.219** | 20/38 weeks |
-| xA per 90 | 0.139 | 0.132 | **0.130** | 27/38 weeks |
-| xGC per 90 | 0.905 | 0.765 | **0.756** | 23/38 weeks |
-| Saves per 90 | 1.776 | 1.712 | **1.696** | 15/38 weeks |
+| xG per 90 | 0.227 | 0.222 | **0.219** | 19/38 weeks |
+| xA per 90 | 0.134 | 0.132 | **0.130** | 26/38 weeks |
+| xGC per 90 | 0.792 | 0.765 | **0.756** | 22/38 weeks |
+| Saves per 90 | 1.765 | 1.712 | **1.696** | 14/38 weeks |
 | Start rate (ungated) | 0.400 | 0.454 | **0.398** | 26/38 weeks |
 
 Ordering is stable across all five: shrunk best, prior close behind, raw
 clearly worst — the expected empirical-Bayes result. Saves90 is the weakest
-case (shrunk wins outright in only 15/38 weeks, on the smallest sample —
+case (shrunk wins outright in only 14/38 weeks, on the smallest sample —
 n≈15-22 keepers).
 
 **THE CAMEO GATE, and why the first two versions of this table were
@@ -1971,13 +1972,29 @@ and gating it would systematically drop substitute appearances, which ARE the
 stp=0 cases. Measured: scored rows go from 72.7% stp=1 ungated to 99.5% at a
 60-minute gate, which would destroy the metric rather than clean it.
 
-**Two corrections, both 2 Sep 2026.** (1) This section originally reported
+**THE SYMMETRIC GATE.** MIN_MINS_SCORE fixes the actual side of the fraction;
+`raw`'s own RMSE bucket had the same problem on the PREDICTION side, since
+`raw = cumulative stat / prev_n90` has no floor on `prev_n90`. Found by
+inspecting GW18's xGC90 spike (RMSE 2.831, versus a season average of ~0.79):
+one defender, with 2 total minutes played all season before that gameweek
+(prev_n90=0.022), whose raw prediction — cumulative xGC from those 2 minutes
+divided by 0.022 — worked out to 27.90 xGC/90 against an actual of 0.85.
+Excluding that single player dropped the week's RMSE to 0.795, essentially
+the whole spike. `shrunk` was unaffected: at that little prior data its blend
+weight is already ~0, so it stays near the prior baseline regardless — but
+`raw`'s own bucket was scoring a prediction the system already knows not to
+trust. Added `MIN_N90_RAW = 1.0` (one full match-equivalent of prior minutes)
+gating raw's bucket specifically, leaving shrunk's computation untouched.
+
+**Three corrections, all 2 Sep 2026.** (1) This section originally reported
 CUMULATIVE (pooled-since-GW1) RMSE — the wrong statistic for "does the
 predictor get better week to week", since pooling folds every prior week into
-each point and flattens the most recent one. (2) It then reported ungated
-per-gameweek RMSE, which was dominated by the cameo artifact described above.
-The table above is the corrected version; both earlier tables are superseded,
-and the same gate now applies to the LIVE tracker, not just this backtest.
+each point and flattens the most recent one. (2) It then reported per-gameweek
+RMSE with no minutes gate at all, dominated by the actual-side cameo artifact.
+(3) It then reported per-gameweek RMSE gated on the actual only, still
+vulnerable to the symmetric raw-side artifact above. The table above is the
+corrected version; all three gates now apply to the LIVE tracker, not just
+this backtest.
 
 **Verdict.** Once cameo noise is removed, shrinkage validates cleanly on a
 full real season against a real prior season: shrunk is the best of the three
