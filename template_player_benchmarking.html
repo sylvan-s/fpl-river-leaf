@@ -28,20 +28,55 @@ Chart.defaults.borderColor = css('--grid');
 Chart.defaults.font.family = "ui-monospace,Menlo,monospace";
 const f2 = n => (Math.round(n*1000)/1000).toFixed(2);
 const f3 = n => (n>=0?'+':'') + n.toFixed(3);
-// Every scatter chart below sends a clicked point to its timeseries on the
-// player page, carrying name + team so player.html can resolve it against
-// its own index without guessing at a shared slug format.
-function goToPlayer(n, tm){
-  window.location.href = 'player.html?name=' + encodeURIComponent(n) +
-    (tm ? '&team=' + encodeURIComponent(tm) : '');
+// Every scatter chart below sends a clicked point to a points-breakdown pie
+// in the side panel next to it (added 2 Sep 2026 - used to navigate straight
+// to the player's timeseries page instead; that link is still one click away
+// inside the breakdown, just no longer the default action). `raw.bd` is
+// r.breakdown from build_dashboard.py's _breakdown() - the SAME six routes
+// build_squad_page.py's "Where the points come from" chart uses, computed
+// flat (no fixture adjustment) so the pie sums to the xP already shown in
+// this point's own tooltip.
+const BD_LABELS = {appearance:'Appearance', goal_involvement:'Goal Involvement',
+  clean_sheets:'Clean Sheets', defensive_contribution:'Defensive Contribution',
+  saves:'Saves', bonus:'Bonus'};
+const BD_COLORS = {appearance:C.dim, goal_involvement:C.a, clean_sheets:C.c,
+  defensive_contribution:C.e, saves:C.b, bonus:'#ff922b'};
+const pieCharts = {};
+function renderBreakdown(sideId, raw){
+  const el = document.getElementById(sideId);
+  const entries = Object.entries(raw.bd || {});
+  // A pie slice can't be negative - GKP defensive_contribution nets the
+  // goals-conceded penalty against the DC bonus and can go below zero (see
+  // scoring.expected_points_scaled_breakdown's docstring). Excluded from the
+  // pie, called out in a caption instead of silently vanishing.
+  const shown = entries.filter(([,v]) => v > 0.005);
+  const negatives = entries.filter(([,v]) => v < -0.005);
+  el.innerHTML = `<div style="text-align:center;margin-bottom:6px">
+      <b>${raw.n}</b> <span style="color:var(--dim);font-size:12px">(${raw.tm||''})</span><br>
+      <span style="font-size:12px;color:var(--dim)">xP/90 ${raw.xp.toFixed(2)}</span>
+      &middot; <a href="player.html?name=${encodeURIComponent(raw.n)}${raw.tm?'&team='+encodeURIComponent(raw.tm):''}" style="font-size:12px">timeseries &rarr;</a>
+    </div>
+    <div style="height:190px"><canvas id="${sideId}pie"></canvas></div>
+    ${negatives.length ? `<div style="font-size:11px;color:var(--dim);margin-top:8px;text-align:center">`
+      + negatives.map(([k,v])=>`${BD_LABELS[k]} nets ${v.toFixed(2)} pts (not shown as a slice)`).join('; ')
+      + `</div>` : ''}`;
+  if (pieCharts[sideId]) pieCharts[sideId].destroy();
+  pieCharts[sideId] = new Chart(document.getElementById(sideId+'pie'), {
+    type: 'pie',
+    data: { labels: shown.map(([k])=>BD_LABELS[k]),
+      datasets: [{ data: shown.map(([,v])=>v), backgroundColor: shown.map(([k])=>BD_COLORS[k]) }] },
+    options: { maintainAspectRatio: false,
+      plugins: { legend: { position:'bottom', labels:{boxWidth:10, font:{size:10}} },
+        tooltip: { callbacks: { label: cx => `${cx.label}: ${cx.raw.toFixed(2)} pts` } } } }
+  });
 }
-function clickToPlayer(chart){
+function wireBreakdownClick(chart, sideId){
   chart.options.onHover = (evt, els) => { evt.native.target.style.cursor = els.length ? 'pointer' : 'default'; };
   chart.options.onClick = (evt, els) => {
     if (!els.length) return;
     const {datasetIndex, index} = els[0];
     const raw = chart.data.datasets[datasetIndex].data[index];
-    if (raw && raw.n) goToPlayer(raw.n, raw.tm);
+    if (raw && raw.n) renderBreakdown(sideId, raw);
   };
 }
 
@@ -92,9 +127,14 @@ panel('p1','1 · Defenders: routes to points',
  'Tests the claim the archetypes rest on. If clean sheets and CBIT pulled against each other, this would slope.',
  `<div style="display:flex;align-items:center;gap:12px;margin:0 0 14px;flex-wrap:wrap">
     <span id="p1c" class="mono" style="font-size:12px;color:var(--dim);min-width:120px"></span>
-    <span style="font-size:12px;color:var(--dim);margin-left:auto">click a point to open its timeseries →</span>
+    <span style="font-size:12px;color:var(--dim);margin-left:auto">click a point to see its points breakdown →</span>
   </div>
-  <div class="wrap"><canvas id="c1"></canvas></div>
+  <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
+    <div class="wrap" style="flex:2;min-width:280px"><canvas id="c1"></canvas></div>
+    <div id="c1side" style="flex:1;min-width:200px;max-width:280px;padding-top:10px">
+      <div style="font-size:12px;color:var(--dim);text-align:center;padding:60px 10px">click a point to see its points breakdown</div>
+    </div>
+  </div>
   <div class="legend">${XP_BANDS.map(b=>`<span><i style="background:${b.color}"></i>${b.label}</span>`).join('')}
    <span>▲ = in your squad</span> <span>┄ dotted: 10+ CBIT line, median xGC</span></div>`);
 
@@ -103,7 +143,7 @@ function d1(lim){
   return XP_BANDS.map(b=>{
     const pts = D.filter(r=>xpBand(r.xp)===b && r.stp*100>=lim);
     return {label:b.label, backgroundColor:b.color,
-      data:pts.map(r=>({x:r.cbit90,y:r.xgc90,n:r.name,tm:r.team,cs:r.cs,st:r.stp,sq:r.squad,xp:r.xp,arch:r.arch})),
+      data:pts.map(r=>({x:r.cbit90,y:r.xgc90,n:r.name,tm:r.team,cs:r.cs,st:r.stp,sq:r.squad,xp:r.xp,arch:r.arch,bd:r.breakdown})),
       pointStyle:pts.map(r=>r.squad?'triangle':'circle'),
       pointRadius:pts.map(r=>r.squad?10:4+r.cs/6),
       pointHoverRadius:pts.map(r=>r.squad?13:9),
@@ -132,7 +172,7 @@ const ch1 = new Chart(c1,{type:'scatter',data:{datasets:d1(0)},
   scales:{x:{title:{display:true,text:'CBIT per 90  →  busier'},grid:{color:css('--grid')}},
           y:{title:{display:true,text:'xGC per 90  →  leakier'},grid:{color:css('--grid')}}}},
  plugins:[lines1]});
-clickToPlayer(ch1);
+wireBreakdownClick(ch1, 'c1side');
 
 function p1Upd(v){
   ch1.data.datasets = d1(v); ch1.update();
@@ -148,9 +188,14 @@ panel('p3','2 · Midfielders: the two routes, and how few have both',
  'Defensive axis is the REAL 12+ CBIRT line. Attacking axis is the group median — xGI has no absolute cut-off.',
  `<div style="display:flex;align-items:center;gap:12px;margin:0 0 14px;flex-wrap:wrap">
     <span id="p3c" class="mono" style="font-size:12px;color:var(--dim);min-width:120px"></span>
-    <span style="font-size:12px;color:var(--dim);margin-left:auto">click a point to open its timeseries →</span>
+    <span style="font-size:12px;color:var(--dim);margin-left:auto">click a point to see its points breakdown →</span>
   </div>
-  <div class="wrap"><canvas id="c3m"></canvas></div>
+  <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
+    <div class="wrap" style="flex:2;min-width:280px"><canvas id="c3m"></canvas></div>
+    <div id="c3mside" style="flex:1;min-width:200px;max-width:280px;padding-top:10px">
+      <div style="font-size:12px;color:var(--dim);text-align:center;padding:60px 10px">click a point to see its points breakdown</div>
+    </div>
+  </div>
   <div class="legend">${XP_BANDS.map(b=>`<span><i style="background:${b.color}"></i>${b.label}</span>`).join('')}
    <span>▲ = in your squad</span></div>
   <div class="find"><b>CBIRT, not CBIT.</b> Midfielders are judged on clearances, blocks,
@@ -172,7 +217,7 @@ function d3m(minStp){
   return XP_BANDS.map(b=>{
     const pts = MD.filter(r=>xpBand(r.xp)===b && r.stp*100>=minStp);
     return {label:b.label, backgroundColor:b.color,
-      data:pts.map(r=>({x:r.cbirt90,y:r.xgi90,n:r.name,tm:r.team,mn:r.mins,st:r.stp,pr:r.price,sq:r.squad,xp:r.xp,arch:r.arch})),
+      data:pts.map(r=>({x:r.cbirt90,y:r.xgi90,n:r.name,tm:r.team,mn:r.mins,st:r.stp,pr:r.price,sq:r.squad,xp:r.xp,arch:r.arch,bd:r.breakdown})),
       pointStyle:pts.map(r=>r.squad?'triangle':'circle'),
       pointRadius:pts.map(r=>r.squad?10:4),
       pointHoverRadius:pts.map(r=>r.squad?13:9),
@@ -201,7 +246,7 @@ const ch3m = new Chart(c3m,{type:'scatter',data:{datasets:d3m(0)},
   scales:{x:{title:{display:true,text:'CBIRT per 90  →  more defensive work'},grid:{color:css('--grid')}},
           y:{title:{display:true,text:'xGI per 90  →  more attacking threat'},grid:{color:css('--grid')}}}},
  plugins:[lines3]});
-clickToPlayer(ch3m);
+wireBreakdownClick(ch3m, 'c3mside');
 
 function p3Upd(v){
   ch3m.data.datasets = d3m(v); ch3m.update();
@@ -223,9 +268,14 @@ panel('p4','3 · Creating Goal Involvements vs Conversion',
     <span style="font-size:13px;color:var(--dim)">Position</span>
     <span id="p4pos" style="display:flex;gap:6px"></span>
     <span id="p4c" class="mono" style="font-size:12px;color:var(--dim);min-width:120px;margin-left:auto"></span>
-    <span style="font-size:12px;color:var(--dim)">click a point to open its timeseries →</span>
+    <span style="font-size:12px;color:var(--dim)">click a point to see its points breakdown →</span>
   </div>
-  <div class="wrap"><canvas id="c3"></canvas></div>
+  <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
+    <div class="wrap" style="flex:2;min-width:280px"><canvas id="c3"></canvas></div>
+    <div id="c3side" style="flex:1;min-width:200px;max-width:280px;padding-top:10px">
+      <div style="font-size:12px;color:var(--dim);text-align:center;padding:60px 10px">click a point to see its points breakdown</div>
+    </div>
+  </div>
   <div class="legend" id="p4leg"></div>
   <div class="find"><b>Read it as a discount, not a prediction.</b> Delta finds which
   <i>already high-xGI</i> players are underpriced. Never sell high xGI on positive delta alone &mdash;
@@ -252,7 +302,7 @@ function d4(pos,minStp){
   return BANDS4.map(b=>{
     const pts = pool.filter(r=>bandOf(r.price)===b);
     return {label:b.label, backgroundColor:b.color,
-      data:pts.map(r=>({x:r.xgi90,y:r.delta,n:r.name,tm:r.team,pos:r.pos,pr:r.price,sq:r.squad})),
+      data:pts.map(r=>({x:r.xgi90,y:r.delta,n:r.name,tm:r.team,pos:r.pos,pr:r.price,sq:r.squad,xp:r.xp,bd:r.breakdown})),
       pointStyle:pts.map(r=>r.squad?'triangle':'circle'),
       pointRadius:pts.map(r=>r.squad?9:4),
       pointHoverRadius:pts.map(r=>r.squad?12:8),
@@ -276,7 +326,7 @@ const ch4x = new Chart(c3,{type:'scatter',data:{datasets:d4('ALL',0)},
   scales:{x:{title:{display:true,text:'xGI per 90  →  better chance creation'},grid:{color:css('--grid')}},
           y:{title:{display:true,text:'delta = (G+A) − xGI   ↓ underperforming = cheap'},grid:{color:css('--grid')}}}},
  plugins:[lines4]});
-clickToPlayer(ch4x);
+wireBreakdownClick(ch4x, 'c3side');
 function p4Upd(v){
   ch4x.data.datasets = d4(p4Pos, v); ch4x.update();
   const pool = A4.filter(r=>(p4Pos==='ALL'||r.pos===p4Pos) && r.stp*100>=v);

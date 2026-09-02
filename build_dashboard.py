@@ -364,7 +364,19 @@ for r in F_: r["arch"] = archetype_att(r, med_xgi_f)
 # GOALKEEPERS HAVE NO ARCHETYPE. A2 on the roadmap is still undefined, and
 # inventing one here to fill a column would be worse than an honest blank.
 for r in G: r["arch"] = "—"
+def _breakdown(r):
+    """Points-by-route for one player, flat (no fixture adjustment) - the
+    same six categories build_squad_page.py's "Where the points come from"
+    chart uses, computed with att_x=def_x=1.0 and scale_workload=False so the
+    six numbers sum to exactly the flat xP already shown elsewhere on this
+    row, not a fixture-adjusted figure the tooltip doesn't otherwise show.
+    Feeds the click-through points-breakdown pie (added 2 Sep 2026)."""
+    bd = scoring.expected_points_scaled_breakdown(r, 1.0, 1.0, scale_workload=False)
+    return {k: round(v, 3) for k, v in bd.items()}
+
+
 for r in rows: r["xp"] = round(scoring.expected_points(r), 2)
+for r in rows: r["breakdown"] = _breakdown(r)
 for r in rows: r["blank"] = blank_risk(r)
 for r in rows:
     att_x, def_x, games = FIXTURE_MAP.get(r["team"], (1.0, 1.0, 4))
@@ -559,6 +571,7 @@ def _build_estimator_variant(estimator):
     for r in Fv: r["arch"] = archetype_att(r, med_xgi_f_v)
     for r in vrows:
         r["xp"] = round(scoring.expected_points(r), 2)
+        r["breakdown"] = _breakdown(r)
         att_x, def_x, games = FIXTURE_MAP.get(r["team"], (1.0, 1.0, 4))
         r["xp4_adj"] = round(scoring.expected_points_scaled(
             r, att_x, def_x, scale_workload=SCALE_WORKLOAD) * games, 2)

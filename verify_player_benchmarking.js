@@ -72,8 +72,9 @@ global.document = {
 };
 global.getComputedStyle = () => ({ getPropertyValue: () => '#000' });
 global.window = global;
-// goToPlayer() writes window.location.href — a plain settable stub is enough
-// to observe where a chart click would have sent the browser.
+// A plain settable stub - used below to confirm a chart click renders the
+// points-breakdown pie in place rather than navigating away (the earlier
+// click-through behaviour this replaced on 2 Sep 2026).
 global.location = { href: '' };
 // In-memory stand-in for the sticky start% filter (11 Aug 2026). A real
 // stub, not just a try/catch bypass, so the round-trip actually gets
@@ -98,6 +99,10 @@ try {
 console.log('panels rendered :', app.children.length);
 console.log('charts created  :', charts.length);
 charts.forEach(c => console.log(`   ${String(c.canvas).padEnd(5)} ${c.type.padEnd(8)} ${c.datasets} datasets, ${String(c.points).padStart(3)} points, ${c.triangles} triangles`));
+// Captured before the click-through test below, which creates its own pie
+// Chart instance in a side panel - `charts` would otherwise grow past the
+// three scatter charts the page renders on load.
+const initialChartCount = charts.length;
 
 // Sticky start% filter: the 50% seeded into localStorage above should already
 // be applied — readout, slider value, AND the charts themselves — with no
@@ -193,20 +198,28 @@ if (globalStp) {
 const stickyWriteOk = _lsStore[STP_KEY] === '80';
 console.log(`sticky filter persisted     : localStorage[${STP_KEY}] = "${_lsStore[STP_KEY]}" -> ${stickyWriteOk ? 'OK' : 'WRONG'}`);
 
-// Click-through: a point clicked on c1/c3m/c3 should send the browser to
-// player.html carrying that player's name + team (12 Aug 2026 addition).
+// Click-through: a point clicked on c1/c3m/c3 opens a points-breakdown pie
+// in its side panel (2 Sep 2026 - replaced the earlier navigate-to-player.html
+// behaviour; that link now lives inside the breakdown instead). Confirmed on
+// c1/c1side specifically since it's paired 1:1, and NO navigation happens -
+// a regression back to the old onClick would leave location.href set.
 let clickOk = false;
 const wired = chartInstances.filter(i => i.options && typeof i.options.onClick === 'function');
 if (wired.length === 3) {
-  const target = wired.find(i => i.data.datasets.some(d => d.data && d.data.length));
+  const target = chartInstances.find(i => i.canvas === 'c1');
   if (target) {
     const ds = target.data.datasets.findIndex(d => d.data && d.data.length);
     location.href = '';
-    target.options.onClick({ native: { target: { style: {} } } }, [{ datasetIndex: ds, index: 0 }]);
-    clickOk = /^player\.html\?name=/.test(location.href);
+    target.options.onClick({ native: { target: { style: {} } } },
+      [{ datasetIndex: ds, index: 0 }]);
+    const side = byId['c1side'];
+    const pieCanvasMade = Object.keys(made).some(k => k === 'c1sidepie');
+    const pieInstance = chartInstances.find(i => i.canvas === 'c1sidepie');
+    clickOk = location.href === '' && !!side && /player\.html\?name=/.test(side.innerHTML)
+      && pieCanvasMade && !!pieInstance && pieInstance.data.datasets[0].data.length > 0;
   }
 }
-console.log(`chart click-through : ${wired.length} charts wired, sample -> "${location.href}" -> ${clickOk ? 'OK' : 'WRONG'}`);
+console.log(`chart click-through : ${wired.length} charts wired, breakdown pie renders (no navigation) -> ${clickOk ? 'OK' : 'WRONG'}`);
 
 // Data-source selector (prior/raw/shrunk), added 2 Sep 2026: switching it
 // must actually change what's plotted, not just relabel the same numbers -
@@ -238,7 +251,7 @@ if (estSel) {
 }
 console.log(`                       distinct across all three: ${estOk ? 'OK' : 'WRONG'}`);
 
-const ok = app.children.length === 4 && charts.length === 3
+const ok = app.children.length === 4 && initialChartCount === 3
   && charts.every(c => c.points > 0) && triOk && xpOk
   && p4ok && xpHeadOk && globalOk && restoredOk && stickyWriteOk && clickOk && estOk;
 console.log('\nRESULT:', ok ? 'ALL PANELS RENDER, ALL FILTERS WORK' : 'INCOMPLETE');
