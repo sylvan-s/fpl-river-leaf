@@ -208,8 +208,38 @@ if (wired.length === 3) {
 }
 console.log(`chart click-through : ${wired.length} charts wired, sample -> "${location.href}" -> ${clickOk ? 'OK' : 'WRONG'}`);
 
+// Data-source selector (prior/raw/shrunk), added 2 Sep 2026: switching it
+// must actually change what's plotted, not just relabel the same numbers -
+// find one point present in all three modes and confirm its coordinates move.
+let estOk = false;
+const estSel = byId['estSel'];
+if (estSel) {
+  function findPoint(canvas, name) {
+    // chartInstances (not `charts`, which only tracks aggregate metadata)
+    // carries the live .data.datasets arrays a real Chart instance would.
+    const ch = chartInstances.find(c => c.canvas === canvas);
+    for (const ds of ch.data.datasets) {
+      const pt = (ds.data || []).find(p => p && p.n === name);
+      if (pt) return pt;
+    }
+    return null;
+  }
+  const seen = {};
+  for (const est of ['prior', 'raw', 'shrunk']) {
+    estSel.fire('click', null, { dataset: { e: est } });
+    seen[est] = findPoint('c3m', 'B.Fernandes');
+  }
+  console.log(`data-source selector : B.Fernandes xP  prior ${seen.prior?.xp}  `
+    + `raw ${seen.raw?.xp}  shrunk ${seen.shrunk?.xp}`);
+  estOk = !!(seen.prior && seen.raw && seen.shrunk)
+    && seen.prior.xp !== seen.raw.xp && seen.raw.xp !== seen.shrunk.xp
+    && seen.prior.xp !== seen.shrunk.xp;
+  estSel.fire('click', null, { dataset: { e: 'prior' } });   // reset for anything after
+}
+console.log(`                       distinct across all three: ${estOk ? 'OK' : 'WRONG'}`);
+
 const ok = app.children.length === 4 && charts.length === 3
   && charts.every(c => c.points > 0) && triOk && xpOk
-  && p4ok && xpHeadOk && globalOk && restoredOk && stickyWriteOk && clickOk;
+  && p4ok && xpHeadOk && globalOk && restoredOk && stickyWriteOk && clickOk && estOk;
 console.log('\nRESULT:', ok ? 'ALL PANELS RENDER, ALL FILTERS WORK' : 'INCOMPLETE');
 process.exit(ok ? 0 : 1);

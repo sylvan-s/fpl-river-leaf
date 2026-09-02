@@ -7,6 +7,11 @@
 <!--__NAV__-->
 <h1>Player Benchmarking</h1>
 <p class="sub" id="sub"></p>
+<div class="filterbar" style="display:flex;align-items:center;gap:12px;margin:0 0 10px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px">
+  <label style="font-size:13px;color:var(--dim)">Data source <span style="color:var(--dim);opacity:.75">(applies to every chart on this page)</span></label>
+  <span id="estSel" style="display:flex;gap:6px"></span>
+  <span id="estNote" class="mono" style="font-size:12px;color:var(--dim);margin-left:auto"></span>
+</div>
 <div class="filterbar" style="display:flex;align-items:center;gap:12px;margin:0 0 18px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px">
   <label for="globalStp" style="font-size:13px;color:var(--dim)">Minimum start% <span style="color:var(--dim);opacity:.75">(applies to every chart on this page)</span></label>
   <input type="range" id="globalStp" min="0" max="100" step="5" value="0" style="flex:1;min-width:200px;max-width:420px">
@@ -41,7 +46,7 @@ function clickToPlayer(chart){
 }
 
 document.getElementById('sub').textContent =
-  `Prior season ${DATA.season} · ${DATA.rows.length} players with ${450}+ minutes · `+
+  `Prior season ${DATA.season} · ${DATA.estimators.prior.rows.length} players with ${450}+ minutes · `+
   `snapshot captured ${DATA.captured} · page generated ${DATA.generated}`;
 document.getElementById('foot').innerHTML =
   `Source: <span class="mono">fpl_priors_2025_26_v2.json</span> (frozen prior-season snapshot). `+
@@ -56,7 +61,18 @@ function panel(id, title, tests, body){
   d.innerHTML = `<h2>${title}</h2><p class="tests">${tests}</p>${body}`;
   document.getElementById('app').appendChild(d); return d;
 }
-const S = DATA.stats;
+
+// Data-source selector (prior/raw/shrunk), added 2 Sep 2026 - same three
+// estimators optimise_squad.py's --estimator flag uses. Every panel below
+// reads through activeRows()/activeMedXgc()/activeMedXgiM()/activeStats()
+// rather than DATA.* directly, so switching the selector and calling
+// applyEstimator() is enough to refresh the whole page with no rebuild.
+const EST_LABELS = {prior:'Prior (2025/26)', raw:'Raw (live)', shrunk:'Shrunk (blend)'};
+let currentEstimator = 'prior';
+function activeRows(){ return DATA.estimators[currentEstimator].rows; }
+function activeMedXgc(){ return DATA.estimators[currentEstimator].med_xgc; }
+function activeMedXgiM(){ return DATA.estimators[currentEstimator].med_xgi_m; }
+function activeStats(){ return DATA.estimators[currentEstimator].stats; }
 
 // Shared xP/90 colour bands — replaces archetype-coloured markers on the two
 // scatter panels below. Archetype (r.arch) is still computed and still drives
@@ -71,7 +87,7 @@ const XP_BANDS = [
 function xpBand(xp){ return XP_BANDS.find(b=>xp<b.max) || XP_BANDS[XP_BANDS.length-1]; }
 
 /* ---------- 1. defender independence ---------- */
-const D = DATA.rows.filter(r=>r.pos==='DEF');
+let D = activeRows().filter(r=>r.pos==='DEF');
 panel('p1','1 · Defenders: routes to points',
  'Tests the claim the archetypes rest on. If clean sheets and CBIT pulled against each other, this would slope.',
  `<div style="display:flex;align-items:center;gap:12px;margin:0 0 14px;flex-wrap:wrap">
@@ -103,11 +119,11 @@ const lines1 = {id:'l1', afterDatasetsDraw(ch){
     ctx.beginPath(); ctx.moveTo(xT,ca.top); ctx.lineTo(xT,ca.bottom); ctx.stroke();
     ctx.fillStyle=C.c; ctx.font='10px ui-monospace,Menlo,monospace';
     ctx.fillText('10+ CBIT', xT+4, ca.top+11); }
-  const yM = scales.y.getPixelForValue(DATA.med_xgc);
+  const yM = scales.y.getPixelForValue(activeMedXgc());
   if (yM>ca.top && yM<ca.bottom){ ctx.strokeStyle=css('--dim');
     ctx.beginPath(); ctx.moveTo(ca.left,yM); ctx.lineTo(ca.right,yM); ctx.stroke();
     ctx.fillStyle=css('--dim');
-    ctx.fillText('median xGC '+f2(DATA.med_xgc), ca.left+4, yM-4); }
+    ctx.fillText('median xGC '+f2(activeMedXgc()), ca.left+4, yM-4); }
   ctx.restore();
 }};
 const ch1 = new Chart(c1,{type:'scatter',data:{datasets:d1(0)},
@@ -127,7 +143,7 @@ function p1Upd(v){
 p1Upd(0);
 
 /* ---------- 2. midfielder archetypes ---------- */
-const MD = DATA.rows.filter(r=>r.pos==='MID');
+let MD = activeRows().filter(r=>r.pos==='MID');
 panel('p3','2 · Midfielders: the two routes, and how few have both',
  'Defensive axis is the REAL 12+ CBIRT line. Attacking axis is the group median — xGI has no absolute cut-off.',
  `<div style="display:flex;align-items:center;gap:12px;margin:0 0 14px;flex-wrap:wrap">
@@ -142,7 +158,7 @@ panel('p3','2 · Midfielders: the two routes, and how few have both',
   defenders' 10, because recoveries are high-volume.</div>
   <div class="find bad"><b>The top-right quadrant is empty.</b> Not one midfielder in this pool
   is <span class="mono">box-to-box</span> — clearing 12+ CBIRT <i>and</i> beating median xGI.
-  <b>${S.mid_clear} of ${S.mid_n}</b> clear the line at all, and every one of them sits below
+  <b><span id="p3clearcount"></span></b> clear the line at all, and every one of them sits below
   median xGI. <b>All four of your starting midfielders are <span class="mono">attacker</span></b>:
   ceiling, no floor.</div>
   <div class="find"><b>That shape is a consequence, not a choice — and it is fragile.</b>
@@ -172,11 +188,11 @@ const lines3 = {id:'l3', afterDatasetsDraw(ch){
     ctx.beginPath(); ctx.moveTo(xT,ca.top); ctx.lineTo(xT,ca.bottom); ctx.stroke();
     ctx.fillStyle=C.c; ctx.font='10px ui-monospace,Menlo,monospace';
     ctx.fillText('12+ CBIRT', xT+4, ca.top+11); }
-  const yM = scales.y.getPixelForValue(DATA.med_xgi_m);
+  const yM = scales.y.getPixelForValue(activeMedXgiM());
   if (yM>ca.top && yM<ca.bottom){ ctx.strokeStyle=css('--dim');
     ctx.beginPath(); ctx.moveTo(ca.left,yM); ctx.lineTo(ca.right,yM); ctx.stroke();
     ctx.fillStyle=css('--dim');
-    ctx.fillText('median xGI '+f2(DATA.med_xgi_m), ca.left+4, yM-4); }
+    ctx.fillText('median xGI '+f2(activeMedXgiM()), ca.left+4, yM-4); }
   ctx.restore();
 }};
 const ch3m = new Chart(c3m,{type:'scatter',data:{datasets:d3m(0)},
@@ -193,6 +209,11 @@ function p3Upd(v){
   const sq = MD.filter(r=>r.stp*100>=v && r.squad).length;
   document.getElementById('p3c').textContent = `${shown} of ${MD.length} · ${sq} yours`;
 }
+function renderP3Stats(){
+  const s = activeStats();
+  document.getElementById('p3clearcount').textContent = `${s.mid_clear} of ${s.mid_n}`;
+}
+renderP3Stats();
 p3Upd(0);
 
 /* ---------- 3. xGI x delta ---------- */
@@ -221,7 +242,7 @@ function bandOf(price){ return BANDS4.find(b=>price<b.max) || BANDS4[BANDS4.leng
 document.getElementById('p4leg').innerHTML =
   BANDS4.map(b=>`<span><i style="background:${b.color}"></i>${b.label}</span>`).join('') +
   '<span>▲ = in your squad</span>';
-const A4 = DATA.rows.filter(r=>['DEF','MID','FWD'].includes(r.pos));
+let A4 = activeRows().filter(r=>['DEF','MID','FWD'].includes(r.pos));
 let p4Pos = 'ALL';
 const P4POSES = ['ALL','DEF','MID','FWD'];
 document.getElementById('p4pos').innerHTML = P4POSES.map(p=>
@@ -326,7 +347,7 @@ document.getElementById('posbtns').innerHTML = POSES.map(p=>
   `<button data-p="${p}" style="font-size:12px;padding:4px 10px;border-radius:6px;cursor:pointer;border:1px solid var(--line);background:${p==='ALL'?C.a:'transparent'};color:${p==='ALL'?'#fff':'var(--tx)'}">${p}</button>`).join('');
 
 function xpRender(){
-  let rs = DATA.rows.filter(r=>xpPos==='ALL'||r.pos===xpPos);
+  let rs = activeRows().filter(r=>xpPos==='ALL'||r.pos===xpPos);
   if (document.getElementById('mineonly').checked) rs = rs.filter(r=>r.squad);
   rs = rs.filter(r=>r.stp*100>=xpMinStp);
   const total = rs.length;
@@ -362,6 +383,41 @@ document.getElementById('posbtns').addEventListener('click', e=>{
 document.getElementById('nsel').addEventListener('change', xpRender);
 document.getElementById('mineonly').addEventListener('change', xpRender);
 xpRender();
+
+/* ---------- data-source selector (prior/raw/shrunk), drives panels 1/2/3/4 ---------- */
+document.getElementById('estSel').innerHTML = Object.keys(EST_LABELS).map(k=>
+  `<button data-e="${k}" style="font-size:12px;padding:4px 10px;border-radius:6px;cursor:pointer;border:1px solid var(--line);background:${k==='prior'?C.a:'transparent'};color:${k==='prior'?'#fff':'var(--tx)'}">${EST_LABELS[k]}</button>`).join('');
+function estimatorNote(){
+  if (!DATA.estimator_live && currentEstimator !== 'prior')
+    return 'no live current-season data this build — showing prior values (see the build log)';
+  if (currentEstimator === 'prior') return '2025/26 season only, no live fetch';
+  if (currentEstimator === 'raw') return 'live 2026/27 rates only, no blending — gated per player below ~1 n90';
+  return 'Bayesian blend of the 2025/26 prior and live 2026/27 rates';
+}
+function applyEstimator(est){
+  currentEstimator = est;
+  document.querySelectorAll('#estSel button').forEach(btn=>{
+    const on = btn.dataset.e===est;
+    btn.style.background = on ? C.a : 'transparent';
+    btn.style.color = on ? '#fff' : 'var(--tx)';
+  });
+  document.getElementById('estNote').textContent = estimatorNote();
+  D = activeRows().filter(r=>r.pos==='DEF');
+  MD = activeRows().filter(r=>r.pos==='MID');
+  A4 = activeRows().filter(r=>['DEF','MID','FWD'].includes(r.pos));
+  const v = +document.getElementById('globalStp').value;
+  p1Upd(v);
+  renderP3Stats();
+  p3Upd(v);
+  p4Upd(v);
+  xpMinStp = v;
+  xpRender();
+}
+document.getElementById('estSel').addEventListener('click', e=>{
+  if (!e.target.dataset.e) return;
+  applyEstimator(e.target.dataset.e);
+});
+applyEstimator('prior');
 
 /* ---------- global start% filter, drives panels 1/2/3/4 ---------- */
 // Sticky across page loads via localStorage — a UI convenience, not a data

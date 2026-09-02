@@ -461,6 +461,122 @@ club_xgc_cs = sorted(
      for team, vals in club_xgc.items() if team in club_cs),
     key=lambda x: x[1])
 
+# ---- PLAYER BENCHMARKING'S DATA-SOURCE SELECTOR (prior/raw/shrunk) ---------
+# `rows` above is the PRIOR variant only (2025/26 season, frozen snapshot).
+# Same three estimators as optimise_squad.py's --estimator flag and the same
+# scope (scoring.PRIORS_DISPERSION: xg90/xa90/xgi90/xgc90/cbit90/cbirt90/sv90,
+# NOT stp/xbonus90 — see that constant's comment for why), computed here
+# independently rather than imported from build_squad.py, for the same
+# "separate hand-maintained copy" reason scoring.py's own docstring gives:
+# build_squad.py pulls in its own gates/pool (900-min, contaminated-prior
+# filter, ROLE_INTEL) that don't apply to this page's broader 450-min pool.
+_current_cache = None
+
+
+def _fetch_current_season():
+    global _current_cache
+    if _current_cache is not None:
+        return _current_cache
+    import urllib.request
+    try:
+        req = urllib.request.Request(
+            "https://fantasy.premierleague.com/api/bootstrap-static/",
+            headers={"User-Agent": "fpl-build-dashboard/1.0"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        _current_cache = {str(e["id"]): e for e in data.get("elements", [])}
+    except Exception as exc:
+        print(f"  ESTIMATOR: live bootstrap-static fetch failed ({exc}) - "
+              f"raw/shrunk both fall back to prior-only values for every "
+              f"player this run.", file=sys.stderr)
+        _current_cache = {}
+    return _current_cache
+
+
+def _current_rates(el):
+    """Current-season per-90 rates (plus raw goals+assists, for `delta`) from
+    a LIVE bootstrap element. `el` may be {} (not found, or the fetch itself
+    failed) - returns all-zero/n90=0, which shrink_rate() then treats as "no
+    current data, keep the baseline" rather than a divide."""
+    m = el.get("minutes", 0) or 0
+    n90 = m / 90.0
+    if n90 <= 0:
+        return dict(n90=0.0, ga=0, xg90=0.0, xa90=0.0, xgi90=0.0, xgc90=0.0,
+                    cbit90=0.0, cbirt90=0.0, sv90=0.0)
+    cbi = el.get("clearances_blocks_interceptions", 0) or 0
+    tk, rec = el.get("tackles", 0) or 0, el.get("recoveries", 0) or 0
+    return dict(
+        n90=n90, ga=(el.get("goals_scored", 0) or 0) + (el.get("assists", 0) or 0),
+        xg90=f(el.get("expected_goals")) / n90, xa90=f(el.get("expected_assists")) / n90,
+        xgi90=f(el.get("expected_goal_involvements")) / n90,
+        xgc90=f(el.get("expected_goals_conceded")) / n90,
+        cbit90=(cbi + tk) / n90, cbirt90=(cbi + tk + rec) / n90,
+        sv90=(el.get("saves") or 0) / n90,
+    )
+
+
+_current = _fetch_current_season()
+_current_by_id = {r["id"]: _current_rates(_current.get(str(r["id"]), {})) for r in rows}
+
+# One k per metric, pool-wide (same scope decision build_squad.py's load()
+# makes for this first activation — see METHODOLOGY_ALTERNATIVES.md A0.2
+# "Phase 2" for what a later review should reconsider if this looks wrong).
+_shrunk_ks = {}
+for _metric, _disp in scoring.PRIORS_DISPERSION.items():
+    _samples = [(_current_by_id[r["id"]][_metric], _current_by_id[r["id"]]["n90"]) for r in rows]
+    _shrunk_ks[_metric] = scoring.estimate_k_priors(_samples, dispersion=_disp)
+
+
+def _build_estimator_variant(estimator):
+    """Recompute the estimator-sensitive fields for every row, then re-derive
+    everything downstream of them in the SAME ORDER the prior computation
+    above used (archetype, xP, xP4_adj) - so raw/shrunk can never silently
+    disagree with prior about how those are derived, only about the inputs.
+    `estimator` is "raw" or "shrunk"; prior needs no variant, see below.
+    """
+    vrows = [dict(r) for r in rows]
+    for rv in vrows:
+        cur = _current_by_id[rv["id"]]
+        if estimator == "shrunk":
+            for metric in scoring.PRIORS_DISPERSION:
+                rv[metric] = scoring.shrink_rate(cur[metric], cur["n90"], rv[metric], _shrunk_ks[metric])
+            rv["delta"] = cur["ga"] - rv["xgi90"] * cur["n90"]
+        else:  # raw - ungated, a near-zero-minutes rate is unusable, see
+               # scoring.MIN_N90_RAW's comment. Below the gate, keep prior.
+            if cur["n90"] >= scoring.MIN_N90_RAW:
+                for metric in scoring.PRIORS_DISPERSION:
+                    rv[metric] = cur[metric]
+                rv["delta"] = cur["ga"] - rv["xgi90"] * cur["n90"]
+
+    Dv = [r for r in vrows if r["pos"] == "DEF"]
+    Mv = [r for r in vrows if r["pos"] == "MID"]
+    Fv = [r for r in vrows if r["pos"] == "FWD"]
+    med_xgc_v = sorted(r["xgc90"] for r in Dv)[len(Dv) // 2]
+    for r in Dv: r["arch"] = archetype_def(r, med_xgc_v)
+    med_xgi_m_v = sorted(r["xgi90"] for r in Mv)[len(Mv) // 2]
+    for r in Mv: r["arch"] = archetype_mid(r, med_xgi_m_v)
+    med_xgi_f_v = sorted(r["xgi90"] for r in Fv)[len(Fv) // 2] if Fv else 0.0
+    for r in Fv: r["arch"] = archetype_att(r, med_xgi_f_v)
+    for r in vrows:
+        r["xp"] = round(scoring.expected_points(r), 2)
+        att_x, def_x, games = FIXTURE_MAP.get(r["team"], (1.0, 1.0, 4))
+        r["xp4_adj"] = round(scoring.expected_points_scaled(
+            r, att_x, def_x, scale_workload=SCALE_WORKLOAD) * games, 2)
+    for r in vrows:
+        for k in ("xgi90", "xg90", "xa90", "delta", "cbit90", "cbirt90", "xgc90", "sv90"):
+            r[k] = round(r[k], 3)
+    return dict(rows=vrows, med_xgc=round(med_xgc_v, 4), med_xgi_m=round(med_xgi_m_v, 4),
+                stats=dict(mid_n=len(Mv), mid_clear=sum(1 for r in Mv if r["cbirt90"] >= CBIRT_THRESH)))
+
+
+estimators = {
+    "prior": dict(rows=rows, med_xgc=round(med_xgc, 4), med_xgi_m=round(med_xgi_m, 4),
+                  stats=dict(mid_n=stats["mid_n"], mid_clear=stats["mid_clear"])),
+    "raw": _build_estimator_variant("raw"),
+    "shrunk": _build_estimator_variant("shrunk"),
+}
+estimator_live = bool(_current)   # False -> raw/shrunk silently equal prior; UI should say so
+
 # The full union of what any consumer needs — build_player_benchmarking.py
 # and build_team_benchmarking.py each pick their own subset of keys out of
 # this before writing their page (see either file); build_relationships_page.py
@@ -471,5 +587,6 @@ payload = dict(rows=rows, med_xgi_m=round(med_xgi_m,4), fixtures=FIXTURES, stats
                captured=snap.get("captured_utc", "")[:19],
                season=snap.get("season_described", "?"),
                generated=dt.datetime.now().strftime("%Y-%m-%d %H:%M"),
-               last16=last16_info, fixture_info=fixture_info)
+               last16=last16_info, fixture_info=fixture_info,
+               estimators=estimators, estimator_live=estimator_live)
 
