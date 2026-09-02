@@ -565,16 +565,24 @@ def build():
                 f'<div class="kl">{label}</div>{n}</div>')
 
     chips1 = state.chips_remaining("set1")
-    total_pts_note = (f"{live['avg_per_gw']:.1f} avg/GW · {live['gws_played']} GW played"
-                       if live else "no live snapshot cached yet")
-    kpis = "".join([
-        kpi("Squad value", f"£{state.value:.1f}m", f"bank £{state.bank:.1f}m"),
-        kpi("XI xP per 90", f"{xi90:.1f}", "what the optimiser maximises"),
-        kpi("XI xP per gameweek", f"{xigw:.1f}",
-            f"{(1-xigw/xi90)*100:.0f}% never played"),
-        kpi("Bench value", f"{bench_pts:.1f}", f"{exp_blanks:.2f} expected blanks"),
+    # Two lines (2 Sep 2026): the first three are account-level facts that
+    # barely move week to week; the rest are the xP/actual-points figures the
+    # weekly transfer decision actually turns on. Two separate .kpis grids,
+    # not one wrapped by viewport width, so the split is fixed regardless of
+    # screen size - same reasoning as the route chart's two-row legend.
+    kpis_top = "".join([
+        kpi("Squad value", f"£{state.value:.1f}m"),
+        kpi("Bank value", f"£{state.bank:.1f}m"),
         kpi("Chips left", f"{len(chips1)}/4", "set 1 expires GW19"),
-        kpi("Total points", f"{live['total_points']}" if live else "—", total_pts_note),
+    ])
+    kpis_bottom = "".join([
+        kpi("xP XI per 90", f"{xi90:.1f}", "what the optimiser maximises"),
+        kpi("xP XI per GW", f"{xigw:.1f}",
+            f"{(1-xigw/xi90)*100:.0f}% never played"),
+        kpi("xP bench per GW", f"{bench_pts:.1f}", f"{exp_blanks:.2f} expected blanks"),
+        kpi("P per GW", f"{live['avg_per_gw']:.1f}" if live else "—",
+            f"{live['gws_played']} GW played" if live else "no live snapshot cached yet"),
+        kpi("Total points", f"{live['total_points']}" if live else "—"),
     ])
 
     contam_mine = [p for p in state.players if p["name"] in contam]
@@ -956,7 +964,8 @@ rcRender('expected');
 
     body = f"""
 <p class="deadline-line">{dl_line}</p>
-<div class="kpis">{kpis}</div>
+<div class="kpis">{kpis_top}</div>
+<div class="kpis">{kpis_bottom}</div>
 {contam_html}
 <div class="panel">
   <h2>The eleven</h2>
