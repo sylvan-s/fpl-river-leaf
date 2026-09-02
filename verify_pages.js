@@ -2,15 +2,16 @@
 //
 //     node verify_pages.js
 //
-// WHAT THIS IS FOR. verify_dashboard.js runs the diagnostics page's script and
-// asserts its panels and filters behave. That is deep, and it is specific to
-// that page. This file is the opposite: shallow checks applied to ALL pages,
-// so that adding a page cannot quietly skip verification.
+// WHAT THIS IS FOR. verify_player_benchmarking.js and verify_team_benchmarking.js
+// each run one page's script and assert its panels and filters behave. That is
+// deep, and it is specific to that page. This file is the opposite: shallow
+// checks applied to ALL pages, so that adding a page cannot quietly skip
+// verification.
 //
 // THE FAILURE IT GUARDS. A page whose Chart.js tag drifts off the pinned
 // jsdelivr URL renders COMPLETELY BLANK while every local check passes, because
 // stubbed-DOM verification never fetches anything. That bug has already been
-// paid for once. With five pages the surface for it is five times larger, and
+// paid for once. With seven pages the surface for it is seven times larger, and
 // it is invisible in the one place you would look — the HTML looks complete and
 // the file size looks right.
 const fs = require('fs'), path = require('path'), vm = require('vm');
@@ -22,12 +23,13 @@ const INTEGRITY = 'sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76i
 // page file -> minimum plausible size. A page that builds but emits almost
 // nothing is a failure that no syntax check catches.
 const PAGES = [
-  { file: 'index.html',         minKB: 10 },   // squad page — the landing page
-  { file: 'analysis.html',      minKB: 100, deep: 'diagnostics' },
-  { file: 'relationships.html', minKB: 80 },   // shares analysis.html's payload
-  { file: 'news.html',          minKB: 8 },
-  { file: 'player.html',        minKB: 20 },
-  { file: 'priors.html',        minKB: 8 },   // sits in a "waiting for GW1" empty state pre-season
+  { file: 'index.html',              minKB: 10 },   // squad page — the landing page
+  { file: 'player-benchmarking.html', minKB: 150, deep: 'player-benchmarking' },
+  { file: 'team-benchmarking.html',   minKB: 8,   deep: 'team-benchmarking' },
+  { file: 'relationships.html',      minKB: 80 },   // shares build_dashboard.py's payload
+  { file: 'news.html',               minKB: 8 },
+  { file: 'player.html',             minKB: 20 },
+  { file: 'priors.html',             minKB: 8 },   // sits in a "waiting for GW1" empty state pre-season
 ];
 
 let failures = 0;
@@ -71,7 +73,7 @@ for (const p of PAGES) {
   bad.forEach(c => fail(p.file, `${c[0]} — ${c[2]}`));
 }
 
-console.log('\nDeep verification (page-specific) is verify_dashboard.js,');
-console.log('run separately by publish_dashboard.sh against the diagnostics page.');
+console.log('\nDeep verification (page-specific) is verify_player_benchmarking.js and');
+console.log('verify_team_benchmarking.js, run separately by publish_dashboard.sh.');
 console.log('\nRESULT:', failures === 0 ? 'ALL PAGES STRUCTURALLY SOUND' : `${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

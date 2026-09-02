@@ -9,10 +9,13 @@ fpl_history_cache.sqlite
 fpl_history_cache.sqlite-journal
 *.sqlite-journal
 
-# Generated dashboard output — rebuild with `python3 build_dashboard.py`
-FPL_DIAGNOSTICS.html
-FPL_DIAGNOSTICS_artifact.html
-dash.js
+# Generated dashboard output — rebuild with `python3 build_player_benchmarking.py`
+# and `python3 build_team_benchmarking.py`
+FPL_PLAYER_BENCHMARKING.html
+FPL_TEAM_BENCHMARKING.html
+FPL_PLAYER_BENCHMARKING_artifact.html
+dash_player.js
+dash_team.js
 
 # Scratch
 _wtest.txt

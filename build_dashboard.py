@@ -1,29 +1,45 @@
 #!/usr/bin/env python3
-"""Generate the FPL methodology diagnostic dashboard.
+"""Shared data engine for the methodology-diagnostic pages — computes the
+whole player/team pool ONCE and exposes it as module-level globals (`rows`,
+`D`/`M`/`F_`/`G`, `stats`, `kpanel`, `FIXTURES`, `club_xgc_cs`, `payload`, ...)
+for its three consumers to slice as they need:
 
-Reads the frozen prior-season snapshot and emits ONE self-contained HTML file.
-Every panel exists to test a claim in the methodology - not to re-display a
-table. If a panel cannot change a decision or expose an error, it should be cut.
+    build_player_benchmarking.py   docs/player-benchmarking.html
+    build_team_benchmarking.py     docs/team-benchmarking.html
+    build_relationships_page.py    docs/relationships.html
 
-Regenerate:  python3 build_dashboard.py
+THIS FILE WRITES NO PAGE ITSELF. Until 2 Sep 2026 it emitted a single
+"Player & Club Metric Benchmarking" page (analysis.html) directly; that page
+was split into the two above because its panels answered two different
+questions (which PLAYER to pick vs. whose fixtures are kind) with only the
+first needing the global start% filter the four player-level panels shared.
+Splitting the OUTPUT without splitting the DATA PIPELINE would have meant two
+independently-computed player pools drifting apart the moment either changed
+- exactly the failure class this project keeps a standing warning about (see
+squad.json's provenance note, and build_relationships_page.py's own docstring
+for the same "single pipeline, N consumers" pattern, established first).
 
-VERIFY AFTER EVERY CHANGE:
-    python3 -c "h=open('FPL_DIAGNOSTICS.html').read(); \
-open('dash.js','w').write('const DATA'+h.split(chr(60)+'script'+chr(62)+chr(10)+'const DATA',1)[1].split(chr(60)+'/script'+chr(62))[0])"
-    node --check dash.js && node verify_dashboard.js
+Each of the three consumers imports this file as a module (the same
+side-effect-import pattern build_relationships_page.py already used before
+the split) and reads `payload` — or the narrower globals directly — rather
+than recomputing any of it.
 
-The extract MUST go to ./dash.js, not /tmp — verify_dashboard.js does
-`require('./dash.js')`. Writing the fresh extract to /tmp meant `node --check`
-validated the new build while verify_dashboard.js silently re-verified whatever
-stale ./dash.js was left over from an earlier run. Fixed 9 Aug 2026; the bug
-was invisible until a clean clone had no stale dash.js to fall back on.
+Regenerate all three pages:
+    python3 build_player_benchmarking.py
+    python3 build_team_benchmarking.py
+    python3 build_relationships_page.py
 
-A syntax error anywhere in the inline script kills the WHOLE page silently -
-the HTML still looks complete, the file size looks right, and nothing renders.
-That happened once: an over-escaped apostrophe terminated a string early.
-Checking that strings are PRESENT in the file does not check that they PARSE.
-verify_dashboard.js executes the script against a stubbed DOM and asserts all
-five panels build with non-empty data.
+VERIFY AFTER EVERY CHANGE (each page has its own deep verify — see
+publish_dashboard.sh for the full extract+check+verify sequence):
+    node verify_player_benchmarking.js
+    node verify_team_benchmarking.js
+
+A syntax error anywhere in either page's inline script kills the WHOLE page
+silently - the HTML still looks complete, the file size looks right, and
+nothing renders. That happened once: an over-escaped apostrophe terminated a
+string early. Checking that strings are PRESENT in the file does not check
+that they PARSE - both verify scripts execute their page's script against a
+stubbed DOM and assert every panel builds with non-empty data.
 """
 import importlib.util, json, math, os, sys, datetime as dt
 
@@ -31,7 +47,6 @@ import scoring
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SNAP = os.environ.get("FPL_SNAPSHOT") or os.path.join(HERE, "fpl_priors_2025_26_v2.json")
-OUT  = os.environ.get("FPL_DASH_OUT") or os.path.join(HERE, "FPL_DIAGNOSTICS.html")
 LAST16_PATH = os.path.join(HERE, "last16_starts.json")
 
 
@@ -446,6 +461,10 @@ club_xgc_cs = sorted(
      for team, vals in club_xgc.items() if team in club_cs),
     key=lambda x: x[1])
 
+# The full union of what any consumer needs — build_player_benchmarking.py
+# and build_team_benchmarking.py each pick their own subset of keys out of
+# this before writing their page (see either file); build_relationships_page.py
+# reads it directly, as it already did before the split.
 payload = dict(rows=rows, med_xgi_m=round(med_xgi_m,4), fixtures=FIXTURES, stats=stats, kpanel=kpanel,
                club_xgc_cs=club_xgc_cs,
                med_xgc=med_xgc, med_xgi_mid=med_xgi_mid,
@@ -453,17 +472,4 @@ payload = dict(rows=rows, med_xgi_m=round(med_xgi_m,4), fixtures=FIXTURES, stats
                season=snap.get("season_described", "?"),
                generated=dt.datetime.now().strftime("%Y-%m-%d %H:%M"),
                last16=last16_info, fixture_info=fixture_info)
-
-HTML = open(os.path.join(HERE, "template.html"), encoding="utf-8").read()
-# Shared chrome, inlined so the output stays a single self-contained file.
-_ps_spec = importlib.util.spec_from_file_location(
-    "page_shell", os.path.join(HERE, "page_shell.py"))
-_page_shell = importlib.util.module_from_spec(_ps_spec)
-_ps_spec.loader.exec_module(_page_shell)
-HTML = (HTML.replace("/*__CSS__*/", _page_shell.css())
-            .replace("<!--__NAV__-->", _page_shell.nav("analysis")))
-with open(OUT, "w", encoding="utf-8") as fh:
-    fh.write(HTML.replace("/*__DATA__*/null", json.dumps(payload)))
-print(f"written: {OUT}  ({os.path.getsize(OUT)/1024:.0f} KB)")
-print(f"  players {len(rows)} | DEF {len(D)} MID {len(M)} FWD {len(F_)} GKP {len(G)}")
 

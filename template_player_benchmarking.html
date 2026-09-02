@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Player & Club Metric Benchmarking</title>
+<title>Player Benchmarking</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <style>/*__CSS__*/</style></head><body>
 <!--__NAV__-->
-<h1>Player & Club Metric Benchmarking</h1>
+<h1>Player Benchmarking</h1>
 <p class="sub" id="sub"></p>
 <div class="filterbar" style="display:flex;align-items:center;gap:12px;margin:0 0 18px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px">
-  <label for="globalStp" style="font-size:13px;color:var(--dim)">Minimum start% <span style="color:var(--dim);opacity:.75">(applies to every player-level chart on this page)</span></label>
+  <label for="globalStp" style="font-size:13px;color:var(--dim)">Minimum start% <span style="color:var(--dim);opacity:.75">(applies to every chart on this page)</span></label>
   <input type="range" id="globalStp" min="0" max="100" step="5" value="0" style="flex:1;min-width:200px;max-width:420px">
   <span class="mono" id="globalStpV" style="font-size:13px;min-width:40px">0%</span>
 </div>
@@ -23,9 +23,9 @@ Chart.defaults.borderColor = css('--grid');
 Chart.defaults.font.family = "ui-monospace,Menlo,monospace";
 const f2 = n => (Math.round(n*1000)/1000).toFixed(2);
 const f3 = n => (n>=0?'+':'') + n.toFixed(3);
-// Every player-level scatter chart below sends a clicked point to its
-// timeseries on the player page, carrying name + team so player.html can
-// resolve it against its own index without guessing at a shared slug format.
+// Every scatter chart below sends a clicked point to its timeseries on the
+// player page, carrying name + team so player.html can resolve it against
+// its own index without guessing at a shared slug format.
 function goToPlayer(n, tm){
   window.location.href = 'player.html?name=' + encodeURIComponent(n) +
     (tm ? '&team=' + encodeURIComponent(tm) : '');
@@ -47,7 +47,9 @@ document.getElementById('foot').innerHTML =
   `Source: <span class="mono">fpl_priors_2025_26_v2.json</span> (frozen prior-season snapshot). `+
   `Fixture multipliers from <span class="mono">fixture_difficulty</span>, GW1&ndash;5, xG-derived &mdash; not FPL's FDR. `+
   `Every panel here tests a claim in the methodology; panels that could only re-display a table were cut. `+
-  `Regenerate with <span class="mono">python3 build_dashboard.py</span>.`;
+  `Team-level panels (fixture runs, club defensive solidity) moved to `+
+  `<a href="team-benchmarking.html">Team Benchmarking</a> on 2 Sep 2026. `+
+  `Regenerate with <span class="mono">python3 build_player_benchmarking.py</span>.`;
 
 function panel(id, title, tests, body){
   const d = document.createElement('div'); d.className='panel';
@@ -272,68 +274,10 @@ document.getElementById('p4pos').addEventListener('click', e=>{
 });
 p4Upd(0);
 
-/* ---------- 4. fixtures ---------- */
-const fx5Sorted = DATA.fixtures.slice().sort((a,b)=>b[1]-a[1]);
-const fx5BestAtt = fx5Sorted[0];
-const fx5BestDef = DATA.fixtures.slice().sort((a,b)=>a[2]-b[2])[0];
-panel('p5','4 · Fixtures: whose NEXT games are kind, not who is good',
- `Tests whether one FDR integer could ever be enough. Every point here is a team&rsquo;s next
-  ${DATA.fixture_info.horizon} opponents&rsquo; strength, not the team&rsquo;s own quality &mdash;
-  a struggling side can sit top-right if its next few opponents happen to be weak.`,
- `<div class="wrap"><canvas id="c4"></canvas></div>
-  <div class="find bad"><b>Read this as a fixture list, not a form table.</b> ${fx5BestAtt[0]}'s
-  ATT× is high because ITS UPCOMING OPPONENTS are leaky, not because ${fx5BestAtt[0]} itself has a
-  potent attack &mdash; and ${fx5BestDef[0]}'s low DEF× means its upcoming opponents attack weakly,
-  not that ${fx5BestDef[0]}'s own defence is good. <b>A team can look great here and still be
-  fighting relegation</b>: this chart only knows who they are about to play, over
-  ${DATA.fixture_info.horizon} games, generated for GW${DATA.fixture_info.generated_for_gw}. It says
-  nothing about their squad, form, or table position.</div>
-  <div class="find"><b>Best attacking run and best defensive run belong to different teams anyway.</b>
-  ${fx5BestAtt[0]} leads for attacking fixtures (${fx5BestAtt[1].toFixed(2)}&times;);
-  ${fx5BestDef[0]} for defensive ones (${fx5BestDef[2].toFixed(2)}&times; conceded). A single
-  difficulty number cannot express both. Note the axis range: multipliers span roughly
-  0.85&ndash;1.20 &mdash; over a ${DATA.fixture_info.horizon}-game window <b>player quality usually
-  dominates fixtures</b>. Fixtures break ties; they do not make the case.</div>`);
-new Chart(c4,{type:'scatter',data:{datasets:[{
-  data:DATA.fixtures.map(([t,a,d])=>({x:d,y:a,n:t})),
-  backgroundColor:DATA.fixtures.map(([t])=>t===fx5BestAtt[0]||t===fx5BestDef[0]?C.b:C.a),
-  pointRadius:DATA.fixtures.map(([t])=>t===fx5BestAtt[0]||t===fx5BestDef[0]?9:6)}]},
- options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:cx=>
-   `${cx.raw.n}  next ${DATA.fixture_info.horizon} GWs — attacking-fixture boost ${cx.raw.y.toFixed(2)}×  clean-sheet-fixture boost (lower=better) ${cx.raw.x.toFixed(2)}×`}}},
-  scales:{x:{title:{display:true,text:'DEF × on upcoming opponents\' attack  →  lower = kinder for clean sheets'},
-             grid:{color:css('--grid')}},
-          y:{title:{display:true,text:'ATT × on upcoming opponents\' defence  →  higher = kinder for goals/assists'},
-             grid:{color:css('--grid')}}}},
- plugins:[{id:'lbl',afterDatasetsDraw(ch){const{ctx}=ch;ctx.save();
-   ctx.font='10px ui-monospace,Menlo,monospace';ctx.fillStyle=css('--dim');
-   ch.getDatasetMeta(0).data.forEach((p,i)=>ctx.fillText(DATA.fixtures[i][0],p.x+8,p.y+3));
-   ctx.restore();}}]});
-
-/* ---------- 5. xGC vs clean sheets, per club ---------- */
-panel('p8','5 · Defensive solidity by club: xGC per 90 against clean sheets',
- 'Team-level check, not a player one: does conceding fewer expected goals actually convert into more clean sheets, or is the relationship noisier than the archetypes above assume? xGC/90 is the mean across each club&rsquo;s GKP+DEF pool; clean sheets are the primary goalkeeper&rsquo;s season total.',
- `<div class="wrap"><canvas id="c6"></canvas></div>
-  <div class="find">Top-left is the good quadrant: low xGC/90 (tight defence, further left) paired
-  with a high clean-sheet count (further up). A club sitting away from that corner is either riding
-  an xGC number its clean-sheet record does not support, or banking clean sheets its underlying
-  defence does not obviously explain &mdash; either is worth a second look before trusting the
-  club&rsquo;s defenders or keeper on reputation alone.</div>`);
-new Chart(c6,{type:'scatter',data:{datasets:[{
-  data:DATA.club_xgc_cs.map(([t,xgc,cs])=>({x:xgc,y:cs,n:t})),
-  backgroundColor:C.a, pointRadius:7, pointHoverRadius:10}]},
- options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:cx=>
-   `${cx.raw.n}  xGC/90 ${f2(cx.raw.x)}  clean sheets ${cx.raw.y}`}}},
-  scales:{x:{title:{display:true,text:'xGC per 90 (GKP+DEF mean)  →  leakier'},grid:{color:css('--grid')}},
-          y:{title:{display:true,text:'clean sheets (primary keeper, season total)'},grid:{color:css('--grid')}}}},
- plugins:[{id:'lbl8',afterDatasetsDraw(ch){const{ctx}=ch;ctx.save();
-   ctx.font='10px ui-monospace,Menlo,monospace';ctx.fillStyle=css('--dim');
-   ch.getDatasetMeta(0).data.forEach((p,i)=>ctx.fillText(DATA.club_xgc_cs[i][0],p.x+8,p.y+3));
-   ctx.restore();}}]});
-
-/* ---------- 6. xP explorer ---------- */
+/* ---------- 4. xP explorer ---------- */
 const ARCHCOL = {'BOTH':C.c,'workhorse':C.a,'cleansheet':C.e,'borderline':C.b,'avoid':C.d,
                  'box-to-box':C.c,'holder':C.a,'attacker':C.e,'limited':C.d};
-panel('p7','6 · Expected points per 90 — every player',
+panel('p7','4 · Expected points per 90 — every player',
  'One number per player, built entirely from FPL&rsquo;s scoring table. xP/90 &times; 38 &asymp; season points.',
  `<div style="display:flex;align-items:center;gap:14px;margin:0 0 12px;flex-wrap:wrap">
     <span style="font-size:13px;color:var(--dim)">Position</span>
@@ -372,7 +316,9 @@ panel('p7','6 · Expected points per 90 — every player',
   sourced from <span class="mono">${DATA.fixture_info.source}</span>
   ${DATA.fixture_info.generated_for_gw?`(generated for GW${DATA.fixture_info.generated_for_gw})`:''},
   then summed over the window. It answers "how many points is this shirt actually worth for the
-  run he's about to play" &mdash; a question blank% could not.</div>`);
+  run he's about to play" &mdash; a question blank% could not. The fixture side of that
+  multiplier (whose run is actually kind) is on <a href="team-benchmarking.html">Team
+  Benchmarking</a>.</div>`);
 
 let xpPos = 'ALL', xpSort = 'xp', xpDesc = true, xpMinStp = 0;
 const POSES = ['ALL','GKP','DEF','MID','FWD'];
@@ -417,7 +363,7 @@ document.getElementById('nsel').addEventListener('change', xpRender);
 document.getElementById('mineonly').addEventListener('change', xpRender);
 xpRender();
 
-/* ---------- global start% filter, drives panels 1/2/3/6 ---------- */
+/* ---------- global start% filter, drives panels 1/2/3/4 ---------- */
 // Sticky across page loads via localStorage — a UI convenience, not a data
 // value, so a failed read/write (private browsing, file:// origin, storage
 // disabled) falls back to the 0% default silently rather than blocking the

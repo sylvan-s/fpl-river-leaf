@@ -14,9 +14,12 @@ and every human override is logged and later scored.
 | `build_squad.py` | Applies the five selection gates and reproduces the live squad exactly |
 | `optimise_squad.py` | Tests transfers against the current squad under budget/formation/club constraints |
 | `fixture_adjust.py` | Weights expected points by the fixture window |
-| `build_dashboard.py` | Emits `FPL_DIAGNOSTICS.html`, one self-contained diagnostic page |
-| `make_artifact.py` | Wraps the dashboard for publishing |
-| `verify_dashboard.js` | Executes the dashboard's inline script against a stubbed DOM — a syntax error there kills the page silently |
+| `build_dashboard.py` | Shared data engine — computes the player/team pool once for the two benchmarking pages plus `relationships.html` |
+| `build_player_benchmarking.py` | Emits `FPL_PLAYER_BENCHMARKING.html`, the player-level diagnostic page |
+| `build_team_benchmarking.py` | Emits `FPL_TEAM_BENCHMARKING.html`, the team-level diagnostic page |
+| `make_artifact.py` | Wraps the player benchmarking page for publishing |
+| `verify_player_benchmarking.js` | Executes the player benchmarking page's inline script against a stubbed DOM — a syntax error there kills the page silently |
+| `verify_team_benchmarking.js` | Same, for the team benchmarking page |
 | `score_source_reliability.py` | Scores logged community intel per source; writes `docs/data/source_scorecard.json` + `SOURCE_RELIABILITY.md` |
 | `build_intel_review.py` | Builds the Friday decision queue (`INTEL_REVIEW.md`) — pending bites paired with their source's reliability |
 
@@ -36,7 +39,8 @@ credentials. `test_fpl_mcp.py` covers it; `install_fpl_mcp.sh` and
 | `last16_starts.json` | Starts over GW23–38 of 2025/26, sourced from `vaastav/Fantasy-Premier-League`, provenance stamped in the file. **Externally derived, not the official API** |
 | `fixture_window.json` | Current fixture window |
 | `fpl_calibration_log.jsonl` | Logged captaincy predictions, for scoring calibration |
-| `template.html` | Dashboard source template |
+| `template_player_benchmarking.html` | Player benchmarking page source template |
+| `template_team_benchmarking.html` | Team benchmarking page source template |
 
 ### Documents
 
@@ -56,22 +60,28 @@ pip3 install mcp httpx
 python3 build_squad.py            # reproduce the live squad
 python3 build_squad.py --season-starts   # pre-9-Aug-2026 gate, for comparison
 python3 optimise_squad.py         # test transfers
-python3 build_dashboard.py        # rebuild the dashboard
+python3 build_player_benchmarking.py   # rebuild the player benchmarking page
+python3 build_team_benchmarking.py     # rebuild the team benchmarking page
 ```
 
-Then verify it — the extract must go to `./dash.js`, which is what
-`verify_dashboard.js` requires:
+Then verify them — each extract must go to its own `./dash_*.js`, which is
+what the matching verify script requires:
 
 ```bash
-python3 -c "h=open('FPL_DIAGNOSTICS.html').read(); \
-open('dash.js','w').write('const DATA'+h.split(chr(60)+'script'+chr(62)+chr(10)+'const DATA',1)[1].split(chr(60)+'/script'+chr(62))[0])"
-node --check dash.js && node verify_dashboard.js
+python3 -c "h=open('FPL_PLAYER_BENCHMARKING.html').read(); \
+open('dash_player.js','w').write('const DATA'+h.split(chr(60)+'script'+chr(62)+chr(10)+'const DATA',1)[1].split(chr(60)+'/script'+chr(62))[0])"
+node --check dash_player.js && node verify_player_benchmarking.js
+
+python3 -c "h=open('FPL_TEAM_BENCHMARKING.html').read(); \
+open('dash_team.js','w').write('const DATA'+h.split(chr(60)+'script'+chr(62)+chr(10)+'const DATA',1)[1].split(chr(60)+'/script'+chr(62))[0])"
+node --check dash_team.js && node verify_team_benchmarking.js
 ```
 
-Always verify after touching the dashboard. The HTML will look complete and the
-file size will look right even when nothing renders.
+Always verify after touching either page. The HTML will look complete and the
+file size will look right even when nothing renders. `publish_dashboard.sh`
+runs both sequences automatically.
 
 ## Not committed
 
 `__pycache__`, the SQLite history cache, and the generated dashboard HTML/JS.
-Rebuild the dashboard rather than pulling it.
+Rebuild the dashboards rather than pulling them.

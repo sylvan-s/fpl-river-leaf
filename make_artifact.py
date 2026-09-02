@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
-"""Convert FPL_DIAGNOSTICS.html into the Cowork-artifact variant.
+"""Convert FPL_PLAYER_BENCHMARKING.html into the Cowork-artifact variant.
 
 The artifact sandbox has two hard requirements the standalone file does not:
   * light mode only - it renders inside Cowork's light UI
   * Chart.js must be the exact integrity-pinned jsdelivr tag; other CDNs are blocked
 
-Run after build_dashboard.py.  python3 make_artifact.py
+Points at the player-benchmarking page (not team-benchmarking) since that's
+the one with the actual squad-facing panels this was built to share - see
+build_dashboard.py's docstring for why analysis.html split into the two on
+2 Sep 2026.
+
+Run after build_player_benchmarking.py.  python3 make_artifact.py
 """
 import os, re
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SRC = os.path.join(HERE, "FPL_DIAGNOSTICS.html")
-OUT = os.path.join(HERE, "FPL_DIAGNOSTICS_artifact.html")
+SRC = os.path.join(HERE, "FPL_PLAYER_BENCHMARKING.html")
+OUT = os.path.join(HERE, "FPL_PLAYER_BENCHMARKING_artifact.html")
 
 h = open(SRC, encoding="utf-8").read()
 

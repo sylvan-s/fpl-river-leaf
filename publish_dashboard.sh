@@ -5,9 +5,12 @@
 #
 # Pages serves main:/docs → https://sylvan-s.github.io/fpl-river-leaf/
 #
-# THREE LAYERS OF VERIFICATION, ALL REQUIRED:
-#   verify_dashboard.js — DEEP, diagnostics page only. Runs its script against a
-#                         stubbed DOM and asserts every panel and filter works.
+# FOUR LAYERS OF VERIFICATION, ALL REQUIRED:
+#   verify_player_benchmarking.js — DEEP, player benchmarking page only. Runs
+#                         its script against a stubbed DOM and asserts every
+#                         panel and filter works.
+#   verify_team_benchmarking.js   — DEEP, team benchmarking page only. Same
+#                         trade, smaller page: two panels, no filters to drive.
 #   verify_priors.js    — DEEP, priors page only. Same trade, different reason:
 #                         priors.html is the one page that FETCHES its data
 #                         (docs/adr/0002) instead of carrying it inline, so
@@ -32,7 +35,8 @@ python3 squad_state.py
 
 echo
 echo "==> Building"
-python3 build_dashboard.py
+python3 build_player_benchmarking.py
+python3 build_team_benchmarking.py
 python3 build_relationships_page.py
 python3 build_squad_page.py
 python3 build_intel_page.py
@@ -40,11 +44,18 @@ python3 build_player_page.py
 python3 build_prediction_tracker.py
 
 echo
-echo "==> Deep verify: diagnostics page"
-python3 -c "h=open('FPL_DIAGNOSTICS.html').read(); \
-open('dash.js','w').write('const DATA'+h.split(chr(60)+'script'+chr(62)+chr(10)+'const DATA',1)[1].split(chr(60)+'/script'+chr(62))[0])"
-node --check dash.js
-node verify_dashboard.js
+echo "==> Deep verify: player benchmarking page"
+python3 -c "h=open('FPL_PLAYER_BENCHMARKING.html').read(); \
+open('dash_player.js','w').write('const DATA'+h.split(chr(60)+'script'+chr(62)+chr(10)+'const DATA',1)[1].split(chr(60)+'/script'+chr(62))[0])"
+node --check dash_player.js
+node verify_player_benchmarking.js
+
+echo
+echo "==> Deep verify: team benchmarking page"
+python3 -c "h=open('FPL_TEAM_BENCHMARKING.html').read(); \
+open('dash_team.js','w').write('const DATA'+h.split(chr(60)+'script'+chr(62)+chr(10)+'const DATA',1)[1].split(chr(60)+'/script'+chr(62))[0])"
+node --check dash_team.js
+node verify_team_benchmarking.js
 
 echo
 echo "==> Deep verify: priors page (fetched data)"
@@ -55,8 +66,9 @@ echo "==> Staging for Pages"
 mkdir -p docs
 # build_squad_page.py writes docs/index.html directly — the squad page is now
 # the landing page, so the already-shared root URL opens on the team rather
-# than on the methodology diagnostics. The diagnostics live at analysis.html.
-cp FPL_DIAGNOSTICS.html docs/analysis.html
+# than on the methodology benchmarking pages.
+cp FPL_PLAYER_BENCHMARKING.html docs/player-benchmarking.html
+cp FPL_TEAM_BENCHMARKING.html docs/team-benchmarking.html
 
 echo
 echo "==> Structural verify: all pages"
@@ -68,12 +80,13 @@ for f in docs/*.html; do printf "  %-22s %s\n" "$f" "$(du -h "$f" | cut -f1)"; d
 cat <<'EOF'
 
 Commit and push, then live at:
-  https://sylvan-s.github.io/fpl-river-leaf/                    squad — the landing page
-  https://sylvan-s.github.io/fpl-river-leaf/analysis.html       methodology diagnostics
-  https://sylvan-s.github.io/fpl-river-leaf/relationships.html  statistical relationships
-  https://sylvan-s.github.io/fpl-river-leaf/news.html           availability & intel
-  https://sylvan-s.github.io/fpl-river-leaf/player.html         player timeseries
-  https://sylvan-s.github.io/fpl-river-leaf/priors.html         prior vs reality (live weekly tracker)
+  https://sylvan-s.github.io/fpl-river-leaf/                        squad — the landing page
+  https://sylvan-s.github.io/fpl-river-leaf/player-benchmarking.html player benchmarking
+  https://sylvan-s.github.io/fpl-river-leaf/team-benchmarking.html   team benchmarking
+  https://sylvan-s.github.io/fpl-river-leaf/relationships.html       statistical relationships
+  https://sylvan-s.github.io/fpl-river-leaf/news.html                availability & intel
+  https://sylvan-s.github.io/fpl-river-leaf/player.html              player timeseries
+  https://sylvan-s.github.io/fpl-river-leaf/priors.html              prior vs reality (live weekly tracker)
 
 Note: priors.html reads docs/data/*.json at load, so it needs to be SERVED, not
 opened off disk. Locally:  (cd docs && python3 -m http.server)  then

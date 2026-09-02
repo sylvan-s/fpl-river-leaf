@@ -1,4 +1,4 @@
-// Execute the dashboard script against a minimal DOM + Chart stub.
+// Execute the Player Benchmarking page's script against a minimal DOM + Chart stub.
 // Syntax checking alone missed a fatal parse error; this actually RUNS it.
 const charts = [];
 // Real chart instances, exposed so the click-through test below can reach
@@ -91,7 +91,7 @@ const STP_KEY = 'fpl_analysis_min_start_pct';
 _lsStore[STP_KEY] = '50';
 
 try {
-  require('./dash.js');
+  require('./dash_player.js');
 } catch (e) {
   console.log('RUNTIME ERROR:', e.message); process.exit(1);
 }
@@ -147,10 +147,7 @@ if (xpTable && nsel && btns) {
   xpOk = all25 === 25 && ten === 10 && everything > 250 && gkp === 23;
 }
 
-// Panel 2 (threshold cliff) moved to relationships.html on 11 Aug 2026 — its
-// position-filter check moved with it and is no longer exercised here.
-
-// Panel 4 position buttons: clicking DEF should also change the point count.
+// Panel 4 (xGI x delta) position buttons: clicking DEF should also change the point count.
 let p4ok = false;
 const p4btns = byId['p4pos'];
 if (p4btns) {
@@ -196,12 +193,6 @@ if (globalStp) {
 const stickyWriteOk = _lsStore[STP_KEY] === '80';
 console.log(`sticky filter persisted     : localStorage[${STP_KEY}] = "${_lsStore[STP_KEY]}" -> ${stickyWriteOk ? 'OK' : 'WRONG'}`);
 
-// Panel 8 (xGC vs CS per club), added 11 Aug 2026: one point per club, no
-// filters to drive — just confirm it actually rendered with real data.
-const p8 = charts.find(c => c.canvas === 'c6');
-const p8ok = !!p8 && p8.points > 0;
-console.log(`xGC vs CS per club  : ${p8 ? p8.points : 0} clubs plotted`);
-
 // Click-through: a point clicked on c1/c3m/c3 should send the browser to
 // player.html carrying that player's name + team (12 Aug 2026 addition).
 let clickOk = false;
@@ -217,8 +208,8 @@ if (wired.length === 3) {
 }
 console.log(`chart click-through : ${wired.length} charts wired, sample -> "${location.href}" -> ${clickOk ? 'OK' : 'WRONG'}`);
 
-const ok = app.children.length === 6 && charts.length === 5
+const ok = app.children.length === 4 && charts.length === 3
   && charts.every(c => c.points > 0) && triOk && xpOk
-  && p4ok && xpHeadOk && globalOk && p8ok && restoredOk && stickyWriteOk && clickOk;
+  && p4ok && xpHeadOk && globalOk && restoredOk && stickyWriteOk && clickOk;
 console.log('\nRESULT:', ok ? 'ALL PANELS RENDER, ALL FILTERS WORK' : 'INCOMPLETE');
 process.exit(ok ? 0 : 1);

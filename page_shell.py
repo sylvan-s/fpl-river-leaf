@@ -17,7 +17,8 @@ inlined everywhere, priors.html included.
 THE CHART.JS TAG IS LOAD-BEARING AND EXACT. The artifact sandbox only permits a
 short allowlist of CDN URLs with matching integrity hashes. Point this anywhere
 else and the page renders COMPLETELY BLANK while `node --check` and
-`verify_dashboard.js` both pass, because they stub the DOM and never fetch.
+`verify_player_benchmarking.js`/`verify_team_benchmarking.js` both pass,
+because they stub the DOM and never fetch.
 `make_artifact.py` also performs exact string surgery on the `:root` rule and
 the light-mode block in the CSS — edit those and check it still asserts.
 """
@@ -30,7 +31,7 @@ CHARTJS = ('<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.
            'integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" '
            'crossorigin="anonymous"></script>')
 
-PAGES = ["squad", "analysis", "relationships", "player", "news", "priors"]
+PAGES = ["squad", "players", "teams", "relationships", "player", "news", "priors"]
 
 
 def css():

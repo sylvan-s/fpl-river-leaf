@@ -3,28 +3,31 @@
 
     python3 build_relationships_page.py
 
-WHAT LIVES HERE. Two panels moved off Player analysis on 11 Aug 2026: the
-threshold cliff (does a season CBIT average predict actually clearing the
-line, match to match) and shrinkage (is k derived from real variance, or
-quietly defaulted). Both are diagnostics about the SHAPE of a relationship in
-the data rather than a read on any one player or transfer decision — which is
+WHAT LIVES HERE. Two panels moved off Player analysis (renamed Player
+Benchmarking on 2 Sep 2026, when it also split into a separate team-level
+page — see build_dashboard.py's docstring) on 11 Aug 2026: the threshold
+cliff (does a season CBIT average predict actually clearing the line, match
+to match) and shrinkage (is k derived from real variance, or quietly
+defaulted). Both are diagnostics about the SHAPE of a relationship in the
+data rather than a read on any one player or transfer decision — which is
 what earned them their own page instead of sitting among the squad-facing
-panels on analysis.html.
+panels there.
 
 REUSES build_dashboard.py's payload RATHER THAN RECOMPUTING IT. Both panels
 need the same player pool, the same CBIT hit-rate archive match, and the same
-shrinkage diagnostics analysis.html already computes. A second implementation
-of that pipeline would drift from the first the moment either one changed —
-exactly the failure class this project keeps a standing warning about (see
-squad.json's provenance note). So this file imports build_dashboard.py as a
-module and reads its `payload` global directly, the same pattern
-optimise_squad.py already uses for build_squad.py.
+shrinkage diagnostics build_dashboard.py already computes for the two
+benchmarking pages. A second implementation of that pipeline would drift
+from the first the moment either one changed — exactly the failure class
+this project keeps a standing warning about (see squad.json's provenance
+note). So this file imports build_dashboard.py as a module and reads its
+`payload` global directly, the same pattern optimise_squad.py already uses
+for build_squad.py.
 
 SIDE EFFECT, ACCEPTED DELIBERATELY. Importing build_dashboard.py runs its
-whole top-level script, which also (re)writes FPL_DIAGNOSTICS.html. Running
-this file standalone therefore rebuilds the diagnostics source too. That is
-harmless — the two pages must always agree on this data, so keeping them
-inseparable at build time is a feature, not a leak.
+whole top-level data computation. Running this file standalone therefore
+recomputes the same pool the benchmarking pages use. That is harmless — all
+three pages must always agree on this data, so keeping them inseparable at
+build time is a feature, not a leak.
 """
 import importlib.util, json, os, datetime as dt
 
@@ -471,7 +474,7 @@ function panel(id, title, tests, body){{
   document.getElementById('app').appendChild(d); return d;
 }}
 
-/* ---------- 1. threshold cliff (moved from Player analysis, 11 Aug 2026) ---------- */
+/* ---------- 1. threshold cliff (moved from Player analysis / Benchmarking, 11 Aug 2026) ---------- */
 panel('p2','1 · The threshold cliff: does the season average predict clearing the line?',
  'The 2pt DC bonus is a per-match threshold, not a rate. Plots each player\\'s season CBIT/90 average against how often they ACTUALLY cleared 10+ CBIT in a given 2025/26 match &mdash; a uniform 10+ line for every position, not each position\\'s own DC rule, so the three are directly comparable.',
  `<div style="display:flex;align-items:center;gap:14px;margin:0 0 14px;flex-wrap:wrap">
@@ -643,13 +646,13 @@ new Chart(c8,{{type:'bar',data:{{labels:['0-4','5-9','10-14','15-19','20-24','25
         title="Statistical relationships",
         active="relationships",
         subtitle=f"Prior season {bd.snap.get('season_described','?')} &middot; "
-                 f"same player pool as Player analysis &middot; page generated "
+                 f"same player pool as Player Benchmarking &middot; page generated "
                  f"{dt.datetime.now():%Y-%m-%d %H:%M}",
         body=body,
         footer="Built by <span class='mono'>build_relationships_page.py</span>, reading "
                "the same payload <span class='mono'>build_dashboard.py</span> computes for "
-               "Player analysis. Panel 1 moved here 11 Aug 2026: the threshold cliff tests "
-               "the SHAPE of a relationship, not a squad decision.")
+               "Player and Team Benchmarking. Panel 1 moved here 11 Aug 2026: the threshold "
+               "cliff tests the SHAPE of a relationship, not a squad decision.")
     html = html.replace("</body>", script + "\n</body>")
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     open(OUT, "w", encoding="utf-8").write(html)
@@ -661,4 +664,4 @@ if __name__ == "__main__":
     print(f"written: {OUT}  ({len(h)/1024:.0f} KB)")
     assert "cdn.jsdelivr.net/npm/chart.js@4.5.0" in h, "Chart.js tag missing"
     print(f"  panels: threshold cliff (p2), points distribution (p7), squad replay (p8) · "
-          f"{len(DATA['rows'])} players shared with Player analysis")
+          f"{len(DATA['rows'])} players shared with Player Benchmarking")

@@ -13,7 +13,8 @@
 //
 // So this file does what that one cannot: it RUNS the page's script against a
 // stubbed DOM and a real payload, and asserts panels actually got built —
-// the same trade verify_dashboard.js makes for the diagnostics page.
+// the same trade verify_player_benchmarking.js and verify_team_benchmarking.js
+// make for the two benchmarking pages.
 //
 // THREE BRANCHES, ALL THREE CHECKED. The success path is the one that matters
 // weekly, but the other two are the ones nobody notices breaking: the
