@@ -11,9 +11,12 @@ player: it looks justified but cannot be reproduced.
     python3 build_squad.py --gate 0.70     # loosen the availability gate
     python3 build_squad.py --season-starts # gate 2 on full-season starts, not last-16
     python3 build_squad.py --no-intel      # disable ROLE_INTEL.md adjustments (ON by default since 13 Aug 2026)
-    python3 build_squad.py --shrunk-priors # blend live 2026/27 rates toward the 2025/26 prior (roadmap A0.2,
-                                            # OFF by default until exercised - see METHODOLOGY_ALTERNATIVES.md
-                                            # "Phase 2"). Needs live network; degrades to prior-only if unreachable.
+    python3 build_squad.py --estimator raw     # live 2026/27 per-90 rates only, no blending (gated - see
+                                                # scoring.MIN_N90_RAW). Needs live network.
+    python3 build_squad.py --estimator shrunk  # blend live 2026/27 rates toward the 2025/26 prior (roadmap A0.2,
+                                                # OFF by default until exercised - see METHODOLOGY_ALTERNATIVES.md
+                                                # "Phase 2"). Needs live network; degrades to prior-only if unreachable.
+                                                # (--shrunk-priors still works as a legacy alias for this.)
 
 NOT a live tool. It reads the frozen prior-season snapshot, so from GW1 it should
 read player_gw from SQLite instead — see METHODOLOGY_ALTERNATIVES.md B6.
@@ -209,10 +212,21 @@ USE_EMPIRICAL_DC = True   # roadmap A4. Pass --legacy-dc for the superseded step
 USE_INTEL = True          # ROLE_INTEL.md adjustments. Pass --no-intel to disable.
 USE_BONUS = True          # roadmap A1 (xbonus90). Pass --no-bonus to rebuild without it.
 USE_CONTAM_FILTER = True  # Tier-1 contaminated-prior exclusion. Pass --allow-contaminated to include them.
-USE_SHRUNK_PRIORS = False # roadmap A0.2 Phase 2 (revised 31 Aug 2026). DEFAULT OFF
-                          # until exercised via --compare-shrink this week - pass
-                          # --shrunk-priors to enable. Flips to default-on before
-                          # the GW4 deadline if that check looks sane. See
+ESTIMATOR_CHOICES = ("prior", "raw", "shrunk")
+ESTIMATOR_DEFAULT = "prior"  # roadmap A0.2 Phase 2 (revised 31 Aug 2026; extended
+                          # 2 Sep 2026 with the standalone "raw" choice). One of:
+                          #   prior  - 2025/26 prior season only, no live fetch.
+                          #            The long-standing default.
+                          #   raw    - live 2026/27 per-90 rates only, gated at
+                          #            scoring.MIN_N90_RAW (below that, falls
+                          #            back to the prior for that metric - see
+                          #            scoring.MIN_N90_RAW's comment for why an
+                          #            un-gated raw rate is unusable early on).
+                          #            No blending toward the prior at all.
+                          #   shrunk - Bayesian blend of the two (roadmap A0.2).
+                          # Pass --estimator {prior,raw,shrunk} to override.
+                          # DEFAULT STAYS "prior" until shrunk/raw are exercised
+                          # via --compare-estimators and look sane - see
                           # METHODOLOGY_ALTERNATIVES.md A0.2 "Phase 2".
 
 # Scoring table, the DC-threshold estimator, and bonus shrinkage all moved to
@@ -234,14 +248,15 @@ _bonus_shrinkage = scoring.bonus_shrinkage
 # players, not a component of expected points. Kept separate on purpose.
 
 
-# ---- live current-season fetch, for --shrunk-priors only --------------------
+# ---- live current-season fetch, for --estimator raw/shrunk only -------------
 # build_squad.py has been fully offline until now (SNAP is a frozen JSON file
 # on disk). This is its first live-network dependency, and it is kept
 # strictly optional and silent-safe: any failure (no egress, timeout, bad
-# response) degrades to {} - every row's shrink then no-ops back to its
-# prior-only value via scoring.shrink_rate()'s n90<=0 branch, so a sandboxed
-# or offline run behaves exactly as --shrunk-priors were never passed, just
-# with one warning printed rather than a crash.
+# response) degrades to {} - every row then falls back to its prior-only
+# value (scoring.shrink_rate()'s n90<=0 branch for shrunk; the MIN_N90_RAW
+# gate above for raw), so a sandboxed or offline run behaves exactly as
+# estimator='prior' were passed, just with one warning printed rather than
+# a crash.
 _current_cache = None
 
 
@@ -293,18 +308,21 @@ def _current_rates(el):
 
 
 def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
-         empirical=None, shrunk=None):
+         empirical=None, estimator=None):
     use_intel = USE_INTEL if intel is None else intel
     use_bonus = USE_BONUS if bonus is None else bonus
     use_contam_filter = USE_CONTAM_FILTER if exclude_contaminated is None else exclude_contaminated
     use_empirical_dc = USE_EMPIRICAL_DC if empirical is None else empirical
-    use_shrunk = USE_SHRUNK_PRIORS if shrunk is None else shrunk
+    use_estimator = ESTIMATOR_DEFAULT if estimator is None else estimator
+    if use_estimator not in ESTIMATOR_CHOICES:
+        raise ValueError(f"estimator must be one of {ESTIMATOR_CHOICES}, got {use_estimator!r}")
+    needs_live = use_estimator in ("raw", "shrunk")
     snap = json.load(open(SNAP, encoding="utf-8"))
     teams = {int(k): v for k, v in snap["teams"].items()}
     last16 = {} if season_starts else _load_last16()
     xbonus_map, _bonus_k = _bonus_shrinkage(snap["players"], teams) if use_bonus else ({}, None)
     contam = _contaminated() if use_contam_filter else {}
-    current = _fetch_current_season() if use_shrunk else {}
+    current = _fetch_current_season() if needs_live else {}
     excluded = []
     matched = set()
     # PASS A - baseline rows (prior-season / last16 / bonus), no intel yet.
@@ -358,7 +376,7 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
                  # tell whether xbonus90 came from a fitted k or one of
                  # scoring.BONUS_FALLBACK_KS without re-deriving it.
                  bonus_k=_bonus_k)
-        if use_shrunk:
+        if needs_live:
             r["_cur"] = _current_rates(current.get(pid, {}))
         rows.append(r)
 
@@ -367,7 +385,7 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
     # per-position — a deliberate scope decision for this first activation,
     # not an oversight; see METHODOLOGY_ALTERNATIVES.md A0.2 "Phase 2" for
     # what the GW5 review should reconsider if this looks wrong.
-    if use_shrunk:
+    if use_estimator == "shrunk":
         ks = {}
         for metric, disp in scoring.PRIORS_DISPERSION.items():
             samples = [(r["_cur"][metric], r["_cur"]["n90"]) for r in rows]
@@ -382,11 +400,32 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
             cur = r.pop("_cur")
             for metric in scoring.PRIORS_DISPERSION:
                 r[metric] = scoring.shrink_rate(cur[metric], cur["n90"], r[metric], ks[metric])
+    elif use_estimator == "raw":
+        # No blending at all - the live rate replaces the prior outright once
+        # there is enough current-season sample to trust it (scoring.MIN_N90_RAW),
+        # otherwise the prior value already sitting in r[metric] is left in
+        # place untouched, same "not enough data yet" fallback shrink_rate()
+        # gives at n90<=0, just gated at a higher bar since raw has no k to
+        # cushion a thin sample.
+        below_gate = 0
+        for r in rows:
+            cur = r.pop("_cur")
+            if cur["n90"] < scoring.MIN_N90_RAW:
+                below_gate += 1
+                continue
+            for metric in scoring.PRIORS_DISPERSION:
+                r[metric] = cur[metric]
+        if current and below_gate:
+            print(f"  RAW: {below_gate}/{len(rows)} player(s) below the "
+                  f"{scoring.MIN_N90_RAW:.1f}-n90 current-season gate — using "
+                  f"their 2025/26 prior rate for those metrics instead (raw "
+                  f"mode does not blend; see scoring.MIN_N90_RAW).",
+                  file=sys.stderr)
 
     # PASS B - intel, availability, score. Same order as the old single-pass
     # loop (intel BEFORE p_cs/score), so a ROLE_INTEL `mult`/`set` entry
-    # applies ON TOP of the now-shrunk baseline, not the other way round -
-    # unchanged whether use_shrunk is on or off.
+    # applies ON TOP of the now-estimated baseline, not the other way round -
+    # unchanged whichever estimator ran above.
     out = []
     for r in rows:
         if use_intel:
@@ -396,11 +435,11 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
         r["ok"] = r["name"] not in UNAVAILABLE
         r["score"] = scoring.expected_points(r, empirical=use_empirical_dc)
         out.append(r)
-    if use_shrunk and not current:
-        print("  SHRUNK PRIORS: enabled but no live current-season data was "
-              "available this run (see the fetch warning above, if any) — "
-              "every rate fell back to its prior-only value, same as "
-              "--shrunk-priors were never passed.", file=sys.stderr)
+    if needs_live and not current:
+        print(f"  {use_estimator.upper()}: enabled but no live current-season data "
+              f"was available this run (see the fetch warning above, if any) — "
+              f"every rate fell back to its prior-only value, same as "
+              f"estimator='prior' were passed.", file=sys.stderr)
     if use_intel:
         # UNMATCHED IS A BUG, NOT A NO-OP. A typo'd name/team in the fence
         # would otherwise adjust nothing and say nothing - the exact silent
@@ -469,13 +508,20 @@ def main():
     use_bonus = "--no-bonus" not in sys.argv
     use_contam_filter = "--allow-contaminated" not in sys.argv
     use_empirical_dc = "--legacy-dc" not in sys.argv
-    use_shrunk = "--shrunk-priors" in sys.argv or USE_SHRUNK_PRIORS
+    if "--estimator" in sys.argv:
+        estimator = sys.argv[sys.argv.index("--estimator") + 1]
+    elif "--shrunk-priors" in sys.argv:       # legacy alias, kept working
+        estimator = "shrunk"
+    else:
+        estimator = ESTIMATOR_DEFAULT
+    if estimator not in ESTIMATOR_CHOICES:
+        sys.exit(f"--estimator must be one of {ESTIMATOR_CHOICES}, got {estimator!r}")
     gate = GATE_XI
     if "--gate" in sys.argv:
         gate = float(sys.argv[sys.argv.index("--gate") + 1])
     pool = load(season_starts=season_starts, intel=use_intel, bonus=use_bonus,
                 exclude_contaminated=use_contam_filter, empirical=use_empirical_dc,
-                shrunk=use_shrunk)
+                estimator=estimator)
     best = None
     for form in ((3,4,3),(3,5,2),(4,4,2),(4,3,3),(5,3,2),(4,5,1),(5,4,1)):
         ok, xi, sq, xs, tot = build(pool, form, allow_haaland, gate)
@@ -491,7 +537,7 @@ def main():
           f">={gate:.0%} (XI) / {GATE_BENCH:.0%} (bench) "
           f"· £{BUDGET}m · max {MAX_PER_CLUB}/club" + ("" if allow_haaland else " · no Haaland")
           + (" · INTEL ADJUSTMENTS APPLIED (default)" if use_intel else " · INTEL OFF (--no-intel)")
-          + (" · SHRUNK PRIORS (--shrunk-priors)" if use_shrunk else ""))
+          + (f" · ESTIMATOR={estimator.upper()} (--estimator)" if estimator != "prior" else ""))
     print(f"formation {form[0]}-{form[1]}-{form[2]}   XI £{xs:.1f}m   "
           f"squad £{tot:.1f}m   bank £{BUDGET-tot:.1f}m\n")
     for r in sorted(xi, key=lambda x: (list(POS.values()).index(x["pos"]), -x["score"])):

@@ -250,6 +250,17 @@ PRIORS_DISPERSION = {
     "cbit90": 1.0, "cbirt90": 1.0, "sv90": 1.0,                 # counts
 }
 
+# Below this many current-season 90s, a RAW per-90 rate (cumulative stat /
+# n90, no blending toward the prior at all) is noise rather than signal — a
+# player with 0.02 n90 can show an arbitrarily large raw rate off a single
+# involvement. build_prediction_tracker.py hit exactly this artifact (see
+# METHODOLOGY_ALTERNATIVES.md's "raw's own bucket was scoring a prediction
+# the system already knows not to trust") and gates its own MIN_N90_RAW at
+# the same value. Kept here as a second hand-maintained copy for the same
+# reason PRIORS_DISPERSION is — see this module's docstring — sync by hand
+# if either changes.
+MIN_N90_RAW = 1.0
+
 
 def estimate_k_priors(samples, dispersion=1.0):
     """Poisson-Gamma method of moments — same formula as

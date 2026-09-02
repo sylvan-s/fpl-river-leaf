@@ -43,17 +43,32 @@ explicit comparisons. Pass --no-intel to see the raw, unadjusted numbers:
     python3 optimise_squad.py --compare-intel           # WITH vs WITHOUT, one run
     python3 optimise_squad.py --compare-intel --transfers 1
 
-SHRUNK PRIORS (roadmap A0.2, revised 31 Aug 2026) - OFF by default, unlike
-intel above. Blends live 2026/27 per-90 rates toward the 2025/26 prior for
-xg90/xa90/xgi90/xgc90/cbit90/cbirt90/sv90 (NOT stp - see
-METHODOLOGY_ALTERNATIVES.md A0.2 "Phase 2" for why start rate stays out of
-this). Needs live network to build_squad.load()'s new fetch; degrades to
-prior-only with a warning if unreachable (e.g. this session's sandbox).
-Compare-only until the GW3 sanity check looks sane, then --shrunk-priors
-flips to default-on before GW4:
+PLAYER PERFORMANCE ESTIMATOR (roadmap A0.2, revised 31 Aug 2026, extended with
+`raw` 2 Sep 2026) - `--estimator {prior,raw,shrunk}`, default `prior`, unlike
+intel above. Governs how xg90/xa90/xgi90/xgc90/cbit90/cbirt90/sv90 are
+derived (NOT stp - see METHODOLOGY_ALTERNATIVES.md A0.2 "Phase 2" for why
+start rate stays out of this):
 
-    python3 optimise_squad.py --shrunk-priors --fixtures --transfers 1
-    python3 optimise_squad.py --compare-shrink --fixtures --transfers 1   # WITH vs WITHOUT, one run
+    prior  - 2025/26 prior season only. No live fetch. The long-standing default.
+    raw    - live 2026/27 per-90 rates only, no blending toward the prior at
+             all. Gated per-player at scoring.MIN_N90_RAW - below that a raw
+             rate is noise (see that constant's comment), so the prior is
+             used for that player/metric instead.
+    shrunk - Bayesian blend of the two, weighted by how much live evidence
+             exists (heavy on the prior early, shifts toward raw as the
+             season accrues minutes).
+
+`raw` and `shrunk` both need live network for build_squad.load()'s
+current-season fetch; both degrade to prior-only with a warning if
+unreachable (e.g. this session's sandbox). `shrunk` is compare-only until
+the GW3 sanity check looks sane, then flips to default-on before GW4:
+
+    python3 optimise_squad.py --estimator raw --fixtures --transfers 1
+    python3 optimise_squad.py --estimator shrunk --fixtures --transfers 1
+    python3 optimise_squad.py --compare-estimators --fixtures --transfers 1   # prior vs raw vs shrunk, one run
+
+(`--shrunk-priors` and `--compare-shrink` still work as legacy aliases for
+`--estimator shrunk` and a prior-vs-shrunk-only compare.)
 
 TWO MODES, AND THE WEEKLY ONE IS THE SECOND.
 
@@ -444,50 +459,65 @@ def compare_intel(allow_haaland, season_starts, use_fixtures, n_transfers,
               "gets picked at this budget.")
 
 
-def compare_shrink(allow_haaland, season_starts, use_fixtures, n_transfers,
-                    max_att_per_club=MAX_ATT_PER_CLUB_DEFAULT):
-    """WITH vs WITHOUT --shrunk-priors, in one run. Mirrors compare_intel()
-    above exactly, varying `shrunk` instead of `intel` - this is the
-    sanity-check tool for this week's GW3 dry run and the GW5 review (see
-    METHODOLOGY_ALTERNATIVES.md A0.2 "Phase 2"). If the live bootstrap-static
-    fetch fails (no network - true in this session's sandbox), both pools
-    fall back to prior-only and this will correctly report no difference;
-    that is build_squad.load()'s designed degrade-safe behaviour, not a bug
-    in the comparison.
+def compare_estimators(allow_haaland, season_starts, use_fixtures, n_transfers,
+                        max_att_per_club=MAX_ATT_PER_CLUB_DEFAULT,
+                        estimators=("prior", "raw", "shrunk")):
+    """prior vs raw vs shrunk (or any subset/order of them), in one run.
+
+    Generalises compare_intel()'s WITH/WITHOUT pattern to three options
+    instead of two - one independent pool per estimator (bs.load(estimator=...)
+    takes an explicit override for exactly this), diffed against the first
+    named estimator as baseline. This is the sanity-check tool for the GW3
+    dry run and the GW5 review (see METHODOLOGY_ALTERNATIVES.md A0.2
+    "Phase 2"). If the live bootstrap-static fetch fails (no network - true
+    in this session's sandbox), raw/shrunk both fall back to prior-only and
+    this will correctly report no difference from prior; that is
+    build_squad.load()'s designed degrade-safe behaviour, not a bug in the
+    comparison.
     """
-    print("=== SHRINK COMPARISON — WITH vs WITHOUT --shrunk-priors ===\n")
-    pool_off = bs.load(season_starts=season_starts, shrunk=False)
-    pool_on = bs.load(season_starts=season_starts, shrunk=True)
+    print(f"=== ESTIMATOR COMPARISON — {' vs '.join(estimators)} ===\n")
+    pools = {e: bs.load(season_starts=season_starts, estimator=e) for e in estimators}
     if use_fixtures:
-        _fixture_scale(pool_off)
-        _fixture_scale(pool_on)
+        for p in pools.values():
+            _fixture_scale(p)
         print(f"objective: xP_adj (opponent-adjusted, GW1-4)\n")
 
     if n_transfers is not None:
-        print("--- WITHOUT shrunk priors ---")
-        transfer_mode(pool_off, n_transfers, allow_haaland, max_att_per_club)
-        print("\n--- WITH shrunk priors ---")
-        transfer_mode(pool_on, n_transfers, allow_haaland, max_att_per_club)
+        for e in estimators:
+            print(f"--- {e} ---")
+            transfer_mode(pools[e], n_transfers, allow_haaland, max_att_per_club)
+            print()
         return
 
-    xi_off, bench_off, _ = optimise(pool_off, allow_haaland, max_att_per_club)
-    xi_on, bench_on, _ = optimise(pool_on, allow_haaland, max_att_per_club)
-    xp_off = sum(r["score"] for r in xi_off)
-    xp_on = sum(r["score"] for r in xi_on)
-    out = sorted({r["name"] for r in xi_off + bench_off}
-                 - {r["name"] for r in xi_on + bench_on})
-    inn = sorted({r["name"] for r in xi_on + bench_on}
-                 - {r["name"] for r in xi_off + bench_off})
-    print(f"XI xP/90 WITHOUT shrunk priors: {xp_off:.2f}")
-    print(f"XI xP/90 WITH shrunk priors:    {xp_on:.2f}   ({xp_on - xp_off:+.2f})")
-    if out or inn:
-        print(f"  OUT (without -> with): {out}")
-        print(f"  IN  (without -> with): {inn}")
-    else:
-        print("  Same 15 players either way — shrinkage moved rates but not "
-              "who gets picked at this budget (or the live fetch found "
-              "nothing to blend toward - check for a fetch-failed warning "
-              "above).")
+    picks = {}
+    for e in estimators:
+        xi, bench, _ = optimise(pools[e], allow_haaland, max_att_per_club)
+        picks[e] = (xi, bench)
+        print(f"XI xP/90 [{e:>6}]: {sum(r['score'] for r in xi):.2f}")
+
+    base = estimators[0]
+    base_names = {r["name"] for r in picks[base][0] + picks[base][1]}
+    for e in estimators[1:]:
+        names = {r["name"] for r in picks[e][0] + picks[e][1]}
+        out, inn = sorted(base_names - names), sorted(names - base_names)
+        if out or inn:
+            print(f"\n{base} -> {e}:")
+            print(f"  OUT: {out}")
+            print(f"  IN:  {inn}")
+        else:
+            print(f"\n{base} -> {e}: same 15 players — the estimator moved "
+                  f"rates but not who gets picked at this budget (or the "
+                  f"live fetch found nothing to move - check for a "
+                  f"fetch-failed warning above).")
+
+
+def compare_shrink(allow_haaland, season_starts, use_fixtures, n_transfers,
+                    max_att_per_club=MAX_ATT_PER_CLUB_DEFAULT):
+    """Legacy alias for compare_estimators(estimators=("prior", "shrunk")) -
+    kept so the --compare-shrink flag documented in METHODOLOGY_ALTERNATIVES.md
+    keeps working unchanged."""
+    compare_estimators(allow_haaland, season_starts, use_fixtures, n_transfers,
+                        max_att_per_club, estimators=("prior", "shrunk"))
 
 
 def main():
@@ -520,23 +550,46 @@ def main():
                        "--fixtures" in sys.argv, n_transfers, max_att_per_club)
         return
 
+    if "--compare-estimators" in sys.argv:
+        n_transfers = (int(sys.argv[sys.argv.index("--transfers") + 1])
+                       if "--transfers" in sys.argv else None)
+        compare_estimators(allow_haaland, "--season-starts" in sys.argv,
+                            "--fixtures" in sys.argv, n_transfers, max_att_per_club)
+        return
+
     # Parses its own argv now (architecture review candidate #3) rather than
     # relying on build_squad's ambient USE_INTEL default — this file IS the
     # entry point, so this was already correct in practice, but an explicit
     # local variable is the real fix, not a coincidence of shared argv.
     use_intel = "--no-intel" not in sys.argv
-    use_shrunk = "--shrunk-priors" in sys.argv    # OFF by default - see A0.2 "Phase 2"
+    # --estimator {prior,raw,shrunk} is the primary interface; --shrunk-priors
+    # kept as a legacy alias for --estimator shrunk (see the module docstring).
+    if "--estimator" in sys.argv:
+        estimator = sys.argv[sys.argv.index("--estimator") + 1]
+    elif "--shrunk-priors" in sys.argv:
+        estimator = "shrunk"
+    else:
+        estimator = "prior"                       # default - see A0.2 "Phase 2"
+    if estimator not in bs.ESTIMATOR_CHOICES:
+        sys.exit(f"--estimator must be one of {bs.ESTIMATOR_CHOICES}, got {estimator!r}")
     pool = bs.load(season_starts="--season-starts" in sys.argv, intel=use_intel,
-                   shrunk=use_shrunk)
+                   estimator=estimator)
     if use_intel:
         print("INTEL: ROLE_INTEL.md `adjustments` fence is ACTIVE (default since "
               "13 Aug 2026 - pass --no-intel to disable)\n")
     else:
         print("INTEL: DISABLED (--no-intel) - stp/xg90/etc. are the raw, "
               "ROLE_INTEL-blind numbers\n")
-    print("SHRUNK PRIORS: ACTIVE (--shrunk-priors)\n" if use_shrunk else
-          "SHRUNK PRIORS: OFF by default (--shrunk-priors to enable) - see "
-          "METHODOLOGY_ALTERNATIVES.md A0.2 'Phase 2'\n")
+    est_note = {
+        "prior": "PRIOR — 2025/26 season only (default). "
+                 "Pass --estimator raw or --estimator shrunk to use live 2026/27 data.",
+        "raw": f"RAW — live 2026/27 per-90 rates only, gated at "
+               f"{bs.scoring.MIN_N90_RAW:.1f} n90, no blending (--estimator raw).",
+        "shrunk": "SHRUNK — Bayesian blend of the 2025/26 prior and live "
+                  "2026/27 rates (--estimator shrunk). See METHODOLOGY_ALTERNATIVES.md "
+                  "A0.2 'Phase 2'.",
+    }[estimator]
+    print(f"ESTIMATOR: {est_note}\n")
     if "--fixtures" in sys.argv:
         # Swap the objective from flat xP to opponent-adjusted xP over the
         # window. Everything else - gates, constraints, bench rule - is
