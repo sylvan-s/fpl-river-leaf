@@ -308,12 +308,18 @@ def deviation_correlations(boot, cache, finished, baselines):
     return out
 
 
-# Position breakdowns beyond the full pooled population. Only FWD so far
-# (that is what was asked); xgc90/sv90 never apply to FWD (see bpt.METRICS'
-# own positions lists: xgc90 is GKP/DEF, sv90 is GKP), so its metric list is
-# deliberately narrower than VALID_METRICS. Add DEF/MID/GKP entries here the
-# same way if a similar breakdown is ever wanted for them.
-POSITION_FILTERS = {"FWD": (["xg90", "xa90"], {"FWD"})}
+# Position breakdowns beyond the full pooled population. Each entry's metric
+# list mirrors bpt.METRICS' own positions lists exactly (e.g. xgc90 is
+# GKP/DEF only, sv90 is GKP only) - a position never gets a metric that
+# doesn't apply to it in the live tracker either. stp applies everywhere.
+# cbit90/cbirt90 are absent from every entry: no 2024/25 prior exists for
+# them (see CBIT_NOTE), so there is nothing to compare raw/prior/shrunk on.
+POSITION_FILTERS = {
+    "GKP": (["xgc90", "sv90", "stp"], {"GKP"}),
+    "DEF": (["xg90", "xa90", "xgc90", "stp"], {"DEF"}),
+    "MID": (["xg90", "xa90", "stp"], {"MID"}),
+    "FWD": (["xg90", "xa90", "stp"], {"FWD"}),
+}
 
 
 def run_analysis(boot, cache, finished, metrics):
@@ -344,6 +350,21 @@ def run_analysis(boot, cache, finished, metrics):
             trajectory[k]["shrunk"].append(w["rmse_shrunk"])
             trajectory[k]["actual"].append(actuals[k][gw] if k in actuals else None)
     return trajectory, deviation_corr
+
+
+def best_predictor(trajectory, metrics):
+    """{"metric_key": "raw"|"prior"|"shrunk"} - whichever has the lowest
+    average per-gameweek RMSE for that metric. Ties broken shrunk > prior >
+    raw (an exact tie is vanishingly unlikely with real data, but a
+    deterministic order beats an arbitrary dict-iteration one)."""
+    avg = lambda xs: sum(x for x in xs if x is not None) / len([x for x in xs if x is not None])
+    rank = {"shrunk": 0, "prior": 1, "raw": 2}
+    out = {}
+    for k in metrics:
+        t = trajectory[k]
+        cands = {"raw": avg(t["raw"]), "prior": avg(t["prior"]), "shrunk": avg(t["shrunk"])}
+        out[k] = min(cands, key=lambda name: (cands[name], rank[name]))
+    return out
 
 
 def _print_summary(label, trajectory, deviation_corr, metrics):
@@ -378,7 +399,8 @@ def main():
         fboot, fcache = filter_by_position(boot, cache, pos_set)
         f_trajectory, f_corr = run_analysis(fboot, fcache, finished, pos_metrics)
         by_position[pos_label] = dict(n_players=len(fboot["elements"]),
-                                       trajectory=f_trajectory, deviation_corr=f_corr)
+                                       trajectory=f_trajectory, deviation_corr=f_corr,
+                                       best_predictor=best_predictor(f_trajectory, pos_metrics))
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     json.dump(dict(season="2025-26", prior_season=PRIOR_SEASON,
@@ -395,6 +417,17 @@ def main():
         d = by_position[pos_label]
         _print_summary(f"{pos_label} ONLY ({d['n_players']} players)",
                         d["trajectory"], d["deviation_corr"], pos_metrics)
+
+    print("\nBEST PREDICTOR BY POSITION x METRIC (lowest avg per-gameweek RMSE)")
+    pos_order = list(POSITION_FILTERS)
+    print("  " + "metric".ljust(10) + "".join(p.ljust(8) for p in pos_order))
+    for k in ["xg90", "xa90", "xgc90", "sv90", "stp"]:
+        row = []
+        for pos_label, (pos_metrics, _) in POSITION_FILTERS.items():
+            row.append(by_position[pos_label]["best_predictor"].get(k, "-") if k in pos_metrics else "-")
+        print("  " + k.ljust(10) + "".join(r.ljust(8) for r in row))
+    print("  cbit90    N/A - no 2024/25 prior exists for this stat (see caveat above)")
+    print("  cbirt90   N/A - no 2024/25 prior exists for this stat (see caveat above)")
 
 
 if __name__ == "__main__":

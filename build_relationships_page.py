@@ -376,9 +376,81 @@ p9Draw();
 """
 
 
+_PRED_COLOR = {"raw": _PAL["a"], "prior": _PAL["b"], "shrunk": _PAL["c"]}
+_METRIC_ROWS = [  # (backtest key or None, display label, per-position note)
+    ("xg90", "xG per 90", None),
+    ("xa90", "xA per 90", None),
+    ("xgc90", "xGC per 90", None),
+    ("sv90", "Saves per 90", None),
+    ("cbit90", "CBIT per 90", "no 2024/25 prior for this stat"),
+    ("cbirt90", "CBIRT per 90", "no 2024/25 prior for this stat"),
+    ("stp", "Start rate", None),
+]
+_POS_ORDER = ["GKP", "DEF", "MID", "FWD"]
+
+
+def _predictor_cell(name, note=None):
+    if note:
+        return f'<td class="mono" style="color:var(--dim);font-size:11px">{note}</td>'
+    if name is None:
+        return '<td class="mono" style="color:var(--dim)">&mdash;</td>'
+    color = _PRED_COLOR[name]
+    return (f'<td class="mono"><span style="display:inline-flex;align-items:center;gap:6px">'
+            f'<span style="width:9px;height:9px;border-radius:2px;background:{color};'
+            f'display:inline-block;flex:none"></span>{name}</span></td>')
+
+
+def _best_predictor_table():
+    """Panel 5: a static (non-interactive) summary of panel 4's per-position
+    backtest - one row per metric, one column per position, each cell the
+    predictor (raw/prior/shrunk) with the lowest average per-gameweek RMSE
+    for that exact combination. Built entirely in Python since there is
+    nothing to filter or redraw client-side; the table below is baked HTML,
+    not JS-constructed. Returns '' under the same tolerant/missing-file rule
+    as _backtest_panel()."""
+    if not BACKTEST:
+        return ""
+    by_pos = BACKTEST.get("by_position") or {}
+    head = "<th>metric</th>" + "".join(f"<th>{p[:2] if p != 'GKP' else 'GK'}</th>" for p in _POS_ORDER)
+    rows_html = []
+    for key, label, note in _METRIC_ROWS:
+        cells = []
+        for pos in _POS_ORDER:
+            if note:
+                cells.append(_predictor_cell(None, note))
+                continue
+            d = by_pos.get(pos)
+            best = (d or {}).get("best_predictor", {}).get(key)
+            cells.append(_predictor_cell(best))
+        rows_html.append(f"<tr><td><b>{label}</b></td>{''.join(cells)}</tr>")
+    table_html = (f'<table><thead><tr>{head}</tr></thead><tbody>'
+                  f'{"".join(rows_html)}</tbody></table>')
+    a, b, c = _PAL["a"], _PAL["b"], _PAL["c"]
+    legend = (f'<div class="legend">'
+              f'<span><i style="background:{a}"></i>raw wins</span>'
+              f'<span><i style="background:{b}"></i>prior wins</span>'
+              f'<span><i style="background:{c}"></i>shrunk wins</span>'
+              f'<span>&mdash; = metric doesn\'t apply to this position</span>'
+              f'</div>')
+    body_html = table_html + legend
+    return f"""
+/* ---------- 5. best predictor by position x metric, at a glance (added 2 Sep 2026) ---------- */
+panel('p10','5 \\u00b7 Best predictor, by position and metric',
+ `The same full-season backtest as panel 4, one cell per position x metric combination \\u2014
+  whichever of raw, prior or shrunk has the lowest average per-gameweek RMSE for that exact
+  pairing (GK start rate, DEF xG, and so on), each computed on that position's own players only.
+  Two results stand out: GK start rate is won by raw with a huge margin (keeper rotation is close
+  to deterministic once a club has a settled #1, far stickier than any outfield minutes pattern),
+  and FWD xA is the only rate metric anywhere in this analysis where raw beats both prior and
+  shrunk \\u2014 see panel 4's FWD/xA view for the trajectory.`,
+ {json.dumps(body_html)});
+"""
+
+
 def build():
     body = '<div id="app"></div>'
     backtest_panel = _backtest_panel()
+    predictor_table_panel = _best_predictor_table()
 
     script = f"""
 <script>
@@ -564,6 +636,7 @@ new Chart(c8,{{type:'bar',data:{{labels:['0-4','5-9','10-14','15-19','20-24','25
           y:{{title:{{display:true,text:'% of gameweeks'}},grid:{{color:css('--grid')}}}}}}}}}});
 
 {backtest_panel}
+{predictor_table_panel}
 </script>"""
 
     html = page_shell.shell(
