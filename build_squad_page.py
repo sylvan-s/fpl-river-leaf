@@ -211,9 +211,8 @@ def captaincy_snapshot():
 def _fixture_read(p):
     """One-line plain-English read of a player's GW1-4 fixture multiplier —
     ATT for MID/FWD (higher is easier), DEF for GKP/DEF (lower is easier).
-    Shared by the Alternative 1 and Alternative 3 explanations so the two
-    panels describe fixtures the same way rather than drifting into two
-    hand-written phrasings of the same number."""
+    Used by Alternative 1's explanation of why its two objectives (xP/90 vs
+    xP/GW) pick differently."""
     if p["pos"] in ("MID", "FWD"):
         x, tag, easier = p["att_x"], "attacking", p["att_x"] > 1.0
     else:
@@ -410,9 +409,7 @@ def build():
 
     # --- Alternative 1's fixture/news explanation, added 26 Aug 2026 --------
     # WHY the two objectives pick differently (or don't), not just THAT they
-    # do — reuses _fixture_read()/_news_bite() so this and Alternative 3
-    # describe fixtures and intel the same way rather than two hand-written
-    # phrasings of the same underlying numbers.
+    # do.
     def _alt1_explain():
         n90 = {p["name"] for p in alt90}
         ngw = {p["name"] for p in altgw}
@@ -454,41 +451,21 @@ def build():
                 f"<ul style='margin:6px 0 0 18px;padding:0'>{''.join(lines)}</ul>")
     alt1_explain_html = _alt1_explain()
 
-    # --- Alternative 3: best forced TWO-player move, added 26 Aug 2026 ------
-    # Same force=True convention Alternative 2 already uses (see
-    # opt.optimise_transfers' own docstring) — always returns a real forced
-    # double swap so the page can show what a genuine two-for-two looks like,
-    # even when the honest call is a smaller move or a hold. HIT COST
-    # ASSUMPTION: squad.json does not track banked free transfers, so this
-    # prices the swap assuming 1 free transfer available (optimise_transfers'
-    # own default) — stated explicitly below rather than left implicit.
-    res2 = opt.optimise_transfers(pool, state.name_set, state.bank, 2,
-                                   allow_haaland=False, force=True)
-    t2_xi, t2_bench, t2_hits = res2
-    t2_out = sorted(state.name_set - {p["name"] for p in t2_xi + t2_bench})
-    t2_in = sorted({p["name"] for p in t2_xi + t2_bench} - state.name_set)
-    t2_b, _t2r, _t2d = sz.bench_value(t2_xi, t2_bench)
-    t2_90 = sum(p["score"] for p in t2_xi)
-    t2_gw = sum(p["stp"] * p["score"] for p in t2_xi)
-
-    # force=True: always return the best SINGLE swap, even if its impact is
-    # small or negative, rather than letting the solver hand back the current
-    # squad unchanged. The table shows "what's the next-best move if you had
-    # to make one", not a silently-collapsed blank row.
-    #
-    # Priced under all THREE data-source estimators (added 3 Sep 2026 -
-    # same "actual"/"prior"/"shrunken" choice optimise_squad.py's --estimator
-    # flag offers), because the one-transfer question this table exists to
-    # answer is exactly the one where prior/raw/shrunk have been shown to
-    # disagree - see the captaincy estimator-sensitivity discussion this same
-    # week. Each estimator gets its OWN fully independent pool (intel +
+    # --- Best forced transfer(s), priced under all THREE data-source
+    # estimators (3 Sep 2026) - same "actual"/"prior"/"shrunken" choice
+    # optimise_squad.py's --estimator flag offers, because this is exactly
+    # the kind of call the three have been shown to disagree on early in a
+    # season (see the captaincy estimator-sensitivity discussion this same
+    # week). Each estimator gets its OWN fully independent pool (intel +
     # fixture adjustment applied identically to build()'s main pool above),
-    # so a row's recommended transfer and its xP/GW delta are always priced
+    # so a row's recommended transfer(s) and xP/GW delta are always priced
     # on the same numbers - never a transfer chosen under one estimator and
-    # then measured against another's baseline.
-    ALT2_ESTIMATORS = [("raw", "actual"), ("prior", "prior"), ("shrunk", "shrunken")]
+    # then measured against another's baseline. Shared by Alternative 2
+    # (n=1) and Alternative 3 (n=2) below - the pool construction is
+    # identical, only the forced transfer count differs.
+    TRANSFER_ESTIMATORS = [("raw", "actual"), ("prior", "prior"), ("shrunk", "shrunken")]
 
-    def _alt2_row(estimator):
+    def _transfer_row(estimator, n_transfers):
         p = bs.load(intel=True, estimator=estimator)
         fa.adjust(p)
         for r in p:
@@ -498,47 +475,26 @@ def build():
         if missing_e:
             raise SystemExit(f"squad players absent from the {estimator} pool: {missing_e}")
         cur_gw_e = sum(by_e[pl["name"]]["stp"] * by_e[pl["name"]]["score"] for pl in state.xi)
-        xi_e, bench_e, _ = opt.optimise_transfers(
-            p, state.name_set, state.bank, 1, allow_haaland=False, force=True)
+        xi_e, bench_e, hits_e = opt.optimise_transfers(
+            p, state.name_set, state.bank, n_transfers, allow_haaland=False, force=True)
         out_e = sorted(state.name_set - {r["name"] for r in xi_e + bench_e})
         in_e = sorted({r["name"] for r in xi_e + bench_e} - state.name_set)
         new_gw_e = sum(r["stp"] * r["score"] for r in xi_e)
-        return out_e, in_e, new_gw_e - cur_gw_e
+        return out_e, in_e, new_gw_e - cur_gw_e, hits_e
 
-    alt2_rows = [(label, *_alt2_row(estimator)) for estimator, label in ALT2_ESTIMATORS]
-    alt2_agree = len({(tuple(o), tuple(i)) for _, o, i, _ in alt2_rows}) == 1
+    # force=True: always return the best swap(s), even if the impact is small
+    # or negative, rather than letting the solver hand back the current squad
+    # unchanged - the table shows "what's the next-best move if you had to
+    # make one", not a silently-collapsed blank row.
+    alt2_rows = [(label, *_transfer_row(estimator, 1)) for estimator, label in TRANSFER_ESTIMATORS]
+    alt2_agree = len({(tuple(o), tuple(i)) for _, o, i, _, _ in alt2_rows}) == 1
 
-    # Alternative 3's own hold/move call — reads Total /GW, over a 5-GW hold,
-    # net of the hit, since two transfers realistically means a hit unless a
-    # second free transfer happens to be banked. (One-transfer's own table
-    # above moved to a per-estimator xP/GW delta on 3 Sep 2026 and no longer
-    # shares this XI/bench-split shape.)
-    t2_total_change = (t2_gw + t2_b) - (xigw + bench_pts)
-    t2_net_5gw = t2_total_change * 5 - t2_hits
-    t2_worth = t2_net_5gw > 0
-
-    def _t2_explain():
-        lines = []
-        for name in t2_out:
-            p = by[name]
-            news = _news_bite(p["name"], p["team"]) or sel.get(name, "")
-            lines.append(
-                f"<li><b>OUT {esc(name)}</b> ({p['pos']}, {p['team']}) &mdash; "
-                f"{_fixture_read(p)}, {p['stp']*100:.0f}% start probability."
-                + (f" <span class='kn' style='display:inline'>{esc(news)}</span>" if news else "")
-                + "</li>")
-        for name in t2_in:
-            p = by[name]
-            news = _news_bite(p["name"], p["team"]) or ""
-            lines.append(
-                f"<li><b>IN {esc(name)}</b> ({p['pos']}, {p['team']}) &mdash; "
-                f"{_fixture_read(p)}, {p['stp']*100:.0f}% start probability."
-                + (f" <span class='kn' style='display:inline'>{esc(news)}</span>" if news else
-                   " <span class='kn' style='display:inline'>no logged ROLE_INTEL entry — "
-                   "this pick is driven by the underlying rate stats alone.</span>")
-                + "</li>")
-        return "".join(lines)
-    t2_explain_html = _t2_explain()
+    # HIT COST ASSUMPTION: squad.json does not track banked free transfers,
+    # so this prices the double swap assuming 1 free transfer available
+    # (optimise_transfers' own default) — stated explicitly in the panel copy
+    # rather than left implicit.
+    alt3_rows = [(label, *_transfer_row(estimator, 2)) for estimator, label in TRANSFER_ESTIMATORS]
+    alt3_agree = len({(tuple(o), tuple(i)) for _, o, i, _, _ in alt3_rows}) == 1
 
     # --- chip strategy, plan from TEAM_CHANGE_LOG.md + live status from squad.json
     cp = chip_plan()
@@ -653,7 +609,7 @@ def build():
         f"<tr><td>Optimised using {label} scores</td>"
         f"<td>{esc(' · '.join(out_e))} &rarr; {esc(' · '.join(in_e))}</td>"
         f"<td class='mono'>{delta:+.2f}</td></tr>"
-        for label, out_e, in_e, delta in alt2_rows)}
+        for label, out_e, in_e, delta, _hits in alt2_rows)}
     </tbody></table>
   <div class="find {'ok' if alt2_agree else 'bad'}">
     {f"<b>All three estimators agree:</b> {esc(' · '.join(alt2_rows[0][1]))} &rarr; "
@@ -667,38 +623,32 @@ def build():
 </div>
 
 <div class="panel">
-  <h2>Alternative 3 — two transfers</h2>
+  <h2>GW{live['next_gw'] if live else '?'} — two transfers</h2>
   <p class="tests">The current fifteen against the <b>next-best forced double swap</b> —
-  same convention as Alternative 2, but the optimiser must change exactly two players.
-  Realistically prices in a <b>&minus;4 hit</b> on the assumption of 1 free transfer
-  banked (squad.json doesn't track banked transfers, so this is a stated assumption,
-  not a live count) — if you're actually sitting on 2 free transfers this week, the
-  hit column below doesn't apply and the swap is free.</p>
+  same convention as one transfer, but the optimiser must change exactly two players.
+  Realistically prices in a <b>&minus;{alt3_rows[0][4]} hit</b> on the assumption of
+  1 free transfer banked (squad.json doesn't track banked transfers, so this is a
+  stated assumption, not a live count) — if you're actually sitting on 2 free
+  transfers this week, the hit doesn't apply and the swap is free. Priced three
+  times, once per data-source estimator, same as the one-transfer table above.</p>
   <table>
-    <thead><tr><th>&nbsp;</th><th>XI xP/90</th><th>XI xP/GW</th><th>Bench</th><th>Total /GW</th></tr></thead>
+    <thead><tr><th>&nbsp;</th><th>Recommended transfer(s)</th><th>&Delta; xP/GW</th></tr></thead>
     <tbody>
-      <tr><td>Current</td><td class="mono">{xi90:.2f}</td><td class="mono">{xigw:.2f}</td>
-          <td class="mono">{bench_pts:.2f}</td><td class="mono">{xigw+bench_pts:.2f}</td></tr>
-      <tr><td>{esc(' · '.join(t2_out))} → {esc(' · '.join(t2_in))}</td>
-          <td class="mono">{t2_90:.2f}</td><td class="mono">{t2_gw:.2f}</td>
-          <td class="mono">{t2_b:.2f}</td><td class="mono">{t2_gw+t2_b:.2f}</td></tr>
-      <tr><td><b>Change</b></td><td class="mono">{t2_90-xi90:+.2f}</td>
-          <td class="mono">{t2_gw-xigw:+.2f}</td><td class="mono">{t2_b-bench_pts:+.2f}</td>
-          <td class="mono"><b>{t2_total_change:+.2f}</b></td></tr>
+      {"".join(
+        f"<tr><td>Optimised using {label} scores</td>"
+        f"<td>{esc(' · '.join(out_e))} &rarr; {esc(' · '.join(in_e))}</td>"
+        f"<td class='mono'>{delta:+.2f}</td></tr>"
+        for label, out_e, in_e, delta, _hits in alt3_rows)}
     </tbody></table>
-  <div class="find {'ok' if t2_worth else 'bad'}">
-    <b>Recommendation: {'worth considering' if t2_worth else 'HOLD'}.</b>
-    {f"{esc(' · '.join(t2_out))} &rarr; {esc(' · '.join(t2_in))} moves Total /GW by "
-     f"{t2_total_change:+.2f}, which over a 5-GW hold nets {t2_net_5gw:+.1f} pts after "
-     f"the assumed &minus;{t2_hits} hit &mdash; a real edge, not just noise."
-     if t2_worth else
-     f"{esc(' · '.join(t2_out))} &rarr; {esc(' · '.join(t2_in))} moves Total /GW by "
-     f"{t2_total_change:+.2f}, which over a 5-GW hold nets {t2_net_5gw:+.1f} pts after "
-     f"the assumed &minus;{t2_hits} hit &mdash; too close to breakeven (or negative) to "
-     f"take the hit on. Keep the fifteen as is, or revisit as a free single transfer instead."}
+  <div class="find {'ok' if alt3_agree else 'bad'}">
+    {f"<b>All three estimators agree:</b> {esc(' · '.join(alt3_rows[0][1]))} &rarr; "
+     f"{esc(' · '.join(alt3_rows[0][2]))}, whichever data source you trust."
+     if alt3_agree else
+     "<b>The estimators do not agree on the double transfer.</b> Which one to act "
+     "on is a judgement call, not something this table can resolve for you &mdash; "
+     "see the captaincy estimator-sensitivity discussion for how thin the "
+     "underlying evidence usually is this early in a season."}
   </div>
-  <div class="find"><b>Fixtures and news behind each name.</b>
-  <ul style="margin:8px 0 0 18px;padding:0">{t2_explain_html}</ul></div>
 </div>"""
 
     chip_html = ""
