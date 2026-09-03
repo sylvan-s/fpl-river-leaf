@@ -1808,14 +1808,9 @@ GW3      Price decision (B1). First calibration entries exist. Continuous-metric
          — REVISED 31 Aug 2026, see A0.2 Phase 2 above.
 GW4      Continuous-metric shrinkage flag flips to default-on, if the GW3
          compare check looked sane.
-         Port build_squad.py's live-price fix (3 Sep 2026) to
-         build_dashboard.py. That file prices every player from its own
-         copy of the frozen 8 Aug pre-season snapshot, independently of
-         build_squad.py - so player-benchmarking.html/team-benchmarking.html
-         still show stale prices (and mis-bucket the xGI-vs-delta chart's
-         price bands) even though the optimiser's own pricing is now live.
-         Same silent-safe live-fetch pattern already proven out; scoped,
-         not a research question.
+         build_dashboard.py's live-price port — DONE 3 Sep 2026, ahead of
+         schedule (see TEAM_CHANGE_LOG.md's 3 Sep entries for the fix and
+         the build_squad.py bug it followed).
 GW5      Sanity/kill-switch review of continuous-metric shrinkage against
          `docs/priors.html` — NOT the statistically-powered read (too little
          data by then), just a "did anything break" pass. See A0.2 above.

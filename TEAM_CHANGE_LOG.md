@@ -384,18 +384,6 @@ Live gaps and standing technical notes — not resolved, not urgent unless flagg
   are zero pre-season. If built: price belongs in *timing* ("is a player
   about to move"), never in *ranking* ("who to buy"). Check whether FPL's own
   Price Change Predictor is API-accessible first.
-- **`build_dashboard.py` still prices from the frozen 8 Aug snapshot —
-  target GW4.** Found 3 Sep 2026 while diagnosing why the optimiser wrongly
-  excluded Enzo (his live price had fallen to £6.9m; the pool still had his
-  stale pre-season £7.0m). Fixed in `build_squad.py` that day (every
-  `load()` call now fetches live `now_cost`, all estimator modes, degrading
-  to the frozen price if unreachable — see the 3 Sep entry above). NOT yet
-  ported to `build_dashboard.py`, which has its own separate price
-  computation straight from the same frozen file — so
-  `player-benchmarking.html`/`team-benchmarking.html` still show stale
-  prices, including the price-banding on the xGI-vs-delta chart. Doesn't
-  drive any transfer decision (lower stakes than the optimiser bug was), but
-  same fix, already proven out — should be a quick port, not new research.
 - **Goalkeeper methodology still undefined.** One real finding so far:
   saves/90 and clean sheets are anti-correlated for keepers (corr −0.58,
   n=19) — the opposite of defenders, so the GK screen can't reuse the
@@ -492,6 +480,16 @@ share rises; the differential case depends entirely on him playing.
 
 ## CHANGE HISTORY (newest first)
 
+### Wed 3 Sep 2026 — methodology fix, not a transfer — build_dashboard.py now prices live too
+
+Ported the live-pricing fix below to `build_dashboard.py` the same day,
+rather than waiting for the GW4 target originally logged — same fetch,
+unconditional across all three estimators, same silent-safe degrade to the
+frozen snapshot if unreachable. Feeds `player-benchmarking.html`,
+`team-benchmarking.html` and (via the shared payload) `relationships.html`.
+Confirmed Enzo (£6.9m) and João Pedro (£7.7m) now show correctly in the
+built pages' payload; full `publish_dashboard.sh` pipeline passes.
+
 ### Wed 3 Sep 2026 — methodology fix, not a transfer — optimiser now prices live
 
 **Trigger.** Investigating why `--estimator raw`'s one-transfer recommendation
@@ -524,8 +522,7 @@ already used, with a new diagnostic line if any player falls back.
 `O.Dango → Enzo`. Full `publish_dashboard.sh` pipeline and `test_scoring.py`
 still pass.
 
-**NOT yet ported:** `build_dashboard.py` has its own separate, still-stale
-price computation — see OPEN METHODOLOGY ITEMS above, targeted for GW4.
+**Ported to `build_dashboard.py` the same day** — see the entry above.
 
 ### Wed 2 Sep 2026 — data correction, not a transfer — bank & squad value
 

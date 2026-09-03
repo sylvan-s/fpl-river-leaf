@@ -40,6 +40,12 @@ nothing renders. That happened once: an over-escaped apostrophe terminated a
 string early. Checking that strings are PRESENT in the file does not check
 that they PARSE - both verify scripts execute their page's script against a
 stubbed DOM and assert every panel builds with non-empty data.
+
+PRICE IS LIVE (added 3 Sep 2026, ported from build_squad.py the same day).
+Every row's `price` comes from a live bootstrap-static fetch, unconditionally
+- not gated behind the estimator selector below, since price is a fact, not
+a modelled rate. Degrades to the frozen 8 Aug prior-season snapshot's price
+if the fetch fails, same silent-safe pattern the raw/shrunk rate fetch uses.
 """
 import importlib.util, json, math, os, sys, datetime as dt
 
@@ -144,6 +150,41 @@ def estimate_k(samples, dispersion=1.0):
 def degenerate(k):
     return any(abs(k-v) < 1e-9 for v in (10.0, 40.0, 60.0))
 
+# ---- live current-season fetch ---------------------------------------------
+# Ported from build_squad.py's own fix (3 Sep 2026 — same day). PRICE is
+# fetched UNCONDITIONALLY, not gated behind the estimator selector below -
+# it's a live fact, not a modelled rate. Found the same day build_squad.py
+# was fixed: this file has its OWN, separate copy of the frozen-snapshot
+# price (`fpl_priors_2025_26_v2.json`, captured 8 Aug pre-season and never
+# refreshed since), independently of build_squad.py, so fixing the optimiser
+# alone left this page's price column and its xGI-vs-delta price bands
+# stale. Kept as a hand-maintained copy of the fetch itself rather than an
+# import, for the same "separate hand-maintained copy" reason the estimator
+# section below gives - see that comment.
+_current_cache = None
+
+
+def _fetch_current_season():
+    global _current_cache
+    if _current_cache is not None:
+        return _current_cache
+    import urllib.request
+    try:
+        req = urllib.request.Request(
+            "https://fantasy.premierleague.com/api/bootstrap-static/",
+            headers={"User-Agent": "fpl-build-dashboard/1.0"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        _current_cache = {str(e["id"]): e for e in data.get("elements", [])}
+    except Exception as exc:
+        print(f"  LIVE FETCH: bootstrap-static fetch failed ({exc}) - raw/shrunk "
+              f"rates fall back to prior-only for every player this run, and "
+              f"every price falls back to the frozen 8 Aug pre-season snapshot.",
+              file=sys.stderr)
+        _current_cache = {}
+    return _current_cache
+
+
 # ---------------------------------------------------------------- load
 try:
     snap = json.load(open(SNAP, encoding="utf-8"))
@@ -161,6 +202,8 @@ LAST16, LAST16_META = load_last16()
 # broader gate, not build_squad's 900.
 XBONUS_MAP, _XBONUS_K = scoring.bonus_shrinkage(snap.get("players") or {}, teams,
                                                  min_minutes=MIN_MINS)
+current = _fetch_current_season()
+stale_price_n = 0
 rows = []
 for pid, p in (snap.get("players") or {}).items():
     mins = p.get("minutes", 0) or 0
@@ -180,12 +223,16 @@ for pid, p in (snap.get("players") or {}).items():
         stp, stp_src = starts16 / games16, "last16"
     else:
         stp, stp_src = stp_season, "season_fallback"
+    live_cost = current.get(pid, {}).get("now_cost")
+    if live_cost is None:
+        stale_price_n += 1
+    price = (live_cost if live_cost is not None else (p.get("now_cost") or 0)) / 10.0
     rows.append(dict(
         id=int(pid), name=name, pos=POS.get(p["element_type"], "?"),
         team=team, n90=n90, mins=mins,
         starts=p.get("starts", 0) or 0, stp=stp, stp_season=stp_season,
         stp_src=stp_src,
-        price=(p.get("now_cost") or 0)/10.0,
+        price=price,
         xgi90=xgi/n90, delta=ga-xgi,
         xg90=f(p.get("expected_goals"))/n90, xa90=f(p.get("expected_assists"))/n90,
         cbit90=(cbi+tk)/n90, cbirt90=(cbi+tk+rec)/n90,
@@ -198,6 +245,11 @@ for pid, p in (snap.get("players") or {}).items():
         squad=name in SQUAD,
         xbonus90=XBONUS_MAP.get(pid, 0.0),
     ))
+if stale_price_n:
+    print(f"  PRICE: {stale_price_n}/{len(rows)} player(s) missing from the live "
+          f"fetch — using the frozen 8 Aug pre-season price for those (see the "
+          f"fetch warning above, if any). Affordability/price for everyone else "
+          f"is live.", file=sys.stderr)
 
 CBIT_HIT_THRESH = 10          # fixed across ALL positions, deliberately - see loader docstring
 CACHE_CSV = os.path.join(HERE, ".cache_merged_gw.csv")
@@ -474,7 +526,8 @@ club_xgc_cs = sorted(
     key=lambda x: x[1])
 
 # ---- PLAYER BENCHMARKING'S DATA-SOURCE SELECTOR (prior/raw/shrunk) ---------
-# `rows` above is the PRIOR variant only (2025/26 season, frozen snapshot).
+# `rows` above is the PRIOR variant only (2025/26 season, frozen snapshot)
+# for its RATE stats (price was already made live, unconditionally, above).
 # Same three estimators as optimise_squad.py's --estimator flag and the same
 # scope (scoring.PRIORS_DISPERSION: xg90/xa90/xgi90/xgc90/cbit90/cbirt90/sv90,
 # NOT stp/xbonus90 — see that constant's comment for why), computed here
@@ -482,29 +535,6 @@ club_xgc_cs = sorted(
 # "separate hand-maintained copy" reason scoring.py's own docstring gives:
 # build_squad.py pulls in its own gates/pool (900-min, contaminated-prior
 # filter, ROLE_INTEL) that don't apply to this page's broader 450-min pool.
-_current_cache = None
-
-
-def _fetch_current_season():
-    global _current_cache
-    if _current_cache is not None:
-        return _current_cache
-    import urllib.request
-    try:
-        req = urllib.request.Request(
-            "https://fantasy.premierleague.com/api/bootstrap-static/",
-            headers={"User-Agent": "fpl-build-dashboard/1.0"})
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-        _current_cache = {str(e["id"]): e for e in data.get("elements", [])}
-    except Exception as exc:
-        print(f"  ESTIMATOR: live bootstrap-static fetch failed ({exc}) - "
-              f"raw/shrunk both fall back to prior-only values for every "
-              f"player this run.", file=sys.stderr)
-        _current_cache = {}
-    return _current_cache
-
-
 def _current_rates(el):
     """Current-season per-90 rates (plus raw goals+assists, for `delta`) from
     a LIVE bootstrap element. `el` may be {} (not found, or the fetch itself
@@ -527,8 +557,7 @@ def _current_rates(el):
     )
 
 
-_current = _fetch_current_season()
-_current_by_id = {r["id"]: _current_rates(_current.get(str(r["id"]), {})) for r in rows}
+_current_by_id = {r["id"]: _current_rates(current.get(str(r["id"]), {})) for r in rows}
 
 # One k per metric, pool-wide (same scope decision build_squad.py's load()
 # makes for this first activation — see METHODOLOGY_ALTERNATIVES.md A0.2
@@ -588,7 +617,7 @@ estimators = {
     "raw": _build_estimator_variant("raw"),
     "shrunk": _build_estimator_variant("shrunk"),
 }
-estimator_live = bool(_current)   # False -> raw/shrunk silently equal prior; UI should say so
+estimator_live = bool(current)   # False -> raw/shrunk silently equal prior; UI should say so
 
 # The full union of what any consumer needs — build_player_benchmarking.py
 # and build_team_benchmarking.py each pick their own subset of keys out of
