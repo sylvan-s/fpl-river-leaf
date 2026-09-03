@@ -8,6 +8,21 @@
 # dashboard pages, runs both verification layers, and pushes docs/ if
 # anything actually changed.
 #
+# ANOTHER CUSTOMER OF THIS REFRESH, added 3 Sep 2026: build_squad_page.py's
+# own build() calls bench_boost_forecast() on every run - it makes its own
+# separate live bootstrap-static/fixtures calls (not fed by the cache step
+# above, deliberately hand-maintained rather than sharing it, see that
+# function's own docstring) to recompute the best remaining gameweek to
+# play Bench Boost for the CURRENT squad.json bench, and flags outright
+# whether that opportunity has arrived (near-term, or a double gameweek
+# announced for a bench player). Printed to this job's own log every run
+# ("BENCH BOOST: ..." lines from the "Build and verify all dashboard pages"
+# step) and rendered as a note on the Bench Boost chip row - see
+# ~/Documents/Claude/Scheduled/fpl-friday-intel-review/SKILL.md's Bench
+# Boost step, which is the place a flagged opportunity actually gets acted
+# on (this workflow only refreshes the number, same "mechanical, not
+# judgment" split as everything else below).
+#
 # WHAT THIS DOES NOT DO. Nothing here reasons about the season — no strategy,
 # no source-reliability judgment, and no captaincy JUDGMENT. That is
 # deliberate: this workflow is exactly Part A + Part B of
@@ -19,12 +34,13 @@
 # Actions has no way to do that and this workflow does not attempt to.
 # captaincy_snapshot_refresh() is the one narrow exception, and only because
 # it stays mechanical: it runs captaincy_odds's Poisson model over the
-# current squad.json XI and picks the top 3 by neutral E[pts], but writes
-# templated, numbers-only rationale — no chase/protect call, no reading of
-# ROLE_INTEL.md judgment beyond the capped multiplier captaincy_odds already
-# applies. It exists purely so the dashboard panel doesn't sit stale between
-# Sylvan's own reasoned captaincy_odds reviews (see
-# build_squad_page.py's captaincy_snapshot() docstring for both writers).
+# current squad.json XI, three times (once per data-source estimator -
+# actual/prior/shrunken), and writes templated, numbers-only rationale for
+# each — no chase/protect call, no reading of ROLE_INTEL.md judgment beyond
+# the capped multiplier captaincy_odds already applies. It exists purely so
+# the dashboard panel doesn't sit stale between Sylvan's own reasoned
+# captaincy_odds reviews (see build_squad_page.py's captaincy_snapshot()
+# docstring for both writers).
 #
 # WHY THIS RUNS HERE RATHER THAN IN COWORK OR ON A LOCAL CRON. A Cowork
 # session's sandbox has no filesystem route to ~/.fpl-mcp/ on Sylvan's own

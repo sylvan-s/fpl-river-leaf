@@ -480,6 +480,56 @@ share rises; the differential case depends entirely on him playing.
 
 ## CHANGE HISTORY (newest first)
 
+### Wed 3 Sep 2026 — new feature — live Bench Boost timing forecast
+
+**Trigger.** Sylvan: analyse GW3-19 and find the best week to play Bench
+Boost for the current bench (Leno, Justin, Sadiki, Shaw). One-off analysis
+found **GW14** clearly ahead of everything else (16.5 stp-weighted xP vs a
+13.8 average across GW3-17) — Justin (Leeds) and Shaw (Man Utd) both draw
+home fixtures against very weak-attacking sides (Ipswich, Coventry) the
+same week. No blank or double gameweeks for any of the four bench teams
+anywhere in the window, so a clean single-fixture comparison throughout.
+
+**Then generalised into code**, per Sylvan's ask: `build_squad_page.py` gained
+`bench_boost_forecast()`, a hand-maintained (not imported — see its own
+docstring for why) copy of `fpl_research_mcp.py`'s `_team_strength()`/
+`_opp_factors()` opponent-strength model. Runs on every build, reading the
+CURRENT bench from `squad_state.py` and Bench Boost 1's own "Hard backstop"
+from the chip table above (`chip_plan()`) as the search window's end — so a
+future team change or chip-plan edit retargets this automatically, no code
+change needed. Renders as a note under the Bench Boost row, and disappears
+once BB1 is used or if the live fetch fails (silent-safe).
+
+**A first cut used current-season-only team strength (no prior-season
+blend) and got a different, WRONG best week** — confirmed by cross-checking
+directly against `fpl_research_mcp.py`'s own `_opp_factors()` run at the
+same moment (which said GW14, matching the original analysis). 2-3 games is
+too thin a sample to trust alone this early in the season. Fixed by
+replicating the prior-blend formula exactly (K_TEAM=6 pseudo-games), not
+just approximating it.
+
+**Wired into both weekly routines, same day, per Sylvan's follow-up ask.**
+`bench_boost_forecast()` now also returns `dgw_bench` (any bench player with
+a genuine double gameweek anywhere in the window) and `opportunity_arrived`
+(the best week is now near-term, OR a double gameweek has been announced —
+either trigger is worth flagging even if the other isn't). The published
+page carries a greppable `BENCH_BOOST_OPPORTUNITY: HAS ARRIVED/not yet`
+marker, and `build_squad_page.py`'s own `__main__` prints the same verdict
+to stdout, so **Tuesday's** GitHub Actions log shows it every run
+(`.github/workflows/fpl-weekly-refresh.yml`'s header comment updated to
+document this as a customer of that routine, alongside a stale-description
+fix for `captaincy_snapshot_refresh()`'s own comment, which still described
+the pre-2-Sep-2026 top-3-under-one-model shape).
+
+**Friday's intel review reads the PUBLISHED page, not a live re-run** —
+`~/Documents/Claude/Scheduled/fpl-friday-intel-review/SKILL.md` gained a
+Bench Boost check as its first step. That task runs in Cowork's sandbox,
+which gets 403 Forbidden calling the live FPL API directly (the same
+constraint already documented for `entry_summary`/`squad_actual_points`),
+so it greps the marker out of `docs/index.html` — built with real network
+access by Tuesday's run — rather than trying to call
+`bench_boost_forecast()` itself and silently getting nothing back.
+
 ### Wed 3 Sep 2026 — methodology fix, not a transfer — build_dashboard.py now prices live too
 
 Ported the live-pricing fix below to `build_dashboard.py` the same day,

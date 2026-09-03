@@ -22,7 +22,7 @@ page computes both and says when they disagree.
 Everything is server-rendered except one chart, deliberately: each inline
 script is another way for the page to render completely blank.
 """
-import importlib.util, json, os, re, datetime as dt
+import importlib.util, json, os, re, sys, datetime as dt
 
 import scoring
 
@@ -279,6 +279,172 @@ def chip_plan():
     return dict(title=title, status=status, constraint=constraint, rows=rows, checklist=checklist)
 
 
+# HOME_FACTOR/AWAY_FACTOR match fpl_research_mcp.py's own constants exactly -
+# keep in sync by hand if either changes, same "separate hand-maintained
+# copy" reason scoring.py's own docstring gives (importing fpl_research_mcp.py
+# here would hard-crash: it imports `mcp`, not installed in this script's own
+# environment - confirmed 3 Sep 2026 rather than assumed).
+_BB_HOME, _BB_AWAY = 1.13, 0.89
+
+
+def bench_boost_forecast(bench, pool_by_name, gw_start, gw_end):
+    """Best gameweek to play Bench Boost for the CURRENT bench, over
+    [gw_start, gw_end] — LIVE, recomputed on every build. `bench` comes from
+    squad_state.py (read fresh each build), so a team change automatically
+    retargets this without any code change; `gw_end` is Bench Boost 1's own
+    "Hard backstop" from TEAM_CHANGE_LOG.md's chip table (chip_plan()), not
+    hardcoded, so editing the chip plan moves this window too. See the 3 Sep
+    2026 TEAM_CHANGE_LOG.md entry for the one-off analysis this generalises.
+
+    Team-strength model MATCHES fpl_research_mcp.py's `_team_strength()`
+    exactly (current-season team xG/xGC blended toward the prior season,
+    K_TEAM=6 pseudo-games) — checked against it directly on 3 Sep 2026: a
+    first cut used current-season-only strength (no prior blend) and picked
+    a DIFFERENT, wrong best gameweek early in the season, when 2-3 games is
+    too thin a sample to trust alone. Kept as a separate hand-maintained
+    copy rather than an import — importing fpl_research_mcp.py here would
+    hard-crash, it imports `mcp`, not installed in this script's own
+    environment (confirmed 3 Sep 2026 rather than assumed) — but the FORMULA
+    itself must match, not just approximate it, or this note can recommend
+    the wrong week. Still not the authority for anything scored against real
+    money: captaincy_odds/fixture_outlook stay that.
+
+    Returns a dict with `best_gw`/`best_total`/`window_avg`/`gw_start`/
+    `gw_end`, plus (added for the Friday intel review, 3 Sep 2026):
+    `dgw_bench` — [(name, gw), ...] for any bench player with a genuine
+    double gameweek (2+ fixtures) anywhere in the window; `near_term` — True
+    once `best_gw` is within the next 4 gameweeks, not just theoretically
+    best from months out; `opportunity_arrived` — `near_term or bool
+    (dgw_bench)`, the single flag ~/Documents/Claude/Scheduled/
+    fpl-friday-intel-review/SKILL.md's Bench Boost step checks.
+
+    Returns None (silent-safe, matching every other live fetch this project
+    makes) if the bench is empty or live data is unreachable — the panel
+    just omits the note rather than failing the build.
+    """
+    if not bench:
+        return None
+    import urllib.request
+    try:
+        req = urllib.request.Request(
+            "https://fantasy.premierleague.com/api/bootstrap-static/",
+            headers={"User-Agent": "fpl-build-squad-page/1.0"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            boot = json.loads(resp.read().decode("utf-8"))
+        req2 = urllib.request.Request(
+            "https://fantasy.premierleague.com/api/fixtures/?future=1",
+            headers={"User-Agent": "fpl-build-squad-page/1.0"})
+        with urllib.request.urlopen(req2, timeout=15) as resp:
+            fixtures = json.loads(resp.read().decode("utf-8"))
+    except Exception as exc:
+        print(f"  BENCH BOOST FORECAST: live fetch failed ({exc}) - note omitted "
+              f"this build.", file=sys.stderr)
+        return None
+
+    team_short = {t["id"]: t["short_name"] for t in boot.get("teams", [])}
+    games_now = sum(1 for e in boot.get("events", []) if e.get("finished"))
+
+    def team_agg(elements, games):
+        """xg/xgc per team, per game — same shape _team_strength()'s own
+        from_pool() computes, for either the current-season pool (games=
+        games_now) or the frozen prior-season pool (games=38)."""
+        out, by_team = {}, {}
+        for e in elements:
+            by_team.setdefault(e.get("team"), []).append(e)
+        for tid, sq in by_team.items():
+            if games <= 0:
+                continue
+            xg = sum(float(x.get("expected_goals") or 0) for x in sq) / games
+            reg = sorted([x for x in sq if (x.get("minutes") or 0) >= games * 45],
+                         key=lambda x: -(x.get("minutes") or 0))[:6]
+            xgc = (sum(float(x.get("expected_goals_conceded") or 0) / max((x["minutes"] / 90), 0.1)
+                       for x in reg) / len(reg)) if reg else None
+            out[tid] = {"xg": xg, "xgc": xgc}
+        return out
+
+    cur = team_agg(boot.get("elements", []), games_now)
+    try:
+        prior_snap = json.load(open(bs.SNAP, encoding="utf-8"))
+        pri = team_agg(list((prior_snap.get("players") or {}).values()), 38)
+    except (OSError, json.JSONDecodeError):
+        pri = {}
+
+    K_TEAM = 6.0
+    team_xg, team_xgc = {}, {}
+    for tid in set(list(cur) + list(pri)):
+        c, p = cur.get(tid), pri.get(tid)
+        for key, target in (("xg", team_xg), ("xgc", team_xgc)):
+            cv = c.get(key) if c else None
+            pv = p.get(key) if p else None
+            if cv is not None and pv is not None and games_now > 0:
+                target[tid] = (games_now * cv + K_TEAM * pv) / (games_now + K_TEAM)
+            elif cv is not None and games_now > 0:
+                target[tid] = cv
+            elif pv is not None:
+                target[tid] = pv
+    lg_xg = (sum(team_xg.values()) / len(team_xg)) if team_xg else 1.35
+    lg_xgc = (sum(team_xgc.values()) / len(team_xgc)) if team_xgc else 1.35
+
+    def opp_factors(team_id, gw):
+        out = []
+        for f in fixtures:
+            if f.get("event") != gw:
+                continue
+            if f.get("team_h") == team_id:
+                out.append((f.get("team_a"), True))
+            elif f.get("team_a") == team_id:
+                out.append((f.get("team_h"), False))
+        res = []
+        for opp_id, home in out:
+            oxgc, oxg = team_xgc.get(opp_id), team_xg.get(opp_id)
+            dfac = (oxgc / lg_xgc) if oxgc else 1.0
+            afac = (oxg / lg_xg) if oxg else 1.0
+            your_ha, their_ha = (_BB_HOME, _BB_AWAY) if home else (_BB_AWAY, _BB_HOME)
+            res.append(dict(def_factor=max(0.4, min(dfac * your_ha, 2.2)),
+                             att_factor=max(0.4, min(afac * their_ha, 2.2))))
+        return res
+
+    short_to_id = {sn: tid for tid, sn in team_short.items()}
+    by_gw = {}
+    dgw_bench = []          # (name, gw) for any bench player with 2+ fixtures - a
+                             # real double gameweek, not just a kind single fixture
+    for gw in range(gw_start, gw_end + 1):
+        total, detail = 0.0, {}
+        for p in bench:
+            r = pool_by_name.get(p["name"])
+            tid = short_to_id.get(p["team"])
+            if not r or tid is None:
+                continue
+            fxs = opp_factors(tid, gw)
+            if len(fxs) >= 2:
+                dgw_bench.append((p["name"], gw))
+            gw_xp = sum(scoring.expected_points_scaled(r, fx["def_factor"], fx["att_factor"],
+                                                         scale_workload=True)
+                        for fx in fxs)
+            weighted = gw_xp * r["stp"]
+            detail[p["name"]] = weighted
+            total += weighted
+        by_gw[gw] = (total, detail)
+    if not by_gw:
+        return None
+    best_gw = max(by_gw, key=lambda g: by_gw[g][0])
+    totals = [t for t, _ in by_gw.values()]
+    # "Has the opportunity arrived" (added for the Friday review, 3 Sep 2026)
+    # - two independent triggers, matching Sylvan's own framing: the best
+    # week is now close enough to actually plan for (not just theoretically
+    # best from months out), OR a genuine double gameweek has been announced
+    # for a bench player anywhere in the window (worth flagging even if
+    # still some weeks out, since a DGW needs the bench built around it in
+    # advance, not decided the week it lands).
+    NEAR_TERM_GWS = 4
+    near_term = best_gw < gw_start + NEAR_TERM_GWS
+    return dict(best_gw=best_gw, best_total=by_gw[best_gw][0],
+                window_avg=sum(totals) / len(totals),
+                gw_start=gw_start, gw_end=gw_end,
+                dgw_bench=dgw_bench, near_term=near_term,
+                opportunity_arrived=near_term or bool(dgw_bench))
+
+
 def best_xi(players, weight_by_start):
     """Best legal XI from a fixed 15. weight_by_start switches the objective
     between xP/90 (what the optimiser uses) and xP/GW (what you accumulate)."""
@@ -504,6 +670,17 @@ def build():
     chip_used = {label: (key not in set1_available)
                  for key, label in chip_status.items()} if cp else {}
 
+    # Bench Boost timing forecast (3 Sep 2026) - only worth computing while
+    # the chip is still available and there's a live next_gw/backstop to
+    # bound the search window with.
+    bb_forecast = None
+    if cp and not chip_used.get("Bench Boost 1", False) and live and live.get("next_gw"):
+        bb_row = next((r for r in cp["rows"] if r[0] == "Bench Boost 1"), None)
+        backstop_m = re.search(r"\d+", bb_row[3]) if bb_row else None
+        if backstop_m:
+            bb_forecast = bench_boost_forecast(
+                state.bench, by, live["next_gw"], int(backstop_m.group()))
+
     # --- pitch ------------------------------------------------------------
     rows = ""
     for pos in POS_ORDER:
@@ -674,7 +851,43 @@ def build():
                        else '<span class="tag ok">available</span>')
             what = CHIP_WHAT.get(label, "")
             what_html = f"<div class='kn'>{esc(what)}</div>" if what else ""
-            return (f"<tr><td><b>{esc(label)}</b> {status}{what_html}</td>"
+            # Live-computed, recomputed every build from the CURRENT bench
+            # and fixture schedule (see bench_boost_forecast()'s docstring) -
+            # not a static note, so a team change updates this automatically.
+            bb_html = ""
+            if label == "Bench Boost 1" and bb_forecast:
+                # BENCH_BOOST_OPPORTUNITY: is a fixed, greppable marker - the
+                # Friday intel review (~/Documents/Claude/Scheduled/
+                # fpl-friday-intel-review/SKILL.md) reads THIS PUBLISHED PAGE
+                # rather than re-running build_squad_page.py itself, because
+                # that skill runs in Cowork's sandbox, which gets 403
+                # Forbidden calling the live FPL API directly (see
+                # .github/workflows/fpl-weekly-refresh.yml's header comment
+                # for the same constraint already documented for
+                # entry_summary/squad_actual_points). Tuesday's GitHub
+                # Actions run has real network access and republishes this
+                # page weekly, so reading the already-built HTML sidesteps
+                # the sandbox limitation entirely instead of hitting it.
+                if bb_forecast["dgw_bench"]:
+                    dgw_note = ("double gameweek announced: "
+                                + ", ".join(f"{n} GW{g}" for n, g in bb_forecast["dgw_bench"]))
+                elif bb_forecast["near_term"]:
+                    dgw_note = "best week is now near-term"
+                else:
+                    dgw_note = "still distant, no double gameweek yet"
+                opp = "HAS ARRIVED" if bb_forecast["opportunity_arrived"] else "not yet"
+                bb_html = (f"<div class='kn'><b>Best GW for the current bench, GW"
+                           f"{bb_forecast['gw_start']}–{bb_forecast['gw_end']}: "
+                           f"GW{bb_forecast['best_gw']}</b> ({bb_forecast['best_total']:.1f} "
+                           f"stp-weighted xP that week vs a {bb_forecast['window_avg']:.1f} "
+                           f"average across the window) — recomputed every build from "
+                           f"squad.json's live bench and the current fixture list. "
+                           f"<b>BENCH_BOOST_OPPORTUNITY: {opp}</b> ({esc(dgw_note)}). "
+                           f"Not a replacement for captaincy_odds/fixture_outlook's own "
+                           f"reasoned read; this is a mechanical fixture-timing signal "
+                           f"only, and today's exact bench will likely change before "
+                           f"GW{bb_forecast['best_gw']} arrives.</div>")
+            return (f"<tr><td><b>{esc(label)}</b> {status}{what_html}{bb_html}</td>"
                     f"<td class='mono'>{esc(window)}</td>"
                     f"<td style='text-align:left'>{esc(trigger)}</td>"
                     f"<td class='mono'>{esc(backstop)}</td></tr>")
@@ -1006,11 +1219,11 @@ border-radius:9px;padding:9px 11px}
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     open(OUT, "w", encoding="utf-8").write(html)
-    return html, same
+    return html, same, bb_forecast
 
 
 if __name__ == "__main__":
-    h, same = build()
+    h, same, bb_forecast = build()
     print(f"written: {OUT}  ({len(h)/1024:.0f} KB)")
     assert "cdn.jsdelivr.net/npm/chart.js@4.5.0" in h, "Chart.js tag missing"
     assert 'class="on"' in h, "nav active state missing"
@@ -1019,3 +1232,18 @@ if __name__ == "__main__":
     assert "RC.bonusUnvalidated" in h, "route chart script did not render"
     print("  chart.js pinned · nav active · reasoning rendered · route chart present")
     print(f"  the two objectives pick the {'SAME' if same else 'DIFFERENT'} XI")
+    # Printed explicitly (not just baked into the HTML) so the Tuesday
+    # GitHub Actions log shows this every week without opening the page -
+    # see .github/workflows/fpl-weekly-refresh.yml's header comment for why
+    # this build is a customer of that routine's fixture refresh.
+    if bb_forecast:
+        print(f"  BENCH BOOST: best remaining GW is {bb_forecast['best_gw']} "
+              f"(window GW{bb_forecast['gw_start']}-{bb_forecast['gw_end']}, "
+              f"{bb_forecast['best_total']:.1f} stp-weighted xP vs "
+              f"{bb_forecast['window_avg']:.1f} average)")
+        if bb_forecast["dgw_bench"]:
+            print(f"  BENCH BOOST: DOUBLE GAMEWEEK on the bench — "
+                  + ", ".join(f"{n} GW{g}" for n, g in bb_forecast["dgw_bench"]))
+        print(f"  BENCH BOOST: opportunity {'HAS ARRIVED' if bb_forecast['opportunity_arrived'] else 'not yet'} "
+              f"— {'near-term (within ' + str(4) + ' GWs)' if bb_forecast['near_term'] else 'still distant'}"
+              + (", DGW announced" if bb_forecast["dgw_bench"] else ""))
