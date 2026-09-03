@@ -2417,7 +2417,8 @@ def _pois_pmf(lam: float, kmax: int = 6) -> list[float]:
     return out
 
 
-def _cap_rows(names: str, shrunk: bool = True, with_intel: bool = False):
+def _cap_rows(names: str, shrunk: bool = True, with_intel: bool = False,
+              estimator: str | None = None):
     """Shared by captaincy_odds and log_predictions so the two can never
     disagree about what was predicted.
 
@@ -2429,7 +2430,20 @@ def _cap_rows(names: str, shrunk: bool = True, with_intel: bool = False):
     that defaults with_intel=True since 13 Aug 2026 and passes it through
     explicitly. log_predictions deliberately calls this with with_intel
     unset (False) and must keep doing so - calibration needs to score the
-    model, not model+intel."""
+    model, not model+intel.
+
+    `estimator`, added 3 Sep 2026 for the dashboard's per-estimator
+    captaincy table (captaincy_snapshot_refresh): "prior" ADDITIVELY layers
+    a third mode on top of the existing `shrunk` bool WITHOUT changing it -
+    None (the default) leaves captaincy_odds and log_predictions' existing
+    shrunk=True/False behaviour byte-for-byte unchanged, including xgc90
+    (clean-sheet input), which stays raw-always for both of those regardless
+    of `shrunk` - a pre-existing asymmetry this deliberately does not touch,
+    since log_predictions feeds score_calibration and nothing here should
+    retroactively alter what that calibration is scoring. estimator="prior"
+    is the only new branch: xg90/xa90 AND xgc90 all come from _baseline()
+    (last season only, no live data), for genuine prior/raw/shrunk parity
+    on the one metric this function adds shrinkage for."""
     teams, _ = _maps()
     b = _boot()
     wanted = [n.strip().lower() for n in names.split(",") if n.strip()]
@@ -2457,7 +2471,11 @@ def _cap_rows(names: str, shrunk: bool = True, with_intel: bool = False):
         pos = POS[el["element_type"]]
         mins = el.get("minutes", 0) or 0
         n90 = max(mins / 90.0, 0.01)
-        if shrunk:
+        if estimator == "prior":
+            xg90, base_src = _baseline(el, "expected_goals", pools[pos], teams)
+            xa90, _ = _baseline(el, "expected_assists", pools[pos], teams)
+            raw_xg = xg90
+        elif shrunk:
             xg90, raw_xg, base_src = _shrunk(el, "expected_goals", pools[pos],
                                              teams, ks[pos])
             xa90, _, _ = _shrunk(el, "expected_assists", pools[pos], teams, ks[pos])
@@ -2467,8 +2485,13 @@ def _cap_rows(names: str, shrunk: bool = True, with_intel: bool = False):
             raw_xg, base_src = xg90, "raw"
         g_pts = {"GKP": 10, "DEF": 6, "MID": 5, "FWD": 4}[pos]
         cs_pts = {"GKP": 4, "DEF": 4, "MID": 1, "FWD": 0}[pos]
-        # crude clean-sheet probability from team xGC per 90
-        xgc90 = _f(el.get("expected_goals_conceded")) / n90 if mins else 1.4
+        # crude clean-sheet probability from team xGC per 90. Raw-always for
+        # shrunk/raw (pre-existing, deliberately untouched - see docstring);
+        # prior=True is the one new branch that also baselines this.
+        if estimator == "prior":
+            xgc90, _ = _baseline(el, "expected_goals_conceded", pools[pos], teams)
+        else:
+            xgc90 = _f(el.get("expected_goals_conceded")) / n90 if mins else 1.4
         p_cs = 2.718281828459045 ** (-max(xgc90, 0.05))
         # Bonus only lands on a returning game - a flat per-90 average would put
         # a floor under every score and make blanks impossible.
@@ -2676,55 +2699,54 @@ _CAPTAINCY_SNAPSHOT_PATH = _os.path.join(_PRIORS_DIR, "docs", "data", "captaincy
 
 @mcp.tool(
     description=(
-        "Mechanically refreshes docs/data/captaincy_snapshot.json — the 'Top 3 "
-        "captaincy candidates' panel on the dashboard — from the current "
-        "squad.json XI, using captaincy_odds's own Poisson model (neutral mode, "
-        "shrunk rates, intel adjustments applied) for the upcoming gameweek. "
-        "NUMBERS ONLY: rationale sentences are templated from the stats, not "
-        "reasoned chase/protect judgment — that call still belongs to a human/"
-        "Claude session running captaincy_odds directly. This just keeps the "
-        "dashboard panel from ever going stale between those reasoned reviews, "
-        "e.g. as part of the unattended Tuesday GitHub Actions rebuild."
+        "Mechanically refreshes docs/data/captaincy_snapshot.json — the "
+        "per-estimator captaincy table on the dashboard — from the current "
+        "squad.json XI, using captaincy_odds's own Poisson model (neutral "
+        "mode, intel adjustments applied) for the upcoming gameweek. Priced "
+        "THREE times (added 3 Sep 2026), once per data-source estimator "
+        "(actual/prior/shrunken - same choice optimise_squad.py's "
+        "--estimator flag and the two benchmarking pages offer), because "
+        "captaincy is exactly the kind of call the three have been shown to "
+        "disagree on early in a season. NUMBERS ONLY: no chase/protect "
+        "judgment call - that still belongs to a human/Claude session "
+        "running captaincy_odds directly. This just keeps the dashboard "
+        "panel from ever going stale between those reasoned reviews, e.g. "
+        "as part of the unattended Tuesday GitHub Actions rebuild."
     )
 )
-def captaincy_snapshot_refresh(shrunk: bool = True, with_intel: bool = True) -> str:
+def captaincy_snapshot_refresh(with_intel: bool = True) -> str:
     import squad_state
     st = squad_state.load()
     names = ",".join(p["name"] for p in st.xi)
-    rows, _meta = _cap_rows(names, shrunk, with_intel)
-    if not rows:
-        return "No squad XI players matched captaincy_odds — snapshot not written."
-
-    rows.sort(key=lambda r: -r["exp"])
     ev = _next_event()
     next_gw = ev["id"] if ev else None
 
-    def rationale(r):
-        bits = [f"E[pts] {r['exp']:.2f}", f"P(haul) {r['haul']:.1f}%",
-                f"P(blank) {r['blank']:.1f}%", f"owned {r['own']:.1f}%",
-                f"DiffUp {r['diff']:.1f}"]
-        if r.get("intel"):
-            bits.append(f"intel: {r['intel']}")
-        return f"vs {r['opp']}. " + " · ".join(bits)
+    ESTIMATORS = [("raw", "actual", False, None), ("prior", "prior", True, "prior"),
+                  ("shrunk", "shrunken", True, "shrunk")]
+    by_estimator = []
+    for key, label, shrunk_flag, est_arg in ESTIMATORS:
+        rows, _meta = _cap_rows(names, shrunk_flag, with_intel, estimator=est_arg)
+        if not rows:
+            return f"No squad XI players matched captaincy_odds under {key} — snapshot not written."
+        rows.sort(key=lambda r: -r["exp"])
+        top = rows[0]
+        by_estimator.append({
+            "estimator": key, "label": label,
+            "name": top["name"], "team": top["team"], "pos": top["pos"],
+            "opponent": top["opp"], "e_pts": round(top["exp"], 2),
+            "p_haul": round(top["haul"], 1), "p_blank": round(top["blank"], 1),
+            "own_pct": top["own"], "diffup": round(top["diff"], 1),
+            "sd": round(top["sd"], 2), "intel": top.get("intel", ""),
+        })
 
-    top3, rest = rows[:3], rows[3:]
+    agree = len({r["name"] for r in by_estimator}) == 1
     snap = {
         "entry": ENTRY_ID,
         "next_gw": next_gw,
         "fetched_utc": _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds"),
-        "source": (f"captaincy_odds (mechanical refresh), neutral mode, "
-                   f"shrunk={shrunk}, with_intel={with_intel}"),
-        "candidates": [
-            {
-                "rank": i + 1, "name": r["name"], "team": r["team"], "pos": r["pos"],
-                "opponent": r["opp"], "e_pts": round(r["exp"], 2),
-                "p_haul": round(r["haul"], 1), "p_blank": round(r["blank"], 1),
-                "own_pct": r["own"], "diffup": round(r["diff"], 1),
-                "sd": round(r["sd"], 2), "rationale": rationale(r),
-            }
-            for i, r in enumerate(top3)
-        ],
-        "also_considered": [{"name": r["name"], "note": rationale(r)} for r in rest[:2]],
+        "source": f"captaincy_odds (mechanical refresh), neutral mode, per-estimator, with_intel={with_intel}",
+        "by_estimator": by_estimator,
+        "agree": agree,
         "caveats": [
             "Mechanically refreshed (numbers only, neutral mode) by the weekly "
             "GitHub Actions build - no chase/protect judgment call and no "
@@ -2734,9 +2756,9 @@ def captaincy_snapshot_refresh(shrunk: bool = True, with_intel: bool = True) -> 
         ],
     }
     _write_dashboard_snapshot(snap, _CAPTAINCY_SNAPSHOT_PATH)
-    return (f"Captaincy snapshot refreshed for GW{next_gw}: top pick "
-            f"{top3[0]['name']} (E[pts] {top3[0]['exp']:.2f}, "
-            f"P(haul) {top3[0]['haul']:.1f}%). "
+    summary = ", ".join(f"{r['label']}={r['name']}" for r in by_estimator)
+    return (f"Captaincy snapshot refreshed for GW{next_gw}: {summary} "
+            f"({'all three agree' if agree else 'estimators disagree'}). "
             f"snapshot written: {_os.path.relpath(_CAPTAINCY_SNAPSHOT_PATH, _PRIORS_DIR)}")
 
 

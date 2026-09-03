@@ -102,9 +102,9 @@ border-radius:9px;padding:9px 11px}
 
 <h1>River Leaf FC — squad</h1>
 <p class="squad-link"><a href="https://fantasy.premierleague.com/en/my-team" target="_blank" rel="noopener noreferrer">Open my team on fantasy.premierleague.com ↗</a></p>
-<p class="sub">GW2 · 3-4-3 · £99.7m + £0.4m bank · squad.json updated 2026-09-02T23:05:00Z · page generated 2026-09-03 01:11</p>
+<p class="sub">GW2 · 3-4-3 · £99.7m + £0.4m bank · squad.json updated 2026-09-02T23:05:00Z · page generated 2026-09-03 01:36</p>
 
-<p class="deadline-line"><b>Next team-choice lockdown: Gameweek 3 — Fri 04 Sep 2026, 17:30 UTC (1d 17h away)</b> <span class="kn" style="display:inline">(snapshot fetched 2026-09-01T17:51:47+00:00)</span></p>
+<p class="deadline-line"><b>Next team-choice lockdown: Gameweek 3 — Fri 04 Sep 2026, 17:30 UTC (1d 16h away)</b> <span class="kn" style="display:inline">(snapshot fetched 2026-09-01T17:51:47+00:00)</span></p>
 <div class="kpis"><div class="kpi"><div class="kv mono">£99.7m</div><div class="kl">Squad value</div></div><div class="kpi"><div class="kv mono">£0.4m</div><div class="kl">Bank value</div></div><div class="kpi"><div class="kv mono">4/4</div><div class="kl">Chips left</div><div class="kn">set 1 expires GW19</div></div></div>
 <div class="kpis"><div class="kpi"><div class="kv mono">55.9</div><div class="kl">xP XI per 90</div><div class="kn">what the optimiser maximises</div></div><div class="kpi"><div class="kv mono">49.9</div><div class="kl">xP XI per GW</div><div class="kn">11% never played</div></div><div class="kpi"><div class="kv mono">3.9</div><div class="kl">xP bench per GW</div><div class="kn">1.12 expected blanks</div></div><div class="kpi"><div class="kv mono">66.5</div><div class="kl">P per GW</div><div class="kn">2 GW played</div></div><div class="kpi"><div class="kv mono">133.0</div><div class="kl">Total points</div></div></div>
 
@@ -415,20 +415,21 @@ rcRender('expected');
 </div>
 
 <div class="panel">
-  <h2>Top 3 captaincy candidates — Gameweek 3</h2>
+  <h2>GW3 — captaincy</h2>
   <p class="tests">From <span class="mono">captaincy_odds</span> (fpl-research MCP),
   which models goals and assists as Poisson draws rather than a single point
   estimate — E[pts] is the mean, but captaincy is not symmetric: P(haul) is what
   gains rank, P(blank) is what loses it, and DiffUp (P(haul) &times; (1&minus;ownership))
-  is what a genuine differential bet is worth. Snapshot fetched
-  2026-09-01T18:07:49+00:00.</p>
+  is what a genuine differential bet is worth. Priced three times, once per
+  data-source estimator, same as the transfer tables above. Snapshot fetched
+  2026-09-03T00:35:15+00:00.</p>
   <table>
-    <thead><tr><th>Player</th><th>Fixture</th><th>E[pts]</th><th>P(haul&ge;10)</th>
-    <th>P(blank&le;2)</th><th>Own%</th><th>DiffUp</th></tr></thead>
-    <tbody><tr><td><b>O'Reilly</b></td><td class='mono'>MCI COV(H)</td><td class='mono'>6.60</td><td class='mono'>16.0%</td><td class='mono'>19.3%</td><td class='mono'>19.4%</td><td class='mono'>12.9</td></tr><tr><td><b>B.Fernandes</b></td><td class='mono'>MUN EVE(A)</td><td class='mono'>5.99</td><td class='mono'>15.6%</td><td class='mono'>39.5%</td><td class='mono'>48.4%</td><td class='mono'>8.0</td></tr><tr><td><b>Mbeumo</b></td><td class='mono'>MUN EVE(A)</td><td class='mono'>5.61</td><td class='mono'>14.3%</td><td class='mono'>42.6%</td><td class='mono'>30.8%</td><td class='mono'>9.9</td></tr></tbody></table>
-  <div class="find ok"><b>The case for each.</b>
-  <ul style="margin:8px 0 0 18px;padding:0"><li><b>1. O'Reilly</b> — vs COV(H). E[pts] 6.60 · P(haul) 16.0% · P(blank) 19.3% · owned 19.4% · DiffUp 12.9 · intel: xgi90 x1.20</li><li><b>2. B.Fernandes</b> — vs EVE(A). E[pts] 5.99 · P(haul) 15.6% · P(blank) 39.5% · owned 48.4% · DiffUp 8.0</li><li><b>3. Mbeumo</b> — vs EVE(A). E[pts] 5.61 · P(haul) 14.3% · P(blank) 42.6% · owned 30.8% · DiffUp 9.9</li></ul></div>
-  <p class='tests' style='margin-top:10px'><b>Also considered.</b> <b>Schade</b> — vs SUN(H). E[pts] 5.25 · P(haul) 8.4% · P(blank) 33.7% · owned 3.8% · DiffUp 8.0 · <b>Gabriel</b> — vs CHE(H). E[pts] 5.21 · P(haul) 6.4% · P(blank) 32.1% · owned 27.0% · DiffUp 4.7</p>
+    <thead><tr><th>&nbsp;</th><th>Proposal</th><th>Next fixture</th><th>E[pts]</th>
+    <th>P(haul&ge;10)</th><th>P(blank&le;2)</th><th>Own%</th><th>DiffUp</th></tr></thead>
+    <tbody><tr><td>Optimised using actual scores</td><td><b>B.Fernandes</b> (MID, MUN)</td><td class='mono'>EVE(A)</td><td class='mono'>9.16</td><td class='mono'>37.4%</td><td class='mono'>23.6%</td><td class='mono'>48.6%</td><td class='mono'>19.2</td></tr><tr><td>Optimised using prior scores</td><td><b>O'Reilly</b> (DEF, MCI)</td><td class='mono'>COV(H)</td><td class='mono'>6.17</td><td class='mono'>15.2%</td><td class='mono'>28.1%</td><td class='mono'>19.1%</td><td class='mono'>12.3</td></tr><tr><td>Optimised using shrunken scores</td><td><b>O'Reilly</b> (DEF, MCI)</td><td class='mono'>COV(H)</td><td class='mono'>6.60</td><td class='mono'>16.0%</td><td class='mono'>19.3%</td><td class='mono'>19.1%</td><td class='mono'>12.9</td></tr></tbody></table>
+  <div class="find bad">
+    <b>The estimators do not agree on the armband.</b> Which one to act on is a judgement call, not something this table can resolve for you — see the captaincy estimator-sensitivity discussion for how thin the underlying evidence usually is this early in a season.
+  </div>
   <div class='find bad'>Mechanically refreshed (numbers only, neutral mode) by the weekly GitHub Actions build - no chase/protect judgment call and no hand-written rationale. Run captaincy_odds yourself via the fpl-research MCP for the reasoned weekly read before setting the armband.</div>
 </div>
 

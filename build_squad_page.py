@@ -185,25 +185,25 @@ def actual_route_snapshot(xi_players=None):
 
 
 def captaincy_snapshot():
-    """Top-3 captaincy candidates with rationale — same PURE READ pattern as
-    live_snapshot()/actual_route_snapshot(). captaincy_odds is a live MCP
-    tool (Poisson haul/blank modelling over the actual fixture list), not
-    something this offline build script can call itself, so CAPTAINCY_SNAPSHOT
-    is written elsewhere — same reasoning as every other live number on this
-    page. Two writers, either one legal: the weekly GitHub Actions rebuild
-    calls fpl_research_mcp.captaincy_snapshot_refresh() for a mechanical,
-    numbers-only top-3 (neutral mode, templated rationale, no chase/protect
-    judgment); a Claude session can instead run captaincy_odds by hand and
-    write a reasoned aggregate with hand-written rationale (see the file's own
-    `source` field to tell which kind you're looking at). Returns None if
-    never written."""
+    """One proposed captain per data-source estimator (actual/prior/shrunken),
+    same PURE READ pattern as live_snapshot()/actual_route_snapshot().
+    captaincy_odds is a live MCP tool (Poisson haul/blank modelling over the
+    actual fixture list), not something this offline build script can call
+    itself, so CAPTAINCY_SNAPSHOT is written elsewhere — same reasoning as
+    every other live number on this page.
+    fpl_research_mcp.captaincy_snapshot_refresh() writes it (neutral mode,
+    intel applied, no chase/protect judgment - numbers only). Shape changed
+    3 Sep 2026 from a single-model top-3 (`candidates`) to one row per
+    estimator (`by_estimator`), matching the treatment Alternative 2/3 and
+    the captaincy estimator-sensitivity discussion already established this
+    week. Returns None if never written, or if it's still the old shape."""
     if not os.path.exists(CAPTAINCY_SNAPSHOT):
         return None
     try:
         snap = json.load(open(CAPTAINCY_SNAPSHOT, encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return None
-    if snap.get("entry") not in (None, ENTRY) or not snap.get("candidates"):
+    if snap.get("entry") not in (None, ENTRY) or not snap.get("by_estimator"):
         return None
     return snap
 
@@ -681,61 +681,67 @@ def build():
   <ul style="margin:8px 0 0 18px;padding:0">{checklist_html}</ul></div>
 </div>"""
 
-    # --- Top 3 captaincy candidates, added 26 Aug 2026 ----------------------
+    # --- Captaincy, priced per data-source estimator, added 26 Aug 2026,
+    # reshaped 3 Sep 2026 -----------------------------------------------------
     # captaincy_odds is a live MCP tool (Poisson haul/blank modelling against
     # the real fixture list) — this offline build script can't call it
     # itself, so this panel reads a snapshot written elsewhere instead, same
     # PURE READ discipline as live_snapshot()/actual_route_snapshot(). See
-    # captaincy_snapshot()'s docstring for the two writers (mechanical weekly
-    # refresh vs a hand-run reasoned read) — the rendering below is identical
-    # either way, it just quotes whatever `source` and `rationale` say.
+    # captaincy_snapshot()'s docstring for the writer
+    # (fpl_research_mcp.captaincy_snapshot_refresh()). One row per estimator
+    # (actual/prior/shrunken) rather than a top-3 under one model, same
+    # treatment "GW{next} — one/two transfers" already got - captaincy is
+    # exactly the kind of call the three have been shown to disagree on.
     cap_snap = captaincy_snapshot()
     cap_html = ""
     if cap_snap:
-        def cap_row(c):
-            return (f"<tr><td><b>{esc(c['name'])}</b></td>"
-                    f"<td class='mono'>{esc(c['team'])} {esc(c['opponent'])}</td>"
-                    f"<td class='mono'>{c['e_pts']:.2f}</td>"
-                    f"<td class='mono'>{c['p_haul']:.1f}%</td>"
-                    f"<td class='mono'>{c['p_blank']:.1f}%</td>"
-                    f"<td class='mono'>{c['own_pct']:.1f}%</td>"
-                    f"<td class='mono'>{c['diffup']:.1f}</td></tr>")
-        cap_rows = "".join(cap_row(c) for c in cap_snap["candidates"])
-        cap_rationale = "".join(
-            f"<li><b>{i+1}. {esc(c['name'])}</b> — {esc(c['rationale'])}</li>"
-            for i, c in enumerate(cap_snap["candidates"]))
-        also = cap_snap.get("also_considered") or []
-        also_html = ("<p class='tests' style='margin-top:10px'><b>Also considered.</b> "
-                     + " · ".join(f"<b>{esc(a['name'])}</b> — {esc(a['note'])}" for a in also)
-                     + "</p>") if also else ""
+        by_est = cap_snap["by_estimator"]
+        cap_agree = cap_snap.get("agree", len({r["name"] for r in by_est}) == 1)
+
+        def cap_row(r):
+            return (f"<tr><td>Optimised using {esc(r['label'])} scores</td>"
+                    f"<td><b>{esc(r['name'])}</b> ({esc(r['pos'])}, {esc(r['team'])})</td>"
+                    f"<td class='mono'>{esc(r['opponent'])}</td>"
+                    f"<td class='mono'>{r['e_pts']:.2f}</td>"
+                    f"<td class='mono'>{r['p_haul']:.1f}%</td>"
+                    f"<td class='mono'>{r['p_blank']:.1f}%</td>"
+                    f"<td class='mono'>{r['own_pct']:.1f}%</td>"
+                    f"<td class='mono'>{r['diffup']:.1f}</td></tr>")
+        cap_rows = "".join(cap_row(r) for r in by_est)
         caveats = cap_snap.get("caveats") or []
         caveats_html = ("<div class='find bad'>" +
                         "<br>".join(esc(c) for c in caveats) + "</div>") if caveats else ""
         cap_html = f"""
 <div class="panel">
-  <h2>Top 3 captaincy candidates — Gameweek {cap_snap.get('next_gw', '?')}</h2>
+  <h2>GW{cap_snap.get('next_gw', '?')} — captaincy</h2>
   <p class="tests">From <span class="mono">captaincy_odds</span> (fpl-research MCP),
   which models goals and assists as Poisson draws rather than a single point
   estimate — E[pts] is the mean, but captaincy is not symmetric: P(haul) is what
   gains rank, P(blank) is what loses it, and DiffUp (P(haul) &times; (1&minus;ownership))
-  is what a genuine differential bet is worth. Snapshot fetched
+  is what a genuine differential bet is worth. Priced three times, once per
+  data-source estimator, same as the transfer tables above. Snapshot fetched
   {esc(cap_snap.get('fetched_utc', 'unknown time'))}.</p>
   <table>
-    <thead><tr><th>Player</th><th>Fixture</th><th>E[pts]</th><th>P(haul&ge;10)</th>
-    <th>P(blank&le;2)</th><th>Own%</th><th>DiffUp</th></tr></thead>
+    <thead><tr><th>&nbsp;</th><th>Proposal</th><th>Next fixture</th><th>E[pts]</th>
+    <th>P(haul&ge;10)</th><th>P(blank&le;2)</th><th>Own%</th><th>DiffUp</th></tr></thead>
     <tbody>{cap_rows}</tbody></table>
-  <div class="find ok"><b>The case for each.</b>
-  <ul style="margin:8px 0 0 18px;padding:0">{cap_rationale}</ul></div>
-  {also_html}
+  <div class="find {'ok' if cap_agree else 'bad'}">
+    {f"<b>All three estimators agree:</b> {esc(by_est[0]['name'])}, whichever data source you trust."
+     if cap_agree else
+     "<b>The estimators do not agree on the armband.</b> Which one to act on is a "
+     "judgement call, not something this table can resolve for you — see the "
+     "captaincy estimator-sensitivity discussion for how thin the underlying "
+     "evidence usually is this early in a season."}
+  </div>
   {caveats_html}
 </div>"""
     else:
         cap_html = """
 <div class="panel">
-  <h2>Top 3 captaincy candidates</h2>
+  <h2>Captaincy</h2>
   <p class="tests">No cached captaincy snapshot yet. Ask Claude to run
-  <span class="mono">captaincy_odds</span> (fpl-research MCP, neutral/chase/protect
-  modes) over the current XI and save the result to
+  <span class="mono">captaincy_snapshot_refresh</span> (fpl-research MCP) over the
+  current XI and save the result to
   <span class="mono">docs/data/captaincy_snapshot.json</span>, then rebuild.</p>
 </div>"""
 

@@ -1,11 +1,42 @@
 {
   "entry": 1041614,
   "next_gw": 3,
-  "fetched_utc": "2026-09-01T18:07:49+00:00",
-  "source": "captaincy_odds (mechanical refresh), neutral mode, shrunk=True, with_intel=True",
-  "candidates": [
+  "fetched_utc": "2026-09-03T00:35:15+00:00",
+  "source": "captaincy_odds (mechanical refresh), neutral mode, per-estimator, with_intel=True",
+  "by_estimator": [
     {
-      "rank": 1,
+      "estimator": "raw",
+      "label": "actual",
+      "name": "B.Fernandes",
+      "team": "MUN",
+      "pos": "MID",
+      "opponent": "EVE(A)",
+      "e_pts": 9.16,
+      "p_haul": 37.4,
+      "p_blank": 23.6,
+      "own_pct": 48.6,
+      "diffup": 19.2,
+      "sd": 6.0,
+      "intel": ""
+    },
+    {
+      "estimator": "prior",
+      "label": "prior",
+      "name": "O'Reilly",
+      "team": "MCI",
+      "pos": "DEF",
+      "opponent": "COV(H)",
+      "e_pts": 6.17,
+      "p_haul": 15.2,
+      "p_blank": 28.1,
+      "own_pct": 19.1,
+      "diffup": 12.3,
+      "sd": 3.72,
+      "intel": "xgi90 x1.20"
+    },
+    {
+      "estimator": "shrunk",
+      "label": "shrunken",
       "name": "O'Reilly",
       "team": "MCI",
       "pos": "DEF",
@@ -13,50 +44,13 @@
       "e_pts": 6.6,
       "p_haul": 16.0,
       "p_blank": 19.3,
-      "own_pct": 19.4,
+      "own_pct": 19.1,
       "diffup": 12.9,
       "sd": 3.54,
-      "rationale": "vs COV(H). E[pts] 6.60 \u00b7 P(haul) 16.0% \u00b7 P(blank) 19.3% \u00b7 owned 19.4% \u00b7 DiffUp 12.9 \u00b7 intel: xgi90 x1.20"
-    },
-    {
-      "rank": 2,
-      "name": "B.Fernandes",
-      "team": "MUN",
-      "pos": "MID",
-      "opponent": "EVE(A)",
-      "e_pts": 5.99,
-      "p_haul": 15.6,
-      "p_blank": 39.5,
-      "own_pct": 48.4,
-      "diffup": 8.0,
-      "sd": 4.41,
-      "rationale": "vs EVE(A). E[pts] 5.99 \u00b7 P(haul) 15.6% \u00b7 P(blank) 39.5% \u00b7 owned 48.4% \u00b7 DiffUp 8.0"
-    },
-    {
-      "rank": 3,
-      "name": "Mbeumo",
-      "team": "MUN",
-      "pos": "MID",
-      "opponent": "EVE(A)",
-      "e_pts": 5.61,
-      "p_haul": 14.3,
-      "p_blank": 42.6,
-      "own_pct": 30.8,
-      "diffup": 9.9,
-      "sd": 4.29,
-      "rationale": "vs EVE(A). E[pts] 5.61 \u00b7 P(haul) 14.3% \u00b7 P(blank) 42.6% \u00b7 owned 30.8% \u00b7 DiffUp 9.9"
+      "intel": "xgi90 x1.20"
     }
   ],
-  "also_considered": [
-    {
-      "name": "Schade",
-      "note": "vs SUN(H). E[pts] 5.25 \u00b7 P(haul) 8.4% \u00b7 P(blank) 33.7% \u00b7 owned 3.8% \u00b7 DiffUp 8.0"
-    },
-    {
-      "name": "Gabriel",
-      "note": "vs CHE(H). E[pts] 5.21 \u00b7 P(haul) 6.4% \u00b7 P(blank) 32.1% \u00b7 owned 27.0% \u00b7 DiffUp 4.7"
-    }
-  ],
+  "agree": false,
   "caveats": [
     "Mechanically refreshed (numbers only, neutral mode) by the weekly GitHub Actions build - no chase/protect judgment call and no hand-written rationale. Run captaincy_odds yourself via the fpl-research MCP for the reasoned weekly read before setting the armband."
   ]
