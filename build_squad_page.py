@@ -651,13 +651,30 @@ def build():
   </div>
 </div>"""
 
+    # What each chip actually DOES, mechanically - the strategy table below
+    # (window/trigger/backstop) assumes the reader already knows this, which
+    # a first-time reader of this page won't. Static FPL rules, not derived
+    # from anything - won't drift, so hand-kept here rather than parsed.
+    CHIP_WHAT = {
+        "Wildcard 1": "Unlimited free transfers for one gameweek, no points cost — "
+                      "rebuild the squad from scratch within the £100m budget.",
+        "Bench Boost 1": "All 4 bench players' points count too for one gameweek, "
+                          "not just the starting XI's.",
+        "Triple Captain 1": "The captain's points are tripled instead of doubled "
+                             "for one gameweek.",
+        "Free Hit 1": "Unlimited free transfers for exactly one gameweek — the "
+                      "squad automatically reverts to what it was the next week.",
+    }
+
     chip_html = ""
     if cp:
         def chip_row(label, window, trigger, backstop):
             used = chip_used.get(label, False)
             status = ('<span class="tag">used</span>' if used
                        else '<span class="tag ok">available</span>')
-            return (f"<tr><td><b>{esc(label)}</b> {status}</td>"
+            what = CHIP_WHAT.get(label, "")
+            what_html = f"<div class='kn'>{esc(what)}</div>" if what else ""
+            return (f"<tr><td><b>{esc(label)}</b> {status}{what_html}</td>"
                     f"<td class='mono'>{esc(window)}</td>"
                     f"<td style='text-align:left'>{esc(trigger)}</td>"
                     f"<td class='mono'>{esc(backstop)}</td></tr>")
