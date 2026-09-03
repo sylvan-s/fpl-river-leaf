@@ -384,6 +384,18 @@ Live gaps and standing technical notes — not resolved, not urgent unless flagg
   are zero pre-season. If built: price belongs in *timing* ("is a player
   about to move"), never in *ranking* ("who to buy"). Check whether FPL's own
   Price Change Predictor is API-accessible first.
+- **`build_dashboard.py` still prices from the frozen 8 Aug snapshot —
+  target GW4.** Found 3 Sep 2026 while diagnosing why the optimiser wrongly
+  excluded Enzo (his live price had fallen to £6.9m; the pool still had his
+  stale pre-season £7.0m). Fixed in `build_squad.py` that day (every
+  `load()` call now fetches live `now_cost`, all estimator modes, degrading
+  to the frozen price if unreachable — see the 3 Sep entry above). NOT yet
+  ported to `build_dashboard.py`, which has its own separate price
+  computation straight from the same frozen file — so
+  `player-benchmarking.html`/`team-benchmarking.html` still show stale
+  prices, including the price-banding on the xGI-vs-delta chart. Doesn't
+  drive any transfer decision (lower stakes than the optimiser bug was), but
+  same fix, already proven out — should be a quick port, not new research.
 - **Goalkeeper methodology still undefined.** One real finding so far:
   saves/90 and clean sheets are anti-correlated for keepers (corr −0.58,
   n=19) — the opposite of defenders, so the GK screen can't reuse the
@@ -479,6 +491,41 @@ share rises; the differential case depends entirely on him playing.
 ---
 
 ## CHANGE HISTORY (newest first)
+
+### Wed 3 Sep 2026 — methodology fix, not a transfer — optimiser now prices live
+
+**Trigger.** Investigating why `--estimator raw`'s one-transfer recommendation
+changed between two runs the same day (this morning: `O.Dango → Szoboszlai`;
+later: a tie between `Schade`/`Scott`, effectively HOLD). Sylvan asked
+whether Scott's price was the cause, or whether Enzo/Szoboszlai had risen out
+of reach.
+
+**Found neither, exactly.** Szoboszlai genuinely is priced out (£7.0m,
+unchanged all season, £0.1m over what any single sale in the squad raises).
+But Enzo had NOT risen — his live price had actually *fallen* to £6.9m
+(season_change −0.1m). `build_squad.py` didn't know: it prices every player
+from `fpl_priors_2025_26_v2.json`, a snapshot frozen 8 Aug 2026 (explicitly
+pre-season, its own note says never to regenerate it after GW1), so it still
+thought Enzo cost his stale £7.0m starting price and wrongly excluded him as
+unaffordable. Confirmed by correcting only his price in a copy of the pool —
+the recommendation snapped straight back to `O.Dango → Enzo`.
+
+**This is the structural version of the 2 Sep bank fix above** — not a
+one-off bookkeeping entry this time, but every affordability decision the
+optimiser makes, for every player, for as long as that snapshot goes
+unrefreshed (over a month by now).
+
+**Applied:** `build_squad.py`'s `load()` now fetches live `now_cost` on
+every call, in all three estimator modes — including `prior`, which was
+previously fully offline for price. Degrades to the frozen snapshot's price
+if the live fetch fails, same silent-safe pattern the raw/shrunk rate fetch
+already used, with a new diagnostic line if any player falls back.
+`optimise_squad.py --transfers 1` (prior, default) now correctly recommends
+`O.Dango → Enzo`. Full `publish_dashboard.sh` pipeline and `test_scoring.py`
+still pass.
+
+**NOT yet ported:** `build_dashboard.py` has its own separate, still-stale
+price computation — see OPEN METHODOLOGY ITEMS above, targeted for GW4.
 
 ### Wed 2 Sep 2026 — data correction, not a transfer — bank & squad value
 

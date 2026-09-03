@@ -18,8 +18,14 @@ player: it looks justified but cannot be reproduced.
                                                 # "Phase 2"). Needs live network; degrades to prior-only if unreachable.
                                                 # (--shrunk-priors still works as a legacy alias for this.)
 
-NOT a live tool. It reads the frozen prior-season snapshot, so from GW1 it should
+MOSTLY not a live tool - its RATE stats (xg90/xa90/xgi90/...) still read the
+frozen prior-season snapshot regardless of estimator, so from GW1 it should
 read player_gw from SQLite instead — see METHODOLOGY_ALTERNATIVES.md B6.
+PRICE is the one exception (added 3 Sep 2026): every load() call fetches live
+bootstrap-static for current `now_cost`, because a stale price is a wrong
+budget, not just a wrong estimate - see the "PRICE" comment above load()'s
+current-season fetch. Degrades to the frozen snapshot's price if unreachable,
+same silent-safe pattern as the rate fetch.
 
 GATE 2 CHANGED 9 Aug 2026 — starts% is now measured over the LAST 16 GAMEWEEKS
 of 2025/26 (GW23-38), not the full 38-GW season. Sylvan's point: a lot changes
@@ -248,15 +254,19 @@ _bonus_shrinkage = scoring.bonus_shrinkage
 # players, not a component of expected points. Kept separate on purpose.
 
 
-# ---- live current-season fetch, for --estimator raw/shrunk only -------------
-# build_squad.py has been fully offline until now (SNAP is a frozen JSON file
-# on disk). This is its first live-network dependency, and it is kept
-# strictly optional and silent-safe: any failure (no egress, timeout, bad
-# response) degrades to {} - every row then falls back to its prior-only
-# value (scoring.shrink_rate()'s n90<=0 branch for shrunk; the MIN_N90_RAW
-# gate above for raw), so a sandboxed or offline run behaves exactly as
-# estimator='prior' were passed, just with one warning printed rather than
-# a crash.
+# ---- live current-season fetch --------------------------------------------
+# build_squad.py's own rate stats were fully offline until now (SNAP is a
+# frozen JSON file on disk); this was its first live-network dependency,
+# added for --estimator raw/shrunk. PRICE now depends on it unconditionally
+# too (3 Sep 2026, see load()'s "PRICE" comment) - a real transfer target
+# (Enzo, fallen to £6.9m) was priced unaffordable at the frozen snapshot's
+# stale £7.0m starting price, in a plain --estimator prior run same as any
+# other. Kept strictly optional and silent-safe either way: any failure (no
+# egress, timeout, bad response) degrades to {} - every row falls back to its
+# prior-only rate value (scoring.shrink_rate()'s n90<=0 branch for shrunk;
+# the MIN_N90_RAW gate above for raw) and its frozen snapshot price, so a
+# sandboxed or offline run behaves exactly as before this existed, just with
+# one warning printed rather than a crash.
 _current_cache = None
 
 
@@ -273,8 +283,9 @@ def _fetch_current_season():
             data = json.loads(resp.read().decode("utf-8"))
         _current_cache = {str(e["id"]): e for e in data.get("elements", [])}
     except Exception as exc:
-        print(f"  SHRUNK PRIORS: live bootstrap-static fetch failed ({exc}) - "
-              f"falling back to prior-only rates for every player this run.",
+        print(f"  LIVE FETCH: bootstrap-static fetch failed ({exc}) - raw/shrunk "
+              f"rates fall back to prior-only for every player this run, and every "
+              f"price falls back to the frozen 8 Aug pre-season snapshot.",
               file=sys.stderr)
         _current_cache = {}
     return _current_cache
@@ -322,7 +333,18 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
     last16 = {} if season_starts else _load_last16()
     xbonus_map, _bonus_k = _bonus_shrinkage(snap["players"], teams) if use_bonus else ({}, None)
     contam = _contaminated() if use_contam_filter else {}
-    current = _fetch_current_season() if needs_live else {}
+    # Fetched UNCONDITIONALLY, not gated by estimator - price is a live fact,
+    # not a modelled rate, so it stays current in "prior" mode too. Added
+    # 3 Sep 2026 after this pool's frozen `now_cost` (last refreshed 8 Aug
+    # pre-season) sat stale through 2+ gameweeks of real price movement and
+    # made a real transfer target (Enzo, fallen to £6.9m) look unaffordable
+    # at its old £7.0m starting price. `needs_live` below still gates the
+    # xg90/xa90/... RATE blending (raw/shrunk) specifically - that is a
+    # deliberate methodology choice, not something price staleness should
+    # force on; price correctness shouldn't depend on which estimator a run
+    # happens to be using.
+    current = _fetch_current_season()
+    stale_price_n = 0
     excluded = []
     matched = set()
     # PASS A - baseline rows (prior-season / last16 / bonus), no intel yet.
@@ -359,8 +381,12 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
             stp, stp_src = starts16 / games16, "last16"
         else:
             stp, stp_src = stp_season, "season_fallback"
+        live_cost = current.get(pid, {}).get("now_cost")
+        if live_cost is None:
+            stale_price_n += 1
+        price = (live_cost if live_cost is not None else (p.get("now_cost") or 0)) / 10
         r = dict(name=name, pos=POS[p["element_type"]],
-                 team=team, price=(p.get("now_cost") or 0)/10,
+                 team=team, price=price,
                  starts=p.get("starts", 0) or 0, stp=stp, stp_season=stp_season,
                  stp_src=stp_src,
                  xgi90=xgi/n90, delta=ga - xgi, cbit90=(cbi+tk)/n90,
@@ -440,6 +466,11 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
               f"was available this run (see the fetch warning above, if any) — "
               f"every rate fell back to its prior-only value, same as "
               f"estimator='prior' were passed.", file=sys.stderr)
+    if stale_price_n:
+        print(f"  PRICE: {stale_price_n}/{len(rows)} player(s) missing from the live "
+              f"fetch — using the frozen 8 Aug pre-season price for those (see the "
+              f"fetch warning above, if any). Affordability for everyone else is live.",
+              file=sys.stderr)
     if use_intel:
         # UNMATCHED IS A BUG, NOT A NO-OP. A typo'd name/team in the fence
         # would otherwise adjust nothing and say nothing - the exact silent
