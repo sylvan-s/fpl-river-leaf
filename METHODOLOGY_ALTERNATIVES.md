@@ -1727,10 +1727,13 @@ corroboration level.** The daily sweep now only ever writes narrative
 a trigger the pipeline can act on by itself. A second task,
 **`fpl-friday-intel-review`**, is the sole writer of the `setpieces`/
 `adjustments` fences, and only for bites Sylvan explicitly marks "accepted"
-in that weekly meeting, which also surfaces `build_intel_review.py`'s
-decision queue (each pending bite paired with its source's live reliability
-figure). This is a stronger, not weaker, version of the C3 principle: not
-just "a human wrote the entry" but "a human approved this specific entry,
+by ticking the checklist on that bite's Trello card. `apply_intel_decisions.py`
+(the Applier) reads those ticks and logs the decision; `build_intel_review.py`
+then runs and surfaces the outcome as a retrospective — each decided bite
+paired with its source's live reliability figure — rather than a queue
+awaiting a reply. This is a stronger, not weaker, version of the C3
+principle: not just "a human wrote the entry" but "a human approved this
+specific entry,
 this specific week, having seen the source's track record."
 
 ### C4. The 5-GW fixture score proposal
