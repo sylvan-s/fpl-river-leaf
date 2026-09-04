@@ -1,6 +1,6 @@
 # Source reliability — generated, do not hand-edit
 
-Regenerate with `python3 score_source_reliability.py`. Source: `docs/data/intel_sweep_log.jsonl` (19 bites logged, 6 resolutions). Live gameweek: 2.
+Regenerate with `python3 score_source_reliability.py`. Source: `docs/data/intel_sweep_log.jsonl` (24 bites logged, 11 resolutions). Live gameweek: 3.
 
 **Accuracy only reported at 5+ resolved bites** (confirmed + contradicted) — below that, the percentage would be more noise than signal from two or three claims. Expired and superseded bites count toward `stale_rate` (the check never resolved either way) but not toward accuracy, since going stale is a different failure mode from being wrong.
 
@@ -16,12 +16,17 @@ Regenerate with `python3 score_source_reliability.py`. Source: `docs/data/intel_
 | Fantasy Football Scout, quoting Mikel Arteta's post-Coventry press comments | 3 | 1 | 0 | n=0, need 5 | 0% | 0 |
 | Fantasy Football Scout (GW1 Scout Notes) + Sports Mole (summer transfer confirmations) | 3 | 1 | 0 | n=0, need 5 | — | 1 |
 | Fantasy Football Scout (GW1 Scout Notes) - same match report as AstonVilla-AVL-xgi90-20260825-1 | 3 | 1 | 0 | n=0, need 5 | — | 1 |
-| Fantasy Football Scout / Hayters (Pierre Sage press comments) | 3 | 1 | 0 | n=0, need 5 | — | 1 |
-| Read Arsenal F.C. / SI.com, citing Arteta press comments | 3 | 1 | 0 | n=0, need 5 | — | 1 |
-| ESPN / Yahoo Sports, citing Unai Emery press comments | 3 | 1 | 0 | n=0, need 5 | — | 1 |
+| Fantasy Football Scout / Hayters (Pierre Sage press comments) | 3 | 1 | 1 | n=1, need 5 | 0% | 0 |
+| Read Arsenal F.C. / SI.com, citing Arteta press comments | 3 | 1 | 1 | n=1, need 5 | 0% | 0 |
+| ESPN / Yahoo Sports, citing Unai Emery press comments | 3 | 1 | 1 | n=1, need 5 | 0% | 0 |
 | Sports Mole / mancity.com (GW1 confirmed lineup) | 3 | 1 | 0 | n=0, need 5 | — | 1 |
-| Sports Mole / CityXtra / Goal.com, citing Enzo Maresca post-Bournemouth press comments | 3 | 1 | 0 | n=0, need 5 | — | 1 |
-| Live injury_report (fpl-research MCP, FPL API-derived) | 3 | 1 | 0 | n=0, need 5 | — | 1 |
+| Sports Mole / CityXtra / Goal.com, citing Enzo Maresca post-Bournemouth press comments | 3 | 1 | 1 | n=1, need 5 | 0% | 0 |
+| Live injury_report (fpl-research MCP, FPL API-derived) | 3 | 1 | 1 | n=1, need 5 | 0% | 0 |
+| beIN Sports / Al Jazeera / SI.com / Yahoo Sports / lastwordonsports / 101GreatGoals (GW2 confirmed lineups); fpl-research MCP compare_players | 3 | 1 | 0 | n=0, need 5 | — | 1 |
+| Read Crystal Palace, citing Fabrizio Romano and BBC Sport | 3 | 1 | 0 | n=0, need 5 | — | 1 |
+| Fantasy Football Scout (2pm team news, 30 Aug 2026) + ESPN/Yahoo Leeds 1-1 Brentford match report | 3 | 1 | 0 | n=0, need 5 | — | 1 |
+| Chelsea FC official site / ESPN / Sky Sports / Goal.com (completed transfers) | 3 | 1 | 0 | n=0, need 5 | — | 1 |
+| ESPN match report (Aston Villa 0-1 Arsenal) + Sports Mole | 3 | 1 | 0 | n=0, need 5 | — | 1 |
 
 ## By category, per source
 
@@ -41,6 +46,11 @@ Regenerate with `python3 score_source_reliability.py`. Source: `docs/data/intel_
 - **Sports Mole / mancity.com (GW1 confirmed lineup)** — tactical: 1
 - **Sports Mole / CityXtra / Goal.com, citing Enzo Maresca post-Bournemouth press comments** — injury: 1
 - **Live injury_report (fpl-research MCP, FPL API-derived)** — injury: 1
+- **beIN Sports / Al Jazeera / SI.com / Yahoo Sports / lastwordonsports / 101GreatGoals (GW2 confirmed lineups); fpl-research MCP compare_players** — tactical: 1
+- **Read Crystal Palace, citing Fabrizio Romano and BBC Sport** — other: 1
+- **Fantasy Football Scout (2pm team news, 30 Aug 2026) + ESPN/Yahoo Leeds 1-1 Brentford match report** — rotation: 1
+- **Chelsea FC official site / ESPN / Sky Sports / Goal.com (completed transfers)** — other: 1
+- **ESPN match report (Aston Villa 0-1 Arsenal) + Sports Mole** — other: 1
 
 ---
 

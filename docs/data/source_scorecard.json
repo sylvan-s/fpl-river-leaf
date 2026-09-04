@@ -1,5 +1,5 @@
 {
-  "generated_utc": "2026-08-28T07:01:02.611855+00:00",
+  "generated_utc": "2026-09-04T06:32:41.185453+00:00",
   "min_resolved_for_accuracy": 5,
   "sources": [
     {
@@ -167,49 +167,49 @@
       "source_name": "Fantasy Football Scout / Hayters (Pierre Sage press comments)",
       "source_tier": 3,
       "n_bites": 1,
-      "n_confirmed": 0,
+      "n_confirmed": 1,
       "n_contradicted": 0,
       "n_expired": 0,
       "n_superseded": 0,
-      "n_open": 1,
+      "n_open": 0,
       "categories": {
         "injury": 1
       },
-      "n_resolved": 0,
+      "n_resolved": 1,
       "accuracy": null,
-      "stale_rate": null
+      "stale_rate": 0.0
     },
     {
       "source_name": "Read Arsenal F.C. / SI.com, citing Arteta press comments",
       "source_tier": 3,
       "n_bites": 1,
-      "n_confirmed": 0,
+      "n_confirmed": 1,
       "n_contradicted": 0,
       "n_expired": 0,
       "n_superseded": 0,
-      "n_open": 1,
+      "n_open": 0,
       "categories": {
         "injury": 1
       },
-      "n_resolved": 0,
+      "n_resolved": 1,
       "accuracy": null,
-      "stale_rate": null
+      "stale_rate": 0.0
     },
     {
       "source_name": "ESPN / Yahoo Sports, citing Unai Emery press comments",
       "source_tier": 3,
       "n_bites": 1,
       "n_confirmed": 0,
-      "n_contradicted": 0,
+      "n_contradicted": 1,
       "n_expired": 0,
       "n_superseded": 0,
-      "n_open": 1,
+      "n_open": 0,
       "categories": {
         "other": 1
       },
-      "n_resolved": 0,
+      "n_resolved": 1,
       "accuracy": null,
-      "stale_rate": null
+      "stale_rate": 0.0
     },
     {
       "source_name": "Sports Mole / mancity.com (GW1 confirmed lineup)",
@@ -231,20 +231,36 @@
       "source_name": "Sports Mole / CityXtra / Goal.com, citing Enzo Maresca post-Bournemouth press comments",
       "source_tier": 3,
       "n_bites": 1,
-      "n_confirmed": 0,
+      "n_confirmed": 1,
       "n_contradicted": 0,
       "n_expired": 0,
       "n_superseded": 0,
-      "n_open": 1,
+      "n_open": 0,
       "categories": {
         "injury": 1
       },
-      "n_resolved": 0,
+      "n_resolved": 1,
       "accuracy": null,
-      "stale_rate": null
+      "stale_rate": 0.0
     },
     {
       "source_name": "Live injury_report (fpl-research MCP, FPL API-derived)",
+      "source_tier": 3,
+      "n_bites": 1,
+      "n_confirmed": 1,
+      "n_contradicted": 0,
+      "n_expired": 0,
+      "n_superseded": 0,
+      "n_open": 0,
+      "categories": {
+        "injury": 1
+      },
+      "n_resolved": 1,
+      "accuracy": null,
+      "stale_rate": 0.0
+    },
+    {
+      "source_name": "beIN Sports / Al Jazeera / SI.com / Yahoo Sports / lastwordonsports / 101GreatGoals (GW2 confirmed lineups); fpl-research MCP compare_players",
       "source_tier": 3,
       "n_bites": 1,
       "n_confirmed": 0,
@@ -253,7 +269,71 @@
       "n_superseded": 0,
       "n_open": 1,
       "categories": {
-        "injury": 1
+        "tactical": 1
+      },
+      "n_resolved": 0,
+      "accuracy": null,
+      "stale_rate": null
+    },
+    {
+      "source_name": "Read Crystal Palace, citing Fabrizio Romano and BBC Sport",
+      "source_tier": 3,
+      "n_bites": 1,
+      "n_confirmed": 0,
+      "n_contradicted": 0,
+      "n_expired": 0,
+      "n_superseded": 0,
+      "n_open": 1,
+      "categories": {
+        "other": 1
+      },
+      "n_resolved": 0,
+      "accuracy": null,
+      "stale_rate": null
+    },
+    {
+      "source_name": "Fantasy Football Scout (2pm team news, 30 Aug 2026) + ESPN/Yahoo Leeds 1-1 Brentford match report",
+      "source_tier": 3,
+      "n_bites": 1,
+      "n_confirmed": 0,
+      "n_contradicted": 0,
+      "n_expired": 0,
+      "n_superseded": 0,
+      "n_open": 1,
+      "categories": {
+        "rotation": 1
+      },
+      "n_resolved": 0,
+      "accuracy": null,
+      "stale_rate": null
+    },
+    {
+      "source_name": "Chelsea FC official site / ESPN / Sky Sports / Goal.com (completed transfers)",
+      "source_tier": 3,
+      "n_bites": 1,
+      "n_confirmed": 0,
+      "n_contradicted": 0,
+      "n_expired": 0,
+      "n_superseded": 0,
+      "n_open": 1,
+      "categories": {
+        "other": 1
+      },
+      "n_resolved": 0,
+      "accuracy": null,
+      "stale_rate": null
+    },
+    {
+      "source_name": "ESPN match report (Aston Villa 0-1 Arsenal) + Sports Mole",
+      "source_tier": 3,
+      "n_bites": 1,
+      "n_confirmed": 0,
+      "n_contradicted": 0,
+      "n_expired": 0,
+      "n_superseded": 0,
+      "n_open": 1,
+      "categories": {
+        "other": 1
       },
       "n_resolved": 0,
       "accuracy": null,
