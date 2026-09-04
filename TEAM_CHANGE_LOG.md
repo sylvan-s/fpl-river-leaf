@@ -15,7 +15,63 @@ one-line record. What remains is what actually governs a decision today.
 
 ---
 
-## CURRENT STATE — as at Fri 28 Aug 2026 (GW2 pre-deadline)
+## CURRENT STATE — as at Fri 4 Sep 2026 (GW3 pre-deadline)
+
+**Deadline:** Fri 4 Sep 2026, 18:30 BST (17:30 UTC) · **Formation:** 3-4-3 (unchanged)
+
+**Last change: NO TRANSFER, 4 Sep 2026 — Sylvan's own call.** Holding the
+free transfer to bank two and apply as a double transfer next week, rather
+than spending it now. Ran the full Step 2f process first — fixture window
+refreshed to GW3-6, `optimise_squad.py --fixtures --transfers 1` (intel ON
+by default): the only 1-transfer move on the table was `Schade -> Scott`
+(BOU MID, £6.0m) at **+0.11 xP/90 (+0.5 pts over a 5-GW hold)** — inside/at
+the ~0.10 xP/90 noise floor, so nothing material was left on the table by
+holding. A 2-transfer/-4 hit line (`Schade, Virgil -> Canvot, Rice`) was
+also surfaced and the optimiser's own numbers say it's a losing move
+(-1.0 pts net over 5 GWs, breakeven 6.6 gameweeks) — not actioned. That
+`Schade -> Scott` move would also have cleared a soft breach the optimiser
+flagged (3 BRE attackers — O.Dango, Schade, Thiago — against its own max-2
+-per-club preference); still not enough on its own to justify spending the
+transfer this week.
+
+**Captain changed, 4 Sep 2026 — Sylvan's own call: Gabriel -> B.Fernandes.**
+`captaincy_odds` (with intel, neutral mode) actually had **O'Reilly** ahead
+of the whole squad on all three measures — E[pts] 6.60, P(haul) 16.0%,
+P(blank) 19.3% (vs B.Fernandes 5.99/15.6%/39.1%) — driven partly by City
+hosting a promoted Coventry side and partly by three `ROLE_INTEL.md`
+adjustments-fence rows (cbit90, xgi90, stp), two extended and one brand new
+that same morning's Friday review, all Sylvan's own unsourced estimates
+rather than proven in-season form. With intel off, O'Reilly's E[pts] drops
+to 6.32 (still highest) - so the lead is real but partly model-internal.
+B.Fernandes was presented as the fully data-driven alternative with no
+ROLE_INTEL dependency (2nd on E[pts], strong P(haul)), and that's the pick
+Sylvan went with. **Vice left at Thiago** - not explicitly revisited this
+week; note for next time that Mbeumo (E[pts] 5.62) is the model's actual
+current runner-up, ahead of Thiago (4.78).
+
+**Not yet actioned live** on fantasy.premierleague.com. This log and
+`squad.json` record the decision; live-site submission is a separate,
+explicit-ask-only step per the weekly-brief runbook.
+
+**Chips:** all four set-1 chips still available, no trigger this week -
+`escalation_check` confirms a routine GW3-6 lookahead, no doubles/blanks.
+Bench Boost's own tracker still points to GW14 as the best remaining week
+for the current bench.
+
+**Data caveat this run.** The sandboxed shell used to run
+`optimise_squad.py`/`fixture_adjust.py` gets a 403 from the live FPL API
+(a known, standing limitation, not new this week) - prices are the frozen
+8 Aug pre-season snapshot and rates use the PRIOR (2025/26-only) estimator.
+The `fpl-research` MCP tools (`captaincy_odds`, `compare_players`, etc.) do
+have live access and were used for the captaincy comparison and player
+lookups above.
+
+**Predictions logged** for GW3 before the deadline (2 new, 4 already on
+file from earlier in the week).
+
+---
+
+## CURRENT STATE — as at Fri 28 Aug 2026 (GW2 pre-deadline, superseded above)
 
 **Deadline:** Fri 28 Aug 2026, 18:30 BST (17:30 UTC) · **Formation:** 3-4-3 (unchanged)
 **Last change:** **1 free transfer, 28 Aug** — `Sarr -> Schade`, via
@@ -479,6 +535,26 @@ share rises; the differential case depends entirely on him playing.
 ---
 
 ## CHANGE HISTORY (newest first)
+
+### Fri 4 Sep 2026 — GW3 — HOLD (free transfer banked) + captain change
+
+**No transfer.** Sylvan's call: bank the free transfer to apply as a double
+next week rather than take the only available 1-transfer move
+(`Schade -> Scott`, +0.11 xP/90, +0.5 pts/5-GW - at the noise floor). A
+-4 hit 2-transfer line (`Schade, Virgil -> Canvot, Rice`) was surfaced and
+rejected on the optimiser's own numbers (-1.0 pts net/5-GW, breakeven 6.6
+GWs). See CURRENT STATE above for the full reasoning, including the
+BRE-attacker-cap note.
+
+**Captain: Gabriel -> B.Fernandes.** `captaincy_odds` (with intel) had
+O'Reilly leading on E[pts]/P(haul)/P(blank) all three, but a real chunk of
+that edge runs through ROLE_INTEL fence rows accepted/extended in this
+morning's Friday review (Sylvan's own unsourced estimates, not proven
+form). B.Fernandes was the fully data-driven runner-up and is Sylvan's
+pick. Vice unchanged (Thiago) - flagged that Mbeumo is the model's actual
+data-driven runner-up for next time the armband is revisited.
+
+**Not actioned live** - decision recorded here and in `squad.json` only.
 
 ### Wed 3 Sep 2026 — new feature — live Bench Boost timing forecast
 
