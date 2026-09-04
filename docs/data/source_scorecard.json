@@ -1,7 +1,24 @@
 {
-  "generated_utc": "2026-09-04T06:32:41.185453+00:00",
+  "generated_utc": "2026-09-04T10:44:52.711468+00:00",
   "min_resolved_for_accuracy": 5,
   "sources": [
+    {
+      "source_name": "agreed in chat, not sourced to an outlet",
+      "source_tier": null,
+      "n_bites": 3,
+      "n_confirmed": 0,
+      "n_contradicted": 0,
+      "n_expired": 0,
+      "n_superseded": 0,
+      "n_open": 3,
+      "categories": {
+        "tactical": 1,
+        "rotation": 2
+      },
+      "n_resolved": 0,
+      "accuracy": null,
+      "stale_rate": null
+    },
     {
       "source_name": "Fantasy Football Scout",
       "source_tier": 3,
@@ -325,6 +342,22 @@
     },
     {
       "source_name": "ESPN match report (Aston Villa 0-1 Arsenal) + Sports Mole",
+      "source_tier": 3,
+      "n_bites": 1,
+      "n_confirmed": 0,
+      "n_contradicted": 0,
+      "n_expired": 0,
+      "n_superseded": 0,
+      "n_open": 1,
+      "categories": {
+        "other": 1
+      },
+      "n_resolved": 0,
+      "accuracy": null,
+      "stale_rate": null
+    },
+    {
+      "source_name": "Sky Sports / Al Jazeera / Fox Sports",
       "source_tier": 3,
       "n_bites": 1,
       "n_confirmed": 0,

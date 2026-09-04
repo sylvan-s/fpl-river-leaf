@@ -1,7 +1,196 @@
 {
-  "generated_utc": "2026-09-04T06:45:21.275033+00:00",
+  "generated_utc": "2026-09-04T10:43:42.695760+00:00",
   "live_gw": 3,
-  "queue": [
+  "review_date": "2026-09-04",
+  "decided": [
+    {
+      "bite_id": "AstonVilla-AVL-xgi90-20260825-1",
+      "bite": {
+        "kind": "bite",
+        "id": "AstonVilla-AVL-xgi90-20260825-1",
+        "date": "2026-08-25",
+        "source_name": "Fantasy Football Scout (GW1 Scout Notes) + Sports Mole (summer transfer confirmations)",
+        "source_tier": 3,
+        "source_url": "https://www.fantasyfootballscout.co.uk/2026/08/23/fpl-notes-de-cuyper-hinshelwood-haul-villa-injury-latest",
+        "player": "Aston Villa (squad-wide, not one player)",
+        "team": "AVL",
+        "category": "other",
+        "hypothesis": "Villa lost 4-0 at home to Brighton in GW1 (0.31 xG from 6 shots, no recognised striker on the pitch, Buendia playing as the most advanced attacker, Joao Gomes sent off before half-time). Confirmed summer sales: Morgan Rogers, Ezri Konsa, Youri Tielemans, Lucas Digne. Ollie Watkins and Emiliano Martinez were both left out of the GW1 squad amid unresolved exit speculation, not injury. Sylvan's hypothesis, raised in chat 25 Aug: this level of core-player turnover plus still-unresolved departures will depress the REMAINING squad's output for several months while the squad restructures, not just the departed players' absence in isolation. Sylvan specified a 30% worsening (xgi90 mult 0.70) as the estimate to log. THIS MAGNITUDE IS SYLVAN'S OWN INSTRUCTED ESTIMATE, NOT A SOURCED FIGURE - no analyst or club source quantifies a 30% hit; the sources above support the FACTS (sales, absences, scoreline) but not the size of any resulting dip. Team-wide claim: the adjustments fence has no team-wildcard syntax (player|team rows only), so accepting this at Friday review would mean writing one xgi90 mult 0.70 row per AVL pool player (Cash, Mings, Pau Torres, Bogarde, Maatsen, Lindelof, Buendia, Guessand, McGinn, Kamara, Onana, Watkins, Martinez, Ruggeri - contaminated-fence and sub-900-minute players excluded per the usual gates), not one fence entry.",
+        "field_affected": "xgi90",
+        "suggested_op": "mult",
+        "suggested_value": 0.7,
+        "confidence": "low",
+        "falsifiable_check": "does Villa's attacking output stay depressed (xG per match materially below their 2025/26 rate) across their next 3-4 fixtures (Arsenal, Hull, Nottingham Forest - Gomes suspended for all three - then Brentford), rather than reverting toward pre-sale form once Watkins/Martinez's situations resolve and new signings bed in",
+        "check_by_gw": 6,
+        "logged_utc": "2026-08-25T00:13:07Z"
+      },
+      "decision": "accepted",
+      "decided_by": "Sylvan",
+      "note": "Housekeeping: removed dead Watkins/Martinez rows (per AstonVilla-AVL-transfers-20260901-1), added Ruggeri xgi90 mult 0.7 GWs 1-6 to complete the 14-player set.",
+      "status": "open"
+    },
+    {
+      "bite_id": "EnzoFernandez-MCI-transfer-20260901-1",
+      "bite": {
+        "kind": "bite",
+        "id": "EnzoFernandez-MCI-transfer-20260901-1",
+        "date": "2026-09-01",
+        "source_name": "Sky Sports / Al Jazeera / Fox Sports",
+        "source_tier": 3,
+        "source_url": null,
+        "player": "Enzo Fernandez",
+        "team": "MCI",
+        "category": "other",
+        "hypothesis": "BACKFILLED 4 Sep 2026 - this bite was sorted onto the Trello board and accepted in the 4 Sep Friday review (see the O'Reilly stp fence row and its decision record) but the underlying bite was never logged via the daily sweep's own step 2, leaving the decision pointing at an id with no bite behind it. Reconstructed from the live Trello card (https://trello.com/c/anIaFGBl). Chelsea sold Enzo Fernandez to Manchester City on deadline day (1 Sep), a British-record-equalling GBP125m fee, five-year deal. Two owned players are exposed via their clubs: Joao Pedro (CHE) loses a key midfield creator and service source; at City this lands directly in the O'Reilly/Anderson central-midfield role thread already tracked on this board.",
+        "field_affected": null,
+        "suggested_op": null,
+        "suggested_value": null,
+        "confidence": "high",
+        "falsifiable_check": "does Enzo start ahead of Anderson/O'Reilly in central midfield; does Joao Pedro's service and xGI shift post-Enzo",
+        "check_by_gw": 5,
+        "updates_bite_id": null,
+        "logged_utc": "2026-09-04T10:39:48Z"
+      },
+      "decision": "accepted",
+      "decided_by": "Sylvan",
+      "note": "O'Reilly stp set 0.75, GWs 3-8, revised from 65% to 75% by card comment 3 Sep. Condition: re-run captaincy odds with/without this row and show both, before the GW3 deadline.",
+      "status": "open"
+    },
+    {
+      "bite_id": "OReilly-MCI-cbit90-20260826-1",
+      "bite": {
+        "kind": "bite",
+        "id": "OReilly-MCI-cbit90-20260826-1",
+        "date": "2026-08-26",
+        "source_name": "Sports Mole / mancity.com (GW1 confirmed lineup)",
+        "source_tier": 3,
+        "source_url": "https://www.sportsmole.co.uk/football/man-city/transfer-talk/news/man-city-vs-bournemouth-confirmed-xis-triple-transfer-hint-haaland-anderson-decisions-made-by-maresca_603577.html",
+        "player": "O'Reilly",
+        "team": "MCI",
+        "category": "tactical",
+        "hypothesis": "Follow-up to OReilly-MCI-stp-20260820-1, resolved 'confirmed' earlier today: that resolution only answered whether his START RATE is at risk (it isn't - he played the full GW1 match), leaving a separate, still-open question the original bite never asked - what does actually lining up in central midfield rather than at right-back do to his own defensive-contribution numbers? He remains FPL-registered as a DEF (clean-sheet/GC scoring unaffected by where he lines up), but a player deployed as auxiliary midfield rather than in the back four would be expected to log fewer clearances/blocks/interceptions/tackles than a genuine defender, even while still scoring defender points. This is exactly the kind of role-change-not-yet-in-the-data blind spot ROLE_INTEL exists to catch, and it was missed in today's first pass because the sweep treated the finding purely as a start-rate resolution rather than also opening a new forward-looking thesis on the numbers behind it.",
+        "field_affected": "cbit90",
+        "suggested_op": "mult",
+        "suggested_value": null,
+        "confidence": "medium",
+        "falsifiable_check": "does O'Reilly's actual GW1 CBIT/CBIRT rate (once the underlying stats feed updates) come in materially below a genuine defender's baseline, and does the midfield deployment continue into GW2-3 rather than reverting to right-back once Nunes/Ait-Nouri rotate",
+        "check_by_gw": 4,
+        "logged_utc": "2026-08-26T09:07:41Z"
+      },
+      "decision": "accepted",
+      "decided_by": "Sylvan",
+      "note": "Window extended 1-4 -> 1-6 in Friday review 4 Sep 2026. GW4 check re-run 3 Sep and confirmed; corroborated by OReilly-MCI-role-20260829-1.",
+      "status": "open"
+    },
+    {
+      "bite_id": "OReilly-MCI-xgi90-20260826-1",
+      "bite": {
+        "kind": "bite",
+        "id": "OReilly-MCI-xgi90-20260826-1",
+        "date": "2026-08-26",
+        "source_name": "Sports Mole / mancity.com (GW1 lineup); magnitude sized by Sylvan Sitkey against scoring.expected_points()",
+        "source_tier": 3,
+        "source_url": "https://www.sportsmole.co.uk/football/man-city/transfer-talk/news/man-city-vs-bournemouth-confirmed-xis-triple-transfer-hint-haaland-anderson-decisions-made-by-maresca_603577.html",
+        "player": "O'Reilly",
+        "team": "MCI",
+        "category": "tactical",
+        "hypothesis": "Companion to OReilly-MCI-cbit90-20260826-1/-2 - the attacking-side half of the same role-change thesis. Playing central midfield rather than right-back plausibly raises O'Reilly's attacking involvement rate (touches, progressive actions, xG+xA) alongside the defensive-contribution cost the paired cbit90 bite flags. Sylvan instructed +20% (xgi90 mult 1.2) as the paired hypothetical, sized against modelled xP impact via scoring.expected_points(): net effect across both levers, kept scored as DEF, is 4.636 -> 4.831 (+0.195), because DEF's 6-points-per-goal rate makes attacking upside disproportionately valuable relative to the (already small) DC-points slice it trades away. THE 20% FIGURE IS SYLVAN'S OWN INSTRUCTED ESTIMATE, NOT A SOURCED ONE.",
+        "field_affected": "xgi90",
+        "suggested_op": "mult",
+        "suggested_value": 1.2,
+        "confidence": "medium",
+        "falsifiable_check": "does O'Reilly's actual xGI/90 in GW1-4 rise materially versus his right-back baseline, consistent with more advanced/creative involvement in central midfield",
+        "check_by_gw": 4,
+        "logged_utc": "2026-08-26T09:32:43Z"
+      },
+      "decision": "accepted",
+      "decided_by": "Sylvan",
+      "note": "Window extended 1-4 -> 1-6 in Friday review 4 Sep 2026. Corroborated by OReilly-MCI-role-20260829-1.",
+      "status": "open"
+    },
+    {
+      "bite_id": "Szoboszlai-LIV-xg90-20260828-1",
+      "bite": {
+        "kind": "bite",
+        "id": "Szoboszlai-LIV-xg90-20260828-1",
+        "date": "2026-08-28",
+        "source_name": "agreed in chat, not sourced to an outlet",
+        "source_tier": null,
+        "source_url": null,
+        "player": "Szoboszlai",
+        "team": "LIV",
+        "category": "tactical",
+        "hypothesis": "BACKFILLED 4 Sep 2026 - reconstructed from the live Trello card (https://trello.com/c/PLWAHyFS), itself backfilled 28 Aug 2026. Penalty + free-kick + corner duty thesis, agreed directly in chat 12 Aug 2026, before the Trello board existed. Related open bites: Szoboszlai-LIV-xg90-20260820-1 (penalty order contested, Wait for more evidence) and Szoboszlai-LIV-xg90-20260826-1 (pen duty still described as shared, Reject/Expired).",
+        "field_affected": "xg90",
+        "suggested_op": "mult",
+        "suggested_value": 1.35,
+        "confidence": "medium",
+        "falsifiable_check": "is Szoboszlai confirmed first-choice penalty taker in an actual awarded penalty, not just a pre-season depth chart",
+        "check_by_gw": 6,
+        "updates_bite_id": null,
+        "logged_utc": "2026-09-04T10:43:34Z"
+      },
+      "decision": "accepted",
+      "decided_by": "Sylvan",
+      "note": "xg90 mult 1.2 (sized down from the 1.35 proposal as a double-count hedge), GWs 3-8. Duty is API-confirmed P1F1C1.",
+      "status": "open"
+    },
+    {
+      "bite_id": "Dubravka-TOT-stp-20260828-1",
+      "bite": {
+        "kind": "bite",
+        "id": "Dubravka-TOT-stp-20260828-1",
+        "date": "2026-08-28",
+        "source_name": "agreed in chat, not sourced to an outlet",
+        "source_tier": null,
+        "source_url": null,
+        "player": "Dubravka",
+        "team": "TOT",
+        "category": "rotation",
+        "hypothesis": "BACKFILLED 4 Sep 2026 - reconstructed from the live Trello card (https://trello.com/c/vU2vSmnx), itself backfilled 28 Aug 2026. Backup-to-Kinsky thesis, agreed directly in chat 9 Aug 2026, before the Trello board existed. Bench GK slot, low practical impact either way.",
+        "field_affected": "stp",
+        "suggested_op": "set",
+        "suggested_value": 0.05,
+        "confidence": "low",
+        "falsifiable_check": "does Dubravka make any league start, or does Kinsky play every minute",
+        "check_by_gw": 6,
+        "updates_bite_id": null,
+        "logged_utc": "2026-09-04T10:43:34Z"
+      },
+      "decision": "rejected",
+      "decided_by": "Sylvan",
+      "note": "Bench-GK cover, no measurable optimiser effect. Confirms the card's own pre-recorded rejection note.",
+      "status": "open"
+    },
+    {
+      "bite_id": "Rice-ARS-stp-20260828-1",
+      "bite": {
+        "kind": "bite",
+        "id": "Rice-ARS-stp-20260828-1",
+        "date": "2026-08-28",
+        "source_name": "agreed in chat, not sourced to an outlet",
+        "source_tier": null,
+        "source_url": null,
+        "player": "Rice",
+        "team": "ARS",
+        "category": "rotation",
+        "hypothesis": "BACKFILLED 4 Sep 2026 - reconstructed from the live Trello card (https://trello.com/c/OvHvmTjd), itself backfilled 28 Aug 2026. Guimaraes-shares-workload thesis, agreed directly in chat 11 Aug 2026, before the Trello board existed. Not currently owned, so no live-squad effect either way. Guimaraes was named on the Arsenal bench for the GW2 trip to Villa (31 Aug), matching his pencilled return, so the workload-sharing premise is now live rather than hypothetical.",
+        "field_affected": "stp",
+        "suggested_op": "set",
+        "suggested_value": 0.69,
+        "confidence": "low",
+        "falsifiable_check": "does Rice's start share actually fall once Guimaraes is fit and available for selection",
+        "check_by_gw": 6,
+        "updates_bite_id": null,
+        "logged_utc": "2026-09-04T10:43:34Z"
+      },
+      "decision": "deferred",
+      "decided_by": "Sylvan",
+      "note": "Not owned, low urgency. Left pending for next Friday.",
+      "status": "open"
+    }
+  ],
+  "still_pending": [
     {
       "kind": "bite",
       "id": "OReilly-MCI-stp-20260820-1",
@@ -21,10 +210,7 @@
       "check_by_gw": 1,
       "logged_utc": "2026-08-20T09:46:26Z",
       "status": "confirmed",
-      "prior_decision": null,
-      "source_accuracy": null,
-      "source_n_resolved": 1,
-      "source_stale_rate": 0.0
+      "prior_decision": null
     },
     {
       "kind": "bite",
@@ -45,10 +231,7 @@
       "check_by_gw": 1,
       "logged_utc": "2026-08-21T06:06:00Z",
       "status": "confirmed",
-      "prior_decision": null,
-      "source_accuracy": null,
-      "source_n_resolved": 1,
-      "source_stale_rate": 0.0
+      "prior_decision": null
     },
     {
       "kind": "bite",
@@ -69,10 +252,7 @@
       "check_by_gw": 2,
       "logged_utc": "2026-08-26T06:05:49Z",
       "status": "confirmed",
-      "prior_decision": null,
-      "source_accuracy": null,
-      "source_n_resolved": 1,
-      "source_stale_rate": 0.0
+      "prior_decision": null
     },
     {
       "kind": "bite",
@@ -93,10 +273,7 @@
       "check_by_gw": 2,
       "logged_utc": "2026-08-27T06:06:10Z",
       "status": "confirmed",
-      "prior_decision": null,
-      "source_accuracy": null,
-      "source_n_resolved": 1,
-      "source_stale_rate": 0.0
+      "prior_decision": null
     },
     {
       "kind": "bite",
@@ -117,10 +294,7 @@
       "check_by_gw": 3,
       "logged_utc": "2026-08-20T09:46:26Z",
       "status": "confirmed",
-      "prior_decision": null,
-      "source_accuracy": null,
-      "source_n_resolved": 1,
-      "source_stale_rate": 0.0
+      "prior_decision": null
     },
     {
       "kind": "bite",
@@ -141,10 +315,7 @@
       "check_by_gw": 3,
       "logged_utc": "2026-08-29T08:10:25Z",
       "status": "open",
-      "prior_decision": null,
-      "source_accuracy": null,
-      "source_n_resolved": 0,
-      "source_stale_rate": null
+      "prior_decision": null
     },
     {
       "kind": "bite",
@@ -165,10 +336,7 @@
       "check_by_gw": 4,
       "logged_utc": "2026-08-20T09:46:26Z",
       "status": "contradicted",
-      "prior_decision": null,
-      "source_accuracy": null,
-      "source_n_resolved": 1,
-      "source_stale_rate": 0.0
+      "prior_decision": null
     },
     {
       "kind": "bite",
@@ -189,10 +357,7 @@
       "check_by_gw": 4,
       "logged_utc": "2026-08-20T09:46:26Z",
       "status": "open",
-      "prior_decision": null,
-      "source_accuracy": null,
-      "source_n_resolved": 1,
-      "source_stale_rate": 0.0
+      "prior_decision": null
     },
     {
       "kind": "bite",
@@ -213,10 +378,7 @@
       "check_by_gw": 4,
       "logged_utc": "2026-08-23T06:05:00Z",
       "status": "superseded",
-      "prior_decision": null,
-      "source_accuracy": null,
-      "source_n_resolved": 0,
-      "source_stale_rate": 0.0
+      "prior_decision": null
     },
     {
       "kind": "bite",
@@ -242,10 +404,7 @@
       ],
       "logged_utc": "2026-08-29T08:10:25Z",
       "status": "open",
-      "prior_decision": null,
-      "source_accuracy": null,
-      "source_n_resolved": 0,
-      "source_stale_rate": null
+      "prior_decision": null
     },
     {
       "kind": "bite",
@@ -267,10 +426,7 @@
       "updates_bite_id": null,
       "logged_utc": "2026-09-01T06:05:23Z",
       "status": "open",
-      "prior_decision": null,
-      "source_accuracy": null,
-      "source_n_resolved": 0,
-      "source_stale_rate": null
+      "prior_decision": null
     },
     {
       "kind": "bite",
@@ -291,10 +447,7 @@
       "check_by_gw": 6,
       "logged_utc": "2026-08-25T07:17:17Z",
       "status": "open",
-      "prior_decision": null,
-      "source_accuracy": null,
-      "source_n_resolved": 0,
-      "source_stale_rate": null
+      "prior_decision": null
     },
     {
       "kind": "bite",
@@ -315,10 +468,7 @@
       "check_by_gw": 6,
       "logged_utc": "2026-08-26T06:05:49Z",
       "status": "open",
-      "prior_decision": null,
-      "source_accuracy": null,
-      "source_n_resolved": 1,
-      "source_stale_rate": 0.0
+      "prior_decision": null
     },
     {
       "kind": "bite",
@@ -339,10 +489,29 @@
       "check_by_gw": 6,
       "logged_utc": "2026-08-26T06:05:49Z",
       "status": "contradicted",
-      "prior_decision": null,
-      "source_accuracy": null,
-      "source_n_resolved": 1,
-      "source_stale_rate": 0.0
+      "prior_decision": null
+    },
+    {
+      "kind": "bite",
+      "id": "Rice-ARS-stp-20260828-1",
+      "date": "2026-08-28",
+      "source_name": "agreed in chat, not sourced to an outlet",
+      "source_tier": null,
+      "source_url": null,
+      "player": "Rice",
+      "team": "ARS",
+      "category": "rotation",
+      "hypothesis": "BACKFILLED 4 Sep 2026 - reconstructed from the live Trello card (https://trello.com/c/OvHvmTjd), itself backfilled 28 Aug 2026. Guimaraes-shares-workload thesis, agreed directly in chat 11 Aug 2026, before the Trello board existed. Not currently owned, so no live-squad effect either way. Guimaraes was named on the Arsenal bench for the GW2 trip to Villa (31 Aug), matching his pencilled return, so the workload-sharing premise is now live rather than hypothetical.",
+      "field_affected": "stp",
+      "suggested_op": "set",
+      "suggested_value": 0.69,
+      "confidence": "low",
+      "falsifiable_check": "does Rice's start share actually fall once Guimaraes is fit and available for selection",
+      "check_by_gw": 6,
+      "updates_bite_id": null,
+      "logged_utc": "2026-09-04T10:43:34Z",
+      "status": "open",
+      "prior_decision": "deferred"
     },
     {
       "kind": "bite",
@@ -367,10 +536,7 @@
       ],
       "logged_utc": "2026-09-01T06:05:23Z",
       "status": "open",
-      "prior_decision": null,
-      "source_accuracy": null,
-      "source_n_resolved": 0,
-      "source_stale_rate": null
+      "prior_decision": null
     },
     {
       "kind": "bite",
@@ -394,10 +560,7 @@
       ],
       "logged_utc": "2026-09-01T06:05:23Z",
       "status": "open",
-      "prior_decision": null,
-      "source_accuracy": null,
-      "source_n_resolved": 0,
-      "source_stale_rate": null
+      "prior_decision": null
     }
   ]
 }

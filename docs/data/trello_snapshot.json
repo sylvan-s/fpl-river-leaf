@@ -1,206 +1,238 @@
 {
- "generated_utc": "2026-09-01T06:09:00Z",
- "board_name": "FPL News Management",
- "board_url": "https://trello.com/b/AEOlxhen/fpl-news-management",
- "board_note": "Persistent triage board for the fpl-daily-intel-sweep / fpl-friday-intel-review pipeline. Renamed by hand in Trello 28 Aug 2026 from the original 'FPL Intel Review — GW2' (a one-time cosmetic label from creation) to a name that doesn't imply a per-gameweek board. Confirmed via trelloReadBoard: board ID unchanged, name is now 'FPL News Management', URL slug updated to fpl-news-management (the old fpl-intel-review-gw2 slug still redirects here).",
- "lists": [
-  {
-   "name": "Backlog",
-   "cards": [
+  "generated_utc": "2026-09-04T10:40:53Z",
+  "board_name": "FPL News Management",
+  "board_url": "https://trello.com/b/AEOlxhen/fpl-news-management",
+  "board_note": "Persistent triage board for the fpl-daily-intel-sweep / fpl-friday-intel-review pipeline. Renamed by hand in Trello 28 Aug 2026 from the original 'FPL Intel Review \u2014 GW2' (a one-time cosmetic label from creation) to a name that doesn't imply a per-gameweek board. Confirmed via trelloReadBoard: board ID unchanged, name is now 'FPL News Management', URL slug updated to fpl-news-management (the old fpl-intel-review-gw2 slug still redirects here).",
+  "lists": [
     {
-     "name": "Dango (BRE) — dropped for GW2, start-rate risk",
-     "url": "https://trello.com/c/KD2CDma7",
-     "bite_ids": [
-      "Dango-BRE-stp-20260901-1"
-     ],
-     "note": "New 1 Sep 2026 - owned live-XI player dropped for GW2, start-rate risk the 81% priors assumption cannot see"
+      "name": "Wait for more evidence",
+      "cards": [
+        {
+          "name": "Dango (BRE) \u2014 dropped for GW2, start-rate risk",
+          "url": "https://trello.com/c/KD2CDma7/27-dango-bre-dropped-for-gw2-start-rate-risk",
+          "bite_ids": [
+            "Dango-BRE-stp-20260901-1"
+          ]
+        },
+        {
+          "name": "Caicedo (CHE) \u2014 re-aggravated knock v Brighton",
+          "url": "https://trello.com/c/6DELu06L/31-caicedo-che-re-aggravated-knock-v-brighton",
+          "bite_ids": [
+            "Caicedo-CHE-injury-20260903-1"
+          ]
+        },
+        {
+          "name": "Villa (squad-wide) \u2014 sign Jackson (ex-CHE) as Watkins replacement",
+          "url": "https://trello.com/c/KB1DT5kq/28-villa-squad-wide-sign-jackson-ex-che-as-watkins-replacement",
+          "bite_ids": [
+            "AstonVilla-AVL-transfers-20260902-1"
+          ]
+        },
+        {
+          "name": "Ndiaye (EVE\u2192MCI) \u2014 deadline-day \u00a365m signing",
+          "url": "https://trello.com/c/zsd4QZzw/30-ndiaye-eve%E2%86%92mci-deadline-day-65m-signing",
+          "bite_ids": [
+            "Ndiaye-MCI-transfer-20260903-1"
+          ]
+        },
+        {
+          "name": "Konsa (AVL\u2192ARS) \u2014 deadline-day CB signing",
+          "url": "https://trello.com/c/adM5Ajvp/34-konsa-avl%E2%86%92ars-deadline-day-cb-signing",
+          "bite_ids": [
+            "Konsa-ARS-transfer-20260904-1"
+          ]
+        },
+        {
+          "name": "Justin (LEE) \u2014 possible shift to central defence",
+          "url": "https://trello.com/c/pqgginRd/35-justin-lee-possible-shift-to-central-defence",
+          "bite_ids": [
+            "Justin-LEE-role-20260904-1"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Take action",
+      "cards": [
+        {
+          "name": "Enzo Fernandez (CHE\u2192MCI) \u2014 deadline-day \u00a3125m signing",
+          "url": "https://trello.com/c/anIaFGBl/29-enzo-fernandez-che%E2%86%92mci-deadline-day-125m-signing",
+          "bite_ids": [
+            "EnzoFernandez-MCI-transfer-20260901-1"
+          ]
+        },
+        {
+          "name": "Sarr (CRY) \u2014 groin injury, unavailable [merged]",
+          "url": "https://trello.com/c/6EyhuC75/7-sarr-cry-groin-injury-unavailable-merged",
+          "bite_ids": [
+            "Sarr-CRY-injury-20260827-1",
+            "Sarr-CRY-injury-20260826-1"
+          ]
+        },
+        {
+          "name": "Szoboszlai (LIV) \u2014 xg90 mult 1.35, pulled pending re-approval",
+          "url": "https://trello.com/c/PLWAHyFS/21-szoboszlai-liv-xg90-mult-135-pulled-pending-re-approval",
+          "bite_ids": [
+            "Szoboszlai-LIV-xg90-20260828-1"
+          ]
+        },
+        {
+          "name": "Anderson (MCI) \u2014 xgi90 mult 1.15, pulled pending re-approval",
+          "url": "https://trello.com/c/5qOSpiim/23-anderson-mci-xgi90-mult-115-pulled-pending-re-approval",
+          "bite_ids": [
+            "Anderson-MCI-xgi90-20260828-1"
+          ]
+        },
+        {
+          "name": "Villa (squad-wide) \u2014 xgi90 mult 0.70 applied",
+          "url": "https://trello.com/c/Mt57L2rS/16-villa-squad-wide-xgi90-mult-070-applied",
+          "bite_ids": [
+            "AstonVilla-AVL-xgi90-20260825-1"
+          ]
+        },
+        {
+          "name": "O'Reilly (MCI) \u2014 central-midfield role, both levers [merged]",
+          "url": "https://trello.com/c/9uwRjJmv/12-oreilly-mci-central-midfield-role-both-levers-merged",
+          "bite_ids": [
+            "OReilly-MCI-cbit90-20260826-1",
+            "OReilly-MCI-cbit90-20260826-2",
+            "OReilly-MCI-xgi90-20260826-1",
+            "OReilly-MCI-role-20260829-1"
+          ]
+        },
+        {
+          "name": "Mosquera (ARS) \u2014 minutes opening, Saliba/Timber out [merged]",
+          "url": "https://trello.com/c/1M4cWmG8/2-mosquera-ars-minutes-opening-saliba-timber-out-merged",
+          "bite_ids": [
+            "Mosquera-ARS-stp-20260821-1",
+            "Saliba-ARS-stp-20260820-1"
+          ]
+        },
+        {
+          "name": "Dubravka (TOT) \u2014 stp set 0.05, pulled pending re-approval",
+          "url": "https://trello.com/c/vU2vSmnx/24-dubravka-tot-stp-set-005-pulled-pending-re-approval",
+          "bite_ids": [
+            "Dubravka-TOT-stp-20260828-1"
+          ]
+        },
+        {
+          "name": "Rice (ARS) \u2014 stp set 0.69, pulled pending re-approval",
+          "url": "https://trello.com/c/OvHvmTjd/25-rice-ars-stp-set-069-pulled-pending-re-approval",
+          "bite_ids": [
+            "Rice-ARS-stp-20260828-1"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Reject / Expired",
+      "cards": [
+        {
+          "name": "Szoboszlai (LIV) \u2014 pen order contradicted, then confirmed",
+          "url": "https://trello.com/c/EElPpXif/9-szoboszlai-liv-pen-order-contradicted-then-confirmed",
+          "bite_ids": [
+            "Szoboszlai-LIV-xg90-20260820-1"
+          ]
+        },
+        {
+          "name": "Guimar\u00e3es Arsenal injury update",
+          "url": "https://trello.com/c/WfC5WLQu/20-guimar%C3%A3es-arsenal-injury-update",
+          "bite_ids": [
+            "Guimaraes-ARS-injury-20260826-1",
+            "Guimaraes-ARS-injury-20260821-1"
+          ]
+        },
+        {
+          "name": "Ndiaye (EVE) \u2014 xg90 mult 1.25, pulled pending re-approval",
+          "url": "https://trello.com/c/EXDafHbw/22-ndiaye-eve-xg90-mult-125-pulled-pending-re-approval",
+          "bite_ids": [
+            "Ndiaye-MCI-transfer-20260903-1"
+          ]
+        },
+        {
+          "name": "Sarr (CRY) \u2014 Liverpool/Galatasaray bids fall away, staying at Palace",
+          "url": "https://trello.com/c/HY1DyJzn/26-sarr-cry-liverpool-galatasaray-bids-fall-away-staying-at-palace",
+          "bite_ids": [
+            "Sarr-CRY-transfer-20260829-1"
+          ]
+        },
+        {
+          "name": "Anderson (MCI) \u2014 subbed 63', cramp not injury",
+          "url": "https://trello.com/c/vCQzi7SZ/6-anderson-mci-subbed-63-cramp-not-injury",
+          "bite_ids": [
+            "Anderson-MCI-injury-20260827-1"
+          ]
+        },
+        {
+          "name": "Guimar\u00e3es (ARS) \u2014 Arteta: \"not weeks\"",
+          "url": "https://trello.com/c/Zttq1wnd/11-guimar%C3%A3es-ars-arteta-not-weeks",
+          "bite_ids": [
+            "Guimaraes-ARS-injury-20260823-1"
+          ]
+        },
+        {
+          "name": "Maresca now permanent MCI manager",
+          "url": "https://trello.com/c/H1pgS3C4/8-maresca-now-permanent-mci-manager",
+          "bite_ids": [
+            "Maresca-MCI-managerchange-20260820-1"
+          ]
+        },
+        {
+          "name": "Villa (squad-wide) \u2014 defensive-solidity mirror, no fence mechanism",
+          "url": "https://trello.com/c/7jigM2T5/17-villa-squad-wide-defensive-solidity-mirror-no-fence-mechanism",
+          "bite_ids": [
+            "AstonVilla-AVL-defsolidity-20260825-1"
+          ]
+        },
+        {
+          "name": "O'Reilly (MCI) \u2014 RB start-rate threat",
+          "url": "https://trello.com/c/6RDshftJ/1-oreilly-mci-rb-start-rate-threat",
+          "bite_ids": [
+            "OReilly-MCI-stp-20260820-1"
+          ]
+        },
+        {
+          "name": "Anderson (MCI) \u2014 No.6 vs advanced role open",
+          "url": "https://trello.com/c/X6Mlepyn/10-anderson-mci-no6-vs-advanced-role-open",
+          "bite_ids": [
+            "Anderson-MCI-xgi90-20260820-1"
+          ]
+        },
+        {
+          "name": "Villa (squad-wide) \u2014 Watkins staying, Cash/Mings return timelines",
+          "url": "https://trello.com/c/0oVkV8ne/19-villa-squad-wide-watkins-staying-cash-mings-return-timelines",
+          "bite_ids": [
+            "AstonVilla-AVL-transfers-20260826-1"
+          ]
+        },
+        {
+          "name": "Szoboszlai (LIV) \u2014 pen duty still described as shared",
+          "url": "https://trello.com/c/3VBSAdDp/18-szoboszlai-liv-pen-duty-still-described-as-shared",
+          "bite_ids": [
+            "Szoboszlai-LIV-xg90-20260826-1"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Ops",
+      "cards": [
+        {
+          "name": "Open questions \u2014 evidence wanted",
+          "url": "https://trello.com/c/Vw4ArAh0/32-open-questions-evidence-wanted",
+          "bite_ids": [
+            "Caicedo-CHE-injury-20260903-1",
+            "Dango-BRE-stp-20260901-1",
+            "AstonVilla-AVL-transfers-20260902-1",
+            "Ndiaye-MCI-transfer-20260903-1"
+          ]
+        },
+        {
+          "name": "Pipeline status",
+          "url": "https://trello.com/c/KSuM04Vn/33-pipeline-status",
+          "bite_ids": []
+        }
+      ]
     }
-   ]
-  },
-  {
-   "name": "Wait for more evidence",
-   "cards": [
-    {
-     "name": "Szoboszlai (LIV) — pen order contradicted, then confirmed",
-     "url": "https://trello.com/c/EElPpXif",
-     "bite_ids": [
-      "Szoboszlai-LIV-xg90-20260820-1"
-     ]
-    },
-    {
-     "name": "Villa (squad-wide) — Watkins staying, Cash/Mings return timelines",
-     "url": "https://trello.com/c/0oVkV8ne",
-     "bite_ids": [
-      "AstonVilla-AVL-transfers-20260826-1"
-     ],
-     "note": "Resolved contradicted 1 Sep 2026 - Watkins joined Al-Hilal, Martinez joined Chelsea, Cash started GW2 despite a '3-4 weeks' report"
-    },
-    {
-     "name": "Sarr (CRY) — Liverpool/Galatasaray bids fall away, staying at Palace",
-     "url": "https://trello.com/c/HY1DyJzn",
-     "bite_ids": [
-      "Sarr-CRY-transfer-20260829-1"
-     ]
-    },
-    {
-     "name": "Dubravka (TOT) — stp set 0.05, pulled pending re-approval",
-     "url": "https://trello.com/c/vU2vSmnx",
-     "bite_ids": [],
-     "note": "Backfilled 28 Aug 2026 - pulled from ROLE_INTEL.md's live adjustments fence because it was agreed directly in chat before this board existed, with no Take Action card behind it"
-    },
-    {
-     "name": "Ndiaye (EVE) — xg90 mult 1.25, pulled pending re-approval",
-     "url": "https://trello.com/c/EXDafHbw",
-     "bite_ids": [],
-     "note": "Backfilled 28 Aug 2026 - pulled from ROLE_INTEL.md's live adjustments fence because it was agreed directly in chat before this board existed, with no Take Action card behind it"
-    },
-    {
-     "name": "Rice (ARS) — stp set 0.69, pulled pending re-approval",
-     "url": "https://trello.com/c/OvHvmTjd",
-     "bite_ids": [],
-     "note": "Backfilled 28 Aug 2026 - pulled from ROLE_INTEL.md's live adjustments fence because it was agreed directly in chat before this board existed, with no Take Action card behind it"
-    }
-   ]
-  },
-  {
-   "name": "Take action",
-   "cards": [
-    {
-     "name": "Sarr (CRY) — groin, missed GW1",
-     "url": "https://trello.com/c/5o1fHg6U",
-     "bite_ids": [
-      "Sarr-CRY-injury-20260826-1"
-     ]
-    },
-    {
-     "name": "Sarr (CRY) — downgraded to INJURED/0%",
-     "url": "https://trello.com/c/6EyhuC75",
-     "bite_ids": [
-      "Sarr-CRY-injury-20260827-1"
-     ]
-    },
-    {
-     "name": "Villa (squad-wide) — xgi90 mult 0.70 proposed",
-     "url": "https://trello.com/c/Mt57L2rS",
-     "bite_ids": [
-      "AstonVilla-AVL-xgi90-20260825-1"
-     ],
-     "note": "Corroborated 1 Sep 2026 by a second scoreless Villa game (0-1 Arsenal, no shot on target, ~0.3 xG); two of its 14 accepted fence rows (Watkins, Martinez) are now dead after both players left the club"
-    },
-    {
-     "name": "Saliba/Timber (ARS) — return windows longer than coded",
-     "url": "https://trello.com/c/R4vzpqxG",
-     "bite_ids": [
-      "Saliba-ARS-stp-20260820-1"
-     ]
-    },
-    {
-     "name": "Mosquera (ARS) — minutes-opening confirmed",
-     "url": "https://trello.com/c/1M4cWmG8",
-     "bite_ids": [
-      "Mosquera-ARS-stp-20260821-1"
-     ]
-    },
-    {
-     "name": "O'Reilly (MCI) — CBIT rate at risk from midfield role",
-     "url": "https://trello.com/c/9uwRjJmv",
-     "bite_ids": [
-      "OReilly-MCI-cbit90-20260826-1",
-      "OReilly-MCI-role-20260829-1"
-     ]
-    },
-    {
-     "name": "O'Reilly (MCI) — CBIT sized at mult 0.8",
-     "url": "https://trello.com/c/d2ho9TDR",
-     "bite_ids": [
-      "OReilly-MCI-cbit90-20260826-2",
-      "OReilly-MCI-role-20260829-1"
-     ]
-    },
-    {
-     "name": "O'Reilly (MCI) — xGI sized at mult 1.2",
-     "url": "https://trello.com/c/n7EbJX24",
-     "bite_ids": [
-      "OReilly-MCI-xgi90-20260826-1",
-      "OReilly-MCI-role-20260829-1"
-     ]
-    },
-    {
-     "name": "Szoboszlai (LIV) — xg90 mult 1.35, pulled pending re-approval",
-     "url": "https://trello.com/c/PLWAHyFS",
-     "bite_ids": [],
-     "note": "Backfilled 28 Aug 2026 - pulled from ROLE_INTEL.md's live adjustments fence because it was agreed directly in chat before this board existed, with no Take Action card behind it"
-    },
-    {
-     "name": "Anderson (MCI) — xgi90 mult 1.15, pulled pending re-approval",
-     "url": "https://trello.com/c/5qOSpiim",
-     "bite_ids": [],
-     "note": "Backfilled 28 Aug 2026 - pulled from ROLE_INTEL.md's live adjustments fence because it was agreed directly in chat before this board existed, with no Take Action card behind it"
-    }
-   ]
-  },
-  {
-   "name": "Reject / Expired",
-   "cards": [
-    {
-     "name": "O'Reilly (MCI) — RB start-rate threat",
-     "url": "https://trello.com/c/6RDshftJ",
-     "bite_ids": [
-      "OReilly-MCI-stp-20260820-1"
-     ]
-    },
-    {
-     "name": "Anderson (MCI) — subbed 63', cramp not injury",
-     "url": "https://trello.com/c/vCQzi7SZ",
-     "bite_ids": [
-      "Anderson-MCI-injury-20260827-1"
-     ]
-    },
-    {
-     "name": "Maresca now permanent MCI manager",
-     "url": "https://trello.com/c/H1pgS3C4",
-     "bite_ids": [
-      "Maresca-MCI-managerchange-20260820-1"
-     ]
-    },
-    {
-     "name": "Anderson (MCI) — No.6 vs advanced role open",
-     "url": "https://trello.com/c/X6Mlepyn",
-     "bite_ids": [
-      "Anderson-MCI-xgi90-20260820-1"
-     ]
-    },
-    {
-     "name": "Guimarães (ARS) — Arteta: \"not weeks\"",
-     "url": "https://trello.com/c/Zttq1wnd",
-     "bite_ids": [
-      "Guimaraes-ARS-injury-20260823-1"
-     ]
-    },
-    {
-     "name": "Guimarães Arsenal injury update",
-     "url": "https://trello.com/c/WfC5WLQu",
-     "bite_ids": [
-      "Guimaraes-ARS-injury-20260826-1",
-      "Guimaraes-ARS-injury-20260821-1"
-     ],
-     "note": "Resolved confirmed 1 Sep 2026 - Guimaraes named on the Arsenal bench for the GW2 trip to Villa (31 Aug), matching the pencilled 31 Aug return"
-    },
-    {
-     "name": "Villa (squad-wide) — defensive-solidity mirror, no fence mechanism",
-     "url": "https://trello.com/c/7jigM2T5",
-     "bite_ids": [
-      "AstonVilla-AVL-defsolidity-20260825-1"
-     ]
-    },
-    {
-     "name": "Szoboszlai (LIV) — pen duty still described as shared",
-     "url": "https://trello.com/c/3VBSAdDp",
-     "bite_ids": [
-      "Szoboszlai-LIV-xg90-20260826-1"
-     ]
-    }
-   ]
-  }
- ]
+  ]
 }

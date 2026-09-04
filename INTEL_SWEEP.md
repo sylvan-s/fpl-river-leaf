@@ -246,28 +246,57 @@ not "intel" in the falsifiable-hypothesis sense this pipeline logs.
 `fpl-friday-intel-review`, every Friday at 07:30, ahead of the
 `fpl-weekly-deadline-brief` transfer-strategy task.
 
-1. Runs `score_source_reliability.py` then `build_intel_review.py`, which
-   builds `INTEL_REVIEW.md` — every bite with no decision yet (or previously
-   `deferred`), each paired with its source's current accuracy/n/stale-rate
-   from the scorecard, plus its resolution status so far.
-2. Presents that queue to Sylvan alongside the full `SOURCE_RELIABILITY.md`
-   table, and asks explicitly: **accept / reject / defer**, per bite. The
-   task waits for his reply rather than guessing.
-3. On reply, appends one `decision` record per bite to
-   `docs/data/intel_sweep_log.jsonl` — the one record kind in this log that
-   is **not** first-write-stands: Sylvan can change his mind, and the latest
-   decision for a given bite wins.
-4. **Only `accepted` bites with a `field_affected` get written into the
+**Decisions are made on Trello now, not in chat.** Each `Take action` card
+carries a "Modelling" section with checklist rows to tick — accept/reject/
+defer per bite — added by the Curator/Modeller passes during the week. The
+Friday review no longer presents a queue and waits for a reply; it reads
+whatever is already ticked.
+
+1. Reads every `Take action` card's checklist via the Trello MCP and, for
+   each ticked row, resolves the decision (accepted/rejected/deferred).
+2. **The Applier — `apply_intel_decisions.py`.** Appends one `decision`
+   record per decided bite to `docs/data/intel_sweep_log.jsonl` — the one
+   record kind in this log that is **not** first-write-stands: Sylvan can
+   change his mind, and the latest decision for a given bite wins. Reuse the
+   bite ID from the card's `ID:` line **verbatim** — Trello and this log
+   already share one ID scheme. The script itself refuses (writes nothing)
+   if a bite_id has no matching `bite` record in the log — this is not a
+   theoretical guard: `EnzoFernandez-MCI-transfer-20260901-1` and three other
+   bites reached `decision` on 4 Sep 2026 with no `bite` record ever logged
+   behind them, invisible to `score_source_reliability.py`'s scoring until
+   backfilled by hand that day. It also dedupes on bite_id + date + decision
+   so a re-run of an already-processed checklist doesn't pad the log with
+   identical lines — see the script's own docstring for the exact contract,
+   and `test_apply_intel_decisions.py` for the regression proof that none of
+   this touches `score_source_reliability.py`'s output.
+   ```bash
+   python3 apply_intel_decisions.py decisions.json
+   ```
+3. Runs `score_source_reliability.py` (weekly scorecard refresh — unchanged
+   by any of this).
+4. **Runs `build_intel_review.py` — AFTER step 2, not before.** It now reads
+   the decisions the Applier just wrote and renders `INTEL_REVIEW.md` as a
+   **retrospective record** of that week's outcomes (what was accepted/
+   rejected/deferred, and why) plus what's still open on the board — it is
+   not a queue and nothing in it waits for a reply. The old "present the
+   queue, wait for Sylvan's answer" flow this replaced is why the script used
+   to run first; it doesn't need to any more.
+5. **Only `accepted` bites with a `field_affected` get written into the
    `setpieces`/`adjustments` fence**, following the exact format the fence
-   already uses, with the `why` column stating it was accepted in that
-   week's review. `rejected` bites get a one-line dated note in the
-   narrative section and nothing else. `deferred` bites simply reappear in
-   next week's queue.
-5. Refreshes `docs/data/trello_snapshot.json` (same method as step 4 of the
+   already uses, with the `why` column citing the bite ID(s) behind it (see
+   "Trello-gated since 28 Aug 2026" below the fence in this file) and stating
+   it was accepted in that week's review. `rejected` bites get a one-line
+   dated note in the narrative section and nothing else. `deferred` bites
+   simply reappear as still-open cards on the board.
+6. Refreshes `docs/data/trello_snapshot.json` (same method as step 4 of the
    daily sweep — fetch the board via the Trello MCP, write the file) so the
-   public page reflects however Sylvan actually sorted the cards, then runs
-   `build_intel_page.py` + `node verify_pages.js`, regenerates the queue, and
-   commits everything, including the two derived reports.
+   public page reflects however Sylvan actually sorted the cards **and any
+   card merges/archives from the week** — a snapshot left stale across a
+   merge is exactly how a fence row's source link goes dangling (found and
+   fixed 4 Sep 2026: a 3 Sep card merge orphaned two links because the
+   snapshot hadn't been refreshed since 1 Sep). Then runs `build_intel_page.
+   py` + `node verify_pages.js`, and commits everything, including the two
+   derived reports.
 
 **Resolution and decision are independent axes.** A bite can be `open`
 (nobody has confirmed or contradicted the claim yet) and still be `accepted`
@@ -438,13 +467,19 @@ mount already keeps his working tree current.
   [{name, cards: [{name, url, bite_ids, note?}]}]}`), refreshed by step 4
   (or the Friday review's own commit step) and read by
   `build_intel_page.py`. Not hand-edited; not a live feed.
-- `score_source_reliability.py` — per-source scorer; `build_intel_review.py`
-  — Friday decision-queue builder; both regenerate weekly, do not hand-edit
-  their outputs
+- `apply_intel_decisions.py` — the Applier; writes `decision` records from
+  Trello checklist reads, validated (bite must exist) and deduped (bite_id +
+  date + decision). See its own docstring and
+  `test_apply_intel_decisions.py` for the regression proof it doesn't change
+  what `score_source_reliability.py` computes.
+- `score_source_reliability.py` — per-source scorer, unchanged by any of
+  this; `build_intel_review.py` — runs AFTER the Applier now, builds
+  `INTEL_REVIEW.md` as a retrospective of that week's decisions, not a queue;
+  both regenerate weekly, do not hand-edit their outputs
 - `docs/data/source_scorecard.json` / `SOURCE_RELIABILITY.md` — generated,
   full per-source track record
 - `docs/data/intel_review_queue.json` / `INTEL_REVIEW.md` — generated,
-  this week's pending decisions
+  this week's decided-and-still-pending record (retrospective, see above)
 - `ROLE_INTEL.md` — the curated narrative overlay the daily sweep feeds
   directly; its `setpieces`/`adjustments` fences are written **only** by the
   Friday review, on Sylvan's explicit accept
