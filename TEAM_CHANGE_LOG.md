@@ -715,17 +715,35 @@ so the group matched **one** member instead of two and
 `_apply_role_rivals()` skipped it by design ("silently skips a group with 0 or
 1 members present"). It now binds.
 
-**Consequences to review (not applied — Sylvan's call):**
+**Fence updated the same day, on Sylvan's instruction.** The corrected club
+fixes a mover's fixture run; it does nothing about his rates, which still
+describe the club he left. The `contaminated` fence covered none of the 15.
 
-- **15 movers have a corrected club but an old club's rates.** The fence
-  covers none of them. `fetch_gw_history.py` now prints them as ready-to-paste
-  fence lines.
-- **The `Grealish | EVE -> MCI` fence line is now dead.** He is back at
-  Everton, so his 2025/26 Everton record is no longer contaminated; he
-  re-enters the pool (248 -> 249) and the line excludes nobody.
+- **15 lines added, `Grealish` removed — the block goes 19 -> 33.** Grealish is
+  back at **Everton**, so his 2025/26 Everton record describes his current club
+  and is not contaminated; his line excluded nobody. Audited every fence name
+  against every pool row before writing: **33 lines, 33 exclusions, no
+  collateral.** Two same-surname near-misses were spared by the team match —
+  Dean Henderson (CRY), and a **new** one this fence introduced, Martinez at
+  MUN, who is not the Emi Martinez the `AVL -> CHE` line means. That is the
+  Henderson collision `_contaminated()` was built for, firing correctly.
+- **The block can no longer be regenerated in one run, and that is a trap.** A
+  fenced player leaves the pool, and the sweep only walks the pool, so the next
+  run cannot see anyone already listed. `club_changes.json` today holds the 15
+  post-snapshot movers and none of the 18 earlier ones. **Append, never
+  replace** — written into ROLE_INTEL.md above the block.
+- **What it costs: Enzo.** Pool 249 -> 234. This week's recommendation is
+  **unchanged** at 1 and 2 transfers (`Virgil -> O'Reilly`, +0.82 xP/90), so no
+  live decision moves. But the from-scratch optimum does: Enzo (MID, MCI,
+  £6.9m, xP 5.39) was **in the wildcard-optimal 15** and is now excluded,
+  57.57 -> **57.31 xP/90**, formation 3-5-2 -> 3-4-3 with Thiago in. That 5.39
+  was a Chelsea record wearing a City badge, which is the whole point — but it
+  means any wildcard or rebuild costed before today was reading Enzo too
+  favourably. `--allow-contaminated` still includes him, loudly, for a Tier-1
+  judgement.
 - **`Guessand | AVL` in the `adjustments` fence no longer matches** — he is at
   Palace, so the Villa-exodus haircut correctly stops following him, and
-  `load()` now says so out loud.
+  `load()` now says so out loud. (He is separately fenced as contaminated.)
 
 **Also.** `optimise_squad.py` printed `OBJECTIVE: xP_adj over GW1-4` for a
 window correctly stamped GW4 — it hardcoded the start at GW1. The weekly

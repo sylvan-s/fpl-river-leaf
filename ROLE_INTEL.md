@@ -854,9 +854,15 @@ reflected in the `team` field. So a July 2026 signing reads as
 as a January mover, over a window that moves far more players. The check only
 becomes reliable for transfers made **after 8 Aug 2026**.
 
-`stp` is affected as badly as the rate stats: `last16_starts.json` keys on
-`name|CURRENT_team`, so a mover's start rate is last season's club's start rate
+`stp` is affected as badly as the rate stats. `last16_starts.json` holds a
+mover's start rate **at his old club**, so it is last season's club's start rate
 wearing this season's badge. **That is the number the 75% gate reads.**
+(Mechanical note, corrected 7 Sep 2026: this used to say the file "keys on
+`name|CURRENT_team`". It keys on the club in the frozen 8 Aug snapshot, and
+since 7 Sep `build_squad.load()` looks it up with `team_prior` — that snapshot
+club — precisely so the lookup keeps hitting now that `r["team"]` is live. The
+lookup is correct; the *value* is still the old club's, which is why this fence
+exists.)
 
 List movers here. Their personal prior is skipped and the D2 ladder falls
 through to team × position at the new club.
@@ -864,34 +870,88 @@ through to team × position at the new club.
 Format: `player | reason`.
 
 
-**DERIVED, NOT HAND-MAINTAINED — regenerated 9 Aug 2026.** This block used to
-be kept by hand and listed 5 players. `fetch_gw_history.py` compares each
-player's **current** club against the club the archive says he actually played
-for in 2025/26, and found **19**. The hand-kept list was missing 14, including
-**Robertson, Senesi, Tonali and Van Hecke** — four of Tottenham's five arrivals.
+**DERIVED, NOT HAND-MAINTAINED.** This block used to be kept by hand and
+listed 5 players. `fetch_gw_history.py` compares each player's **current** club
+against the club the archive says he actually played for in 2025/26. The 9 Aug
+2026 run found **19** — the hand-kept list was missing 14, including
+**Robertson, Senesi, Tonali and Van Hecke**, four of Tottenham's five arrivals.
 
-Regenerate with `python3 fetch_gw_history.py`; the machine-readable output is
-`docs/data/club_changes.json`. **Do not edit the block below by hand.**
+**APPEND, NEVER REPLACE — added 7 Sep 2026.** The block is now the **union of
+two sweeps** and a single `fetch_gw_history.py` run does *not* reproduce it:
+
+| sweep | found | in the block |
+|---|---|---|
+| 9 Aug 2026 (moves completed before the 8 Aug snapshot) | 19 | 18 — Grealish removed, see below |
+| 7 Sep 2026 (moves completed after it, incl. deadline day) | 15 | 15 |
+
+That is not an accident of timing, it is **structural, and it is a trap**: a
+fenced player is excluded from the pool, and the sweep only walks the pool, so
+**the next run cannot see anyone already listed here.** Today's
+`docs/data/club_changes.json` holds the 15 post-snapshot movers and none of the
+18 earlier ones. Paste new lines in; never overwrite the block with a fresh
+run's output, or the 18 silently vanish and 18 contaminated priors quietly
+re-enter the pool.
+
+**Why the 7 Sep sweep found 15 that 9 Aug could not.** Until 7 Sep both sides
+of the sweep's comparison came from the same frozen 8 Aug snapshot, so it could
+only ever see a move completed *before* that date. Konsa (AVL -> ARS, deadline
+day) matched cleanly, read AVL from the archive, read AVL from the pool, and was
+correctly judged to have not moved — landing in neither `club_changes.json` nor
+the `unmatched` list. `build_squad.load()` now reads the club live, so the two
+sides can disagree again. See TEAM_CHANGE_LOG.md, 7 Sep 2026.
+
+**Grealish removed 7 Sep 2026.** His line said `EVE -> MCI`. He is back at
+**Everton**, so his 2025/26 Everton record describes the club he now plays for
+and is not contaminated. The line excluded nobody (a fence entry only fires when
+the destination matches the row's live club), so it was dead weight pointing at
+the wrong answer. He re-enters the pool.
+
+**A fence line is an exclusion, not a correction.** These 33 players are removed
+from selection entirely — Tier 1 under SELECTION_FRAMEWORK.md, "the model is not
+wrong here, it is INAPPLICABLE". Their *club* is now right (fixtures, the
+3-per-club cap, `--role-rivals`), but their *rates* still describe the old club
+and there is no team-baseline fallback in `build_squad.py` to substitute. To
+consider one of them anyway, `--allow-contaminated` includes them and says so;
+assess them on Tier-1 grounds, never on the number that comes back.
+
+Regenerate the new-movers half with `python3 fetch_gw_history.py`; the
+machine-readable output is `docs/data/club_changes.json`. **Do not hand-write a
+line the sweep could have produced** — take the wording from its output, which
+prints ready-to-paste lines for exactly this.
 
 The earlier caveat that "absence is not evidence" no longer applies to anyone
-the archive covers — 261 of 267 pool players are matched. It still applies to
+the archive covers — 243 of 249 pool players are matched. It still applies to
 the 6 unmatched, listed in `docs/data/provenance.json`.
 
 ```contaminated
+Bruno G.      | NEW -> ARS; 2025/26 record is a NEW record
+Konsa         | AVL -> ARS; 2025/26 record is a AVL record
 Garnacho      | CHE -> AVL; 2025/26 record is a CHE record
 Struijk       | LEE -> BHA; 2025/26 record is a LEE record
 Henderson     | BRE -> CHE; 2025/26 record is a BRE record
 Lacroix       | CRY -> CHE; 2025/26 record is a CRY record [IN SQUAD]
+Martinez      | AVL -> CHE; 2025/26 record is a AVL record
 Rogers        | AVL -> CHE; 2025/26 record is a AVL record
 Welbeck       | BHA -> CHE; 2025/26 record is a BHA record
+Guessand      | AVL -> CRY; 2025/26 record is a AVL record
+McNeil        | EVE -> CRY; 2025/26 record is a EVE record
 Strand Larsen | WOL -> CRY; 2025/26 record is a WOL record
+Johnson       | CRY -> EVE; 2025/26 record is a CRY record
+Iroegbunam    | EVE -> HUL; 2025/26 record is a EVE record
+Lukić         | FUL -> IPS; 2025/26 record is a FUL record
 Anderson      | NFO -> MCI; 2025/26 record is a NFO record
-Grealish      | EVE -> MCI; 2025/26 record is a EVE record
+Enzo          | CHE -> MCI; 2025/26 record is a CHE record
 Guéhi         | CRY -> MCI; 2025/26 record is a CRY record
+Ndiaye        | EVE -> MCI; 2025/26 record is a EVE record
 Semenyo       | BOU -> MCI; 2025/26 record is a BOU record
 Andrey Santos | CHE -> MUN; 2025/26 record is a CHE record
+Baleba        | BHA -> MUN; 2025/26 record is a BHA record
 Darlow        | LEE -> MUN; 2025/26 record is a LEE record
 Tielemans     | AVL -> MUN; 2025/26 record is a AVL record
+N.Gonzalez    | MCI -> NEW; 2025/26 record is a MCI record
+Delap         | CHE -> NFO; 2025/26 record is a CHE record
+Muñoz         | CRY -> NFO; 2025/26 record is a CRY record
+Danso         | TOT -> SUN; 2025/26 record is a TOT record
 Dubravka      | BUR -> TOT; 2025/26 record is a BUR record [IN SQUAD]
 Robertson     | LIV -> TOT; 2025/26 record is a LIV record
 Senesi        | BOU -> TOT; 2025/26 record is a BOU record
