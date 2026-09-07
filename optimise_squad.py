@@ -38,6 +38,20 @@ documented command never passed --intel, so transferred/new-signing players
 were scored on ROLE_INTEL-blind numbers in the actual weekly run, not just in
 explicit comparisons. Pass --no-intel to see the raw, unadjusted numbers:
 
+CONTAMINATED PRIORS are excluded by default (Tier 1 - see build_squad.py's
+_contaminated()). --allow-contaminated admits them, and says so loudly on
+every run that uses it:
+
+    python3 optimise_squad.py --allow-contaminated     # admit the fenced movers
+
+WIRED HERE 7 Sep 2026. build_squad.py's own main() has read this flag since
+12 Aug, and load()'s exclusion notice has been telling the operator to "pass
+--allow-contaminated to include them anyway" ever since - but THIS file, the
+weekly tool, never parsed it, so the flag was silently ignored and the notice
+was advice you could not act on where it was printed. Same defect as
+scenario_squad.py's KNOWN_CORRECTIONS (fixed the same day): a control that
+exists in one tool and not in the one actually used every week.
+
     python3 optimise_squad.py --no-intel                # ROLE_INTEL.md adjustments OFF
     python3 optimise_squad.py --no-intel --transfers 1
     python3 optimise_squad.py --compare-intel           # WITH vs WITHOUT, one run
@@ -672,6 +686,9 @@ def main():
     # entry point, so this was already correct in practice, but an explicit
     # local variable is the real fix, not a coincidence of shared argv.
     use_intel = "--no-intel" not in sys.argv
+    # Tier-1 override, so it is parsed here rather than left to build_squad's
+    # ambient USE_CONTAM_FILTER - same reasoning as use_intel above.
+    exclude_contam = "--allow-contaminated" not in sys.argv
     # --estimator {prior,raw,shrunk} is the primary interface; --shrunk-priors
     # kept as a legacy alias for --estimator shrunk (see the module docstring).
     if "--estimator" in sys.argv:
@@ -683,7 +700,19 @@ def main():
     if estimator not in bs.ESTIMATOR_CHOICES:
         sys.exit(f"--estimator must be one of {bs.ESTIMATOR_CHOICES}, got {estimator!r}")
     pool = bs.load(season_starts="--season-starts" in sys.argv, intel=use_intel,
-                   estimator=estimator)
+                   estimator=estimator, exclude_contaminated=exclude_contam)
+    if not exclude_contam:
+        # Loud, and above the intel line, because this is not a tuning knob -
+        # it readmits players whose rates describe a club they have left. The
+        # numbers below are not wrong for those players, they are
+        # INAPPLICABLE (SELECTION_FRAMEWORK.md Tier 1).
+        print("=" * 70)
+        print("CONTAMINATED PRIORS ADMITTED (--allow-contaminated)")
+        print("The fenced movers are back in the pool. Their rates describe the")
+        print("club they LEFT, so any xP shown for them is not a weaker estimate")
+        print("- it is inapplicable. Use this to see what a player would be")
+        print("worth if his record transferred, never as a recommendation.")
+        print("=" * 70 + "\n")
     if use_intel:
         print("INTEL: ROLE_INTEL.md `adjustments` fence is ACTIVE (default since "
               "13 Aug 2026 - pass --no-intel to disable)\n")

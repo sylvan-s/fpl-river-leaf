@@ -653,6 +653,47 @@ share rises; the differential case depends entirely on him playing.
 
 ## CHANGE HISTORY (newest first)
 
+### Mon 7 Sep 2026 — tooling fix, not a transfer — `--allow-contaminated` now works where it is advertised
+
+**Found while acting on the fence update above.** `build_squad.load()`'s
+exclusion notice has ended with *"Pass `--allow-contaminated` to include them
+anyway"* since 12 Aug. Only `build_squad.py`'s own `main()` ever parsed it.
+`optimise_squad.py` — the weekly tool — and `scenario_squad.py` both **silently
+ignored it**: the flag changed nothing, no error, and the pool came back at 234
+either way. The notice was advice you could not act on where it was printed.
+
+**Same defect as `KNOWN_CORRECTIONS`, fixed the same day** — a control that
+exists in one tool and not in the one used every week. Both now parse the flag
+and pass it through, and both print a loud banner when it is active, because
+this is a **Tier-1 override**, not a tuning knob: it readmits players whose
+rates describe a club they have left, and those numbers are not weaker
+estimates but *inapplicable* ones.
+
+**The price of the fence, now measurable.** From-scratch optimum, GW4-7:
+
+| pool | XI xP/90 |
+|---|---|
+| 234 — fence on (default) | 57.31 |
+| 249 — as it stood before the 15 lines were added | 57.57 |
+| 267 — `--allow-contaminated` | **57.83** |
+
+So the fence costs **0.52 xP/90** on a rebuild. **The weekly recommendation is
+unchanged in all three** (`Virgil -> O'Reilly`, +0.82 xP/90 free; `Van de Ven,
+Virgil -> Mosquera, O'Reilly` at −4), so nothing live turns on this.
+
+**What the admitted pool puts back is the tell.** The unfenced optimum picks up
+Enzo, **Welbeck** and **Dubravka** — and Welbeck, Dubravka and Senesi are the
+exact three the ILP grabbed on 12 Aug, the incident that caused this fence to
+be built (see `_contaminated()`'s docstring). Four fenced players rank inside
+the top 40 by `xP_adj`: Enzo #15, Welbeck #29, Semenyo #31, Anderson #37. The
+fence is not costing noise, it is holding back genuinely attractive-looking
+numbers that describe the wrong club — which is what it is for.
+
+**Also.** `fixture_adjust.py`'s own `--squad` output carried the same hardcoded
+`GW1-{HORIZON}` label fixed in `optimise_squad.py` earlier today; it now reads
+`window_label()` too, and its trailing "over N GWs" summary takes the horizon
+from the stamp rather than the module constant.
+
 ### Mon 7 Sep 2026 — methodology fix, not a transfer — clubs now read live
 
 **Trigger.** Running this morning's GW4 brief: `fetch_gw_history.py`'s

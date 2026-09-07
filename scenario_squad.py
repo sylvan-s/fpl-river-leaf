@@ -22,6 +22,7 @@ run instead.
     python3 scenario_squad.py my_scenario.txt --fixtures
     python3 scenario_squad.py my_scenario.txt --transfers 2
     python3 scenario_squad.py my_scenario.txt --no-base-intel
+    python3 scenario_squad.py my_scenario.txt --allow-contaminated
 
 SCENARIO FILE FORMAT. Same 9-field pipe-delimited row as ROLE_INTEL.md's
 `adjustments` fence — player|team|field|op|value|gws|confidence|date|why —
@@ -204,6 +205,10 @@ def main():
                  "[--transfers N] [--no-base-intel] [--haaland]")
     path = sys.argv[1]
     use_base_intel = "--no-base-intel" not in sys.argv
+    # Wired 7 Sep 2026 alongside optimise_squad.py, which had the same gap:
+    # build_squad's exclusion notice names this flag, so it has to work where
+    # the notice is printed.
+    exclude_contam = "--allow-contaminated" not in sys.argv
     allow_haaland = "--haaland" in sys.argv
     estimator = (sys.argv[sys.argv.index("--estimator") + 1]
                  if "--estimator" in sys.argv else "prior")
@@ -244,7 +249,12 @@ def main():
     print(f"\nbase: real ROLE_INTEL.md adjustments {'ON' if use_base_intel else 'OFF'} "
           f"(this scenario stacks on top of {'current reality' if use_base_intel else 'a clean slate'})\n")
 
-    pool = bs.load(intel=use_base_intel, estimator=estimator)
+    pool = bs.load(intel=use_base_intel, estimator=estimator,
+                   exclude_contaminated=exclude_contam)
+    if not exclude_contam:
+        print("CONTAMINATED PRIORS ADMITTED (--allow-contaminated) — the fenced\n"
+              "movers are back in the pool, scored on rates that describe the club\n"
+              "they LEFT. Inapplicable, not merely uncertain.\n")
     print(f"estimator: {estimator}"
           + ("  (needs live network; degrades to prior-only if unreachable — "
              "check for a fetch-failed warning above)" if estimator != "prior" else "")

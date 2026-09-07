@@ -240,7 +240,9 @@ def main():
     SQ = _m.load().name_set
     rows = [r for r in pool if (r["name"] in SQ) or not only_squad]
     rows.sort(key=lambda r: -r["fx_swing"])
-    print(f"xP_adj over GW1-{HORIZON}  (workload scaling: "
+    # The window's own stamp, not a hardcoded "GW1" — same fix as
+    # optimise_squad.py's OBJECTIVE line. See window_label().
+    print(f"xP_adj over {window_label()}  (workload scaling: "
           f"{'on' if SCALE_WORKLOAD else 'off'})\n")
     print(f"{'player':<15}{'pos':<5}{'tm':<5}{'ATT x':>7}{'DEF x':>7}"
           f"{'xP flat':>9}{'xP adj':>8}{'swing':>8}{'4-GW':>8}")
@@ -254,8 +256,9 @@ def main():
               f"{r['fx_swing']:>+8.2f}{r['xp_adj_win']:>8.1f}")
     sw = [r["fx_swing"] for r in pool]
     print(f"\nswing across the whole pool: {min(sw):+.2f} to {max(sw):+.2f} xP/90")
+    _n = window_gws()[1]
     print(f"  mean |swing| {sum(abs(s) for s in sw)/len(sw):.2f} — "
-          f"over {HORIZON} GWs that is {sum(abs(s) for s in sw)/len(sw)*HORIZON:.1f} pts")
+          f"over {_n} GWs that is {sum(abs(s) for s in sw)/len(sw)*_n:.1f} pts")
 
 
 if __name__ == "__main__":
