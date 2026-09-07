@@ -1,0 +1,30 @@
+FIXTURE RUNS, GW4-8  (sorted by attack)
+ATT x = multiplier on your ATTACKERS' output   - HIGHER is better
+DEF x = multiplier on the goals you CONCEDE    - LOWER is better
+
+Team     ATT x   DEF x  Gms  Notes
+--------------------------------------------------------
+CRY       1.12    0.92    5
+CHE       1.11    0.96    5
+COV       1.08    0.91    5
+TOT       1.06    1.03    5
+FUL       1.06    0.81    5
+MCI       1.06    0.99    5
+NEW       1.05    0.86    5
+HUL       1.02    1.13    5
+MUN       1.02    1.10    5
+LIV       1.01    1.20    5
+EVE       1.01    0.95    5
+IPS       1.01    1.12    5
+BRE       1.00    1.04    5
+ARS       1.00    1.01    5
+AVL       1.00    1.10    5
+BOU       0.98    1.27    5
+NFO       0.96    0.79    5
+LEE       0.93    1.05    5
+SUN       0.86    1.22    5
+BHA       0.86    0.92    5
+
+Best run for ATTACKERS: CRY (1.12x)
+Best run for DEFENDERS: NFO (0.79x conceded)
+Fetched via fixture_difficulty(next_n=5), 6 Sep 2026, window GW4-8.

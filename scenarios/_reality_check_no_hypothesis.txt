@@ -1,0 +1,4 @@
+# No hypothesis rows — real ROLE_INTEL.md fence only (O'Reilly stp 0.75,
+# Mosquera stp 0.85, as actually Friday-review-approved), plus the same
+# data corrections/exclusions (Muñoz->NFO, Canvot caution). Used to compare
+# "what the model says right now" against the deeper what-if scenario.

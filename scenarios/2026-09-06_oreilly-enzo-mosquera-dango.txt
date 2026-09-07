@@ -1,0 +1,39 @@
+# Scenario, logged 6 Sep 2026 — Sylvan's own exploration, no decision implied.
+# Format matches ROLE_INTEL.md's `adjustments` fence exactly:
+#   player|team|field|op|value|gws|confidence|date|why
+# Run with: python3 scenario_squad.py scenarios/2026-09-06_oreilly-enzo-mosquera-dango.txt
+
+# 1. O'Reilly out for the next game, then rotated with Enzo at ~0.65 starts.
+# Deeper cut than the Friday-review-accepted `stp set 0.75` (GW3-8) already
+# in ROLE_INTEL.md — that row reflects the pre-injury predicted-XI concern;
+# this tests what happens if the 5 Sep warm-up back injury (Maresca: "not
+# serious", but genuinely unresolved) turns into a real rotation pattern.
+O'Reilly | MCI | stp | set | 0.65 | 4-8 | speculative | 2026-09-06 | Scenario: injury (5 Sep warm-up, back) turning into sustained rotation with Enzo, beyond the currently-accepted 0.75
+
+# 2. Enzo "comes straight into the side and performs like his Chelsea
+# season" needs NO row here — checked build_squad.py's live pool directly
+# (6 Sep): once his stale team/price tag is corrected (see
+# scenario_squad.py's KNOWN_CORRECTIONS — a data fix, not a hypothesis) he
+# is ALREADY carrying his real 2025/26 Chelsea rates by default (stp 0.938,
+# xg90 0.325, xa90 0.210, cbit90 3.006, cbirt90 7.052) — the model has no
+# team-baseline blending for a summer transfer, so his personal prior IS his
+# Chelsea season, unmodified. This what-if is already the model's default
+# assumption; nothing to add.
+
+# 3+4. Justin picks up a wing-back role: +20% defensive-contribution volume,
+# +20% assist supply. Open Trello question (Justin-LEE role card), not yet
+# web-confirmed — treated as speculative here, same numbers Sylvan specified.
+Justin | LEE | cbit90 | mult | 1.2 | 4-8 | speculative | 2026-09-06 | Scenario: wing-back role bump to defensive-contribution volume
+Justin | LEE | xa90   | mult | 1.2 | 4-8 | speculative | 2026-09-06 | Scenario: wing-back role bump to assist supply
+
+# 5. Mosquera: injury + Konsa's integration cut his starts further. Deeper
+# than the Friday-review-accepted `stp set 0.85` (GW1-8) already in
+# ROLE_INTEL.md — that row assumed Mosquera as Saliba/Timber's direct
+# fill-in; this tests the 5 Sep finding that Konsa may be first-choice
+# regardless of fitness.
+Mosquera | ARS | stp | set | 0.65 | 4-8 | speculative | 2026-09-06 | Scenario: Konsa preferred + hamstring doubt, deeper cut than the currently-accepted 0.85
+
+# 6. O.Dango: 3-GW pattern of dropped/started-then-hooked-at-half-time pushed
+# further than currently evidenced. Deeper than the open (unsized)
+# Dango-BRE-stp Trello card.
+O.Dango | BRE | stp | set | 0.65 | 4-8 | speculative | 2026-09-06 | Scenario: sustained poor-form/early-hook pattern pushed further than currently evidenced

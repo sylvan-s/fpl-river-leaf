@@ -1,116 +1,122 @@
 [
   {
-    "player": "Garnacho",
-    "was": "CHE",
-    "now": "AVL",
-    "archive_name": "Alejandro Garnacho Ferreyra"
+    "player": "Bruno G.",
+    "was": "NEW",
+    "now": "ARS",
+    "snapshot": "NEW",
+    "seen_by_snapshot": false,
+    "archive_name": "Bruno Guimarães Rodriguez Moura"
   },
   {
-    "player": "Struijk",
-    "was": "LEE",
-    "now": "BHA",
-    "archive_name": "Pascal Struijk"
+    "player": "Konsa",
+    "was": "AVL",
+    "now": "ARS",
+    "snapshot": "AVL",
+    "seen_by_snapshot": false,
+    "archive_name": "Ezri Konsa Ngoyo"
   },
   {
-    "player": "Henderson",
-    "was": "BRE",
-    "now": "CHE",
-    "archive_name": "Jordan Henderson"
-  },
-  {
-    "player": "Lacroix",
-    "was": "CRY",
-    "now": "CHE",
-    "archive_name": "Maxence Lacroix"
-  },
-  {
-    "player": "Rogers",
+    "player": "Martinez",
     "was": "AVL",
     "now": "CHE",
-    "archive_name": "Morgan Rogers"
+    "snapshot": "AVL",
+    "seen_by_snapshot": false,
+    "archive_name": "Emiliano Martínez Romero"
   },
   {
-    "player": "Welbeck",
-    "was": "BHA",
-    "now": "CHE",
-    "archive_name": "Danny Welbeck"
-  },
-  {
-    "player": "Strand Larsen",
-    "was": "WOL",
+    "player": "Guessand",
+    "was": "AVL",
     "now": "CRY",
-    "archive_name": "Jørgen Strand Larsen"
+    "snapshot": "AVL",
+    "seen_by_snapshot": false,
+    "archive_name": "Evann Guessand"
   },
   {
-    "player": "Anderson",
-    "was": "NFO",
+    "player": "McNeil",
+    "was": "EVE",
+    "now": "CRY",
+    "snapshot": "EVE",
+    "seen_by_snapshot": false,
+    "archive_name": "Dwight McNeil"
+  },
+  {
+    "player": "Johnson",
+    "was": "CRY",
+    "now": "EVE",
+    "snapshot": "CRY",
+    "seen_by_snapshot": false,
+    "archive_name": "Brennan Johnson"
+  },
+  {
+    "player": "Iroegbunam",
+    "was": "EVE",
+    "now": "HUL",
+    "snapshot": "EVE",
+    "seen_by_snapshot": false,
+    "archive_name": "Tim Iroegbunam"
+  },
+  {
+    "player": "Lukić",
+    "was": "FUL",
+    "now": "IPS",
+    "snapshot": "FUL",
+    "seen_by_snapshot": false,
+    "archive_name": "Saša Lukić"
+  },
+  {
+    "player": "Enzo",
+    "was": "CHE",
     "now": "MCI",
-    "archive_name": "Elliot Anderson"
+    "snapshot": "CHE",
+    "seen_by_snapshot": false,
+    "archive_name": "Enzo Fernández"
   },
   {
-    "player": "Grealish",
+    "player": "Ndiaye",
     "was": "EVE",
     "now": "MCI",
-    "archive_name": "Jack Grealish"
+    "snapshot": "EVE",
+    "seen_by_snapshot": false,
+    "archive_name": "Iliman Ndiaye"
   },
   {
-    "player": "Guéhi",
-    "was": "CRY",
-    "now": "MCI",
-    "archive_name": "Marc Guéhi"
-  },
-  {
-    "player": "Semenyo",
-    "was": "BOU",
-    "now": "MCI",
-    "archive_name": "Antoine Semenyo"
-  },
-  {
-    "player": "Andrey Santos",
-    "was": "CHE",
-    "now": "MUN",
-    "archive_name": "Andrey Nascimento dos Santos"
-  },
-  {
-    "player": "Darlow",
-    "was": "LEE",
-    "now": "MUN",
-    "archive_name": "Karl Darlow"
-  },
-  {
-    "player": "Tielemans",
-    "was": "AVL",
-    "now": "MUN",
-    "archive_name": "Youri Tielemans"
-  },
-  {
-    "player": "Dubravka",
-    "was": "BUR",
-    "now": "TOT",
-    "archive_name": "Martin Dúbravka"
-  },
-  {
-    "player": "Robertson",
-    "was": "LIV",
-    "now": "TOT",
-    "archive_name": "Andrew Robertson"
-  },
-  {
-    "player": "Senesi",
-    "was": "BOU",
-    "now": "TOT",
-    "archive_name": "Marcos Senesi Barón"
-  },
-  {
-    "player": "Tonali",
-    "was": "NEW",
-    "now": "TOT",
-    "archive_name": "Sandro Tonali"
-  },
-  {
-    "player": "Van Hecke",
+    "player": "Baleba",
     "was": "BHA",
-    "now": "TOT",
-    "archive_name": "Jan Paul van Hecke"
+    "now": "MUN",
+    "snapshot": "BHA",
+    "seen_by_snapshot": false,
+    "archive_name": "Carlos Baleba"
+  },
+  {
+    "player": "N.Gonzalez",
+    "was": "MCI",
+    "now": "NEW",
+    "snapshot": "MCI",
+    "seen_by_snapshot": false,
+    "archive_name": "Nico González Iglesias"
+  },
+  {
+    "player": "Delap",
+    "was": "CHE",
+    "now": "NFO",
+    "snapshot": "CHE",
+    "seen_by_snapshot": false,
+    "archive_name": "Liam Delap"
+  },
+  {
+    "player": "Muñoz",
+    "was": "CRY",
+    "now": "NFO",
+    "snapshot": "CRY",
+    "seen_by_snapshot": false,
+    "archive_name": "Daniel Muñoz Mejía"
+  },
+  {
+    "player": "Danso",
+    "was": "TOT",
+    "now": "SUN",
+    "snapshot": "TOT",
+    "seen_by_snapshot": false,
+    "archive_name": "Kevin Danso"
   }
 ]

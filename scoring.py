@@ -113,6 +113,22 @@ def _prior_at(pos, eff):
     return _PRIOR_CACHE[ck]
 
 
+def dc_key(r):
+    """The dc_hit_rates.json key for a pool row.
+
+    PRIOR club, not the live one. build_dc_rates.py keys that file on
+    `web_name|<frozen 8 Aug snapshot club>` because the per-match counts in
+    it ARE a prior-season record. Since 7 Sep 2026 build_squad.load() carries
+    the LIVE club in r["team"] (a stale club is a wrong fixture run), so
+    keying on r["team"] here would miss every player transferred after 8 Aug
+    and silently drop him from the empirical hit rate to the parametric
+    fallback — a quieter version of the bug that change fixed. Rows without
+    `team_prior` (build_dashboard.py's pool, tests) fall back to r["team"],
+    which for a non-mover is the same string anyway.
+    """
+    return f'{r["name"]}|{r.get("team_prior") or r["team"]}'
+
+
 def p_threshold_legacy(mean, thresh):
     """SUPERSEDED by the empirical hit rate. Kept for the GW10 comparison and
     for callers that explicitly pass empirical=False (what --legacy-dc now
@@ -322,7 +338,7 @@ def expected_points(r, empirical=True):
     xp += GOAL[pos] * r["xg90"] + ASSIST * r["xa90"]
     xp += CS[pos] * p_cs
     xp += DC_PTS * p_threshold(dc_metric, DC_THRESH_POS[pos],
-                                key=f'{r["name"]}|{r["team"]}', empirical=empirical)
+                                key=dc_key(r), empirical=empirical)
     if pos in ("GKP", "DEF"):
         xp -= r["xgc90"] / GC_PER_MINUS
     if pos == "GKP":
@@ -364,7 +380,7 @@ def expected_points_scaled_breakdown(r, att_x, def_x, scale_workload=True, empir
         saves *= def_x                # and more shots to save
 
     dc_pts = DC_PTS * p_threshold(dc_metric, DC_THRESH_POS[pos],
-                                   key=f'{r["name"]}|{r["team"]}', empirical=empirical)
+                                   key=dc_key(r), empirical=empirical)
     gc_penalty = -(xgc / GC_PER_MINUS) if pos in ("GKP", "DEF") else 0.0
     saves_pts = (saves / SAVES_PER_POINT) if pos == "GKP" else 0.0
 

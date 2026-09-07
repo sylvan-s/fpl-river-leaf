@@ -166,6 +166,49 @@ HIT_COST = 4                     # points per transfer beyond the free allowance
 # silently. allow_haaland follows the same pattern via its own bool param.
 MAX_ATT_PER_CLUB_DEFAULT = 2     # cap on MID+FWD owned from one club; None = off
 
+# ROLE RIVALS — found 6 Sep 2026, Sylvan: "what would be the point of having
+# both O'Reilly and Enzo — they're competing for the same place at their
+# real club." Real gap, not a nitpick. The objective is
+# sum(score_i * x_i) — flat and additive, so each player's score is treated
+# as an INDEPENDENT draw. But two players who are genuine rivals for one
+# real-world job are not independent: if one nails the role the other's
+# realistic minutes collapse toward zero, and vice versa. Owning both is not
+# a hedge — you don't get the sum of their two expected-points rows most
+# weeks, you get roughly whichever one wins the shirt, while paying full
+# price and a squad slot for the loser to sit dead. This is the same
+# category of blind spot the max-attackers-per-club preference exists to
+# patch for CORRELATED returns — sharper here, because this is substitution,
+# not correlation.
+#
+# ROLE_RIVALS is a list of GROUPS; each group is a set of (name, team)
+# tuples, and at most ONE player from each group may be OWNED (not just
+# started — owning the loser as bench dead weight is the exact failure mode
+# this exists to prevent). Empty by default: rivalries are situational
+# (a specific transfer creating a specific role fight), not a standing
+# preference like the two above, so there's no sensible always-on default —
+# pass --role-rivals "Name:TEAM,Name2:TEAM2" (one group per flag) to set one
+# for a run. Unlike the two preferences above this has NO price-of-the-
+# preference report — it isn't a taste being traded off against xP, it's a
+# correction to a false-independence assumption already baked into the
+# scores being summed, so there's no "unconstrained" number to compare
+# against that would mean anything.
+ROLE_RIVALS_DEFAULT = []
+
+
+def _apply_role_rivals(prob, own, P, role_rivals):
+    """own[i] + own[j] + ... <= 1 for each rival group actually present in P.
+
+    `own` is a dict of PuLP expressions/vars keyed by index into P (x[i] for
+    optimise(), x[i]+b[i] for optimise_transfers() - either works, since
+    "owned at all" is what's being capped, not "owned AND starting").
+    Silently skips a group with 0 or 1 members present (e.g. after gates or
+    contamination filtering removed one) - nothing to constrain.
+    """
+    for group in role_rivals:
+        idx = [i for i, r in enumerate(P) if (r["name"], r["team"]) in group]
+        if len(idx) > 1:
+            prob += pulp.lpSum(own[i] for i in idx) <= 1
+
 
 def _max_attackers_from_one_club(rows):
     """(club, count) for whichever club has the most MID+FWD players in
@@ -191,7 +234,7 @@ BANK = _STATE.bank
 
 
 def optimise(pool, allow_haaland=False, max_att_per_club=MAX_ATT_PER_CLUB_DEFAULT,
-             verbose=True):
+             verbose=True, role_rivals=()):
     P = [r for r in pool if r["ok"]]
     if not allow_haaland:
         P = [r for r in P if r["name"] != "Haaland"]
@@ -236,6 +279,8 @@ def optimise(pool, allow_haaland=False, max_att_per_club=MAX_ATT_PER_CLUB_DEFAUL
             idx_att = [i for i in idx if P[i]["pos"] in ("MID", "FWD")]
             prob += pulp.lpSum(x[i] + b[i] for i in idx_att) <= max_att_per_club
 
+    _apply_role_rivals(prob, {i: x[i] + b[i] for i in range(len(P))}, P, role_rivals)
+
     prob.solve(pulp.PULP_CBC_CMD(msg=0))
     if pulp.LpStatus[prob.status] != "Optimal":
         sys.exit(f"solver returned {pulp.LpStatus[prob.status]}")
@@ -247,8 +292,18 @@ def optimise(pool, allow_haaland=False, max_att_per_club=MAX_ATT_PER_CLUB_DEFAUL
 
 def optimise_transfers(pool, owned_names, bank, n_transfers, allow_haaland=False,
                        max_att_per_club=MAX_ATT_PER_CLUB_DEFAULT,
-                       free_transfers=1, force=False):
+                       free_transfers=1, force=False, role_rivals=(),
+                       pin_in=(), pin_out=()):
     """Best n_transfers FROM the current squad. The weekly question.
+
+    pin_in / pin_out: (name, team) pairs to force owned=1 / owned=0 - "given
+    THIS transfer is happening, what's the best use of the rest of the
+    budget/transfers" (6 Sep 2026: "swap Dango for Szoboszlai, then what's my
+    best second move"). This is a JOINT solve with the pin as an added
+    constraint, not two sequential single-transfer solves - the second move
+    can raise money that covers a pinned buy's shortfall against the current
+    bank, which a naive "pretend transfer 1 already happened, recompute bank,
+    solve transfer 2 alone" approach would wrongly report as infeasible.
 
     Differs from rebuild mode in three ways that matter:
       * the squad is a CONSTRAINT, not an output - at most n players may change
@@ -323,6 +378,18 @@ def optimise_transfers(pool, owned_names, bank, n_transfers, allow_haaland=False
             ii_att = [i for i in ii if P[i]["pos"] in ("MID", "FWD")]
             prob += pulp.lpSum(own[i] for i in ii_att) <= max_att_per_club
 
+    _apply_role_rivals(prob, own, P, role_rivals)
+
+    for pname, pteam in pin_in:
+        idx = [i for i, r in enumerate(P) if (r["name"], r["team"]) == (pname, pteam)]
+        if not idx:
+            sys.exit(f"--force-in {pname}|{pteam} — not found in the pool")
+        prob += own[idx[0]] == 1
+    for pname, pteam in pin_out:
+        idx = [i for i, r in enumerate(P) if (r["name"], r["team"]) == (pname, pteam)]
+        if idx:  # not owning him already satisfies "out" trivially - nothing to pin
+            prob += own[idx[0]] == 0
+
     prob.solve(pulp.PULP_CBC_CMD(msg=0))
     if pulp.LpStatus[prob.status] != "Optimal":
         return None
@@ -349,7 +416,18 @@ def show(xi, bench, obj):
               f"{r['stp']*100:>4.0f}%   xP {r['score']:>5.2f}")
 
 
-def transfer_mode(pool, n, allow_haaland, max_att_per_club=MAX_ATT_PER_CLUB_DEFAULT):
+def transfer_mode(pool, n, allow_haaland, max_att_per_club=MAX_ATT_PER_CLUB_DEFAULT,
+                   free_transfers=1, role_rivals=(), pin_in=(), pin_out=()):
+    """free_transfers default is 1 to match FPL's normal weekly accrual, but
+    this MUST be overridden (--free-transfers N) whenever more than one is
+    actually banked - found 6 Sep 2026 doing exactly that: this function
+    never threaded the parameter through to optimise_transfers() at all, so
+    every past run of `--transfers 2` (or higher) silently priced a -4 hit
+    even in a week where 2 free transfers had deliberately been banked (see
+    TEAM_CHANGE_LOG.md's 4 Sep 2026 entry, which held the week's transfer
+    for exactly this reason - the bug means that plan's own eventual payoff
+    would have been under-valued by 4 points had this not been caught before
+    the GW4 decision it was banked for)."""
     owned = set(CURRENT_SQUAD)
     base = [r for r in pool if r["name"] in owned]
     # Baseline: best XI from the squad already owned, AS OWNED - never run
@@ -373,8 +451,25 @@ def transfer_mode(pool, n, allow_haaland, max_att_per_club=MAX_ATT_PER_CLUB_DEFA
                   f"the breach may be forced into whichever move is shown, or may "
                   f"need more transfers than are free this week.\n")
 
+    if free_transfers != 1:
+        print(f"  free transfers this week: {free_transfers} (overridden from the "
+              f"1-per-week default via --free-transfers)\n")
+
+    if role_rivals:
+        for group in role_rivals:
+            already_own = [f"{pn}|{pt}" for pn, pt in group if pn in owned]
+            print(f"  ROLE RIVALS (at most 1 may be owned): "
+                  f"{[f'{pn}|{pt}' for pn, pt in group]}"
+                  + (f" — currently own {already_own}" if already_own else "") + "\n")
+
+    if pin_in or pin_out:
+        print(f"  PINNED: force IN {list(pin_in)}, force OUT {list(pin_out)} — "
+              f"the remaining budget/transfers are optimised around this\n")
+
     for k in range(1, n + 1):
-        res = optimise_transfers(pool, owned, BANK, k, allow_haaland, max_att_per_club)
+        res = optimise_transfers(pool, owned, BANK, k, allow_haaland, max_att_per_club,
+                                  free_transfers=free_transfers, role_rivals=role_rivals,
+                                  pin_in=pin_in, pin_out=pin_out)
         if not res:
             print(f"  {k} transfer(s): infeasible"
                   + (f" — {max_att_per_club}/club cap cannot be met in {k} move(s)"
@@ -536,6 +631,21 @@ def main():
     else:
         max_att_per_club = MAX_ATT_PER_CLUB_DEFAULT
 
+    # Role rivals: repeatable flag, one group per occurrence -
+    # --role-rivals "Name:TEAM,Name2:TEAM2" - see ROLE_RIVALS_DEFAULT's
+    # comment for why this has no standing default. No price-of-the-
+    # preference report, unlike the two above - see that comment for why.
+    role_rivals = []
+    for i, a in enumerate(sys.argv):
+        if a == "--role-rivals":
+            group = set()
+            for entry in sys.argv[i + 1].split(","):
+                pname, _, pteam = entry.strip().partition(":")
+                if not pteam:
+                    sys.exit(f"--role-rivals entry {entry!r} must be Name:TEAM")
+                group.add((pname, pteam))
+            role_rivals.append(group)
+
     if "--compare-intel" in sys.argv:
         n_transfers = (int(sys.argv[sys.argv.index("--transfers") + 1])
                        if "--transfers" in sys.argv else None)
@@ -601,7 +711,9 @@ def main():
         fa.adjust(pool)
         for r in pool:
             r["score"] = r["xp_adj"]
-        print(f"OBJECTIVE: xP_adj over GW1-{fa.HORIZON} "
+        # The window's own stamp, not a hardcoded "GW1" — see
+        # fixture_adjust.window_label().
+        print(f"OBJECTIVE: xP_adj over {fa.window_label()} "
               f"(opponent-adjusted; workload scaling "
               f"{'on' if fa.SCALE_WORKLOAD else 'off'})")
     att_note = ("" if max_att_per_club is None
@@ -612,11 +724,14 @@ def main():
 
     if "--transfers" in sys.argv:
         n = int(sys.argv[sys.argv.index("--transfers") + 1])
+        free_transfers = (int(sys.argv[sys.argv.index("--free-transfers") + 1])
+                           if "--free-transfers" in sys.argv else 1)
         print("=== TRANSFER MODE — best moves from the CURRENT squad ===")
-        transfer_mode(pool, n, allow_haaland, max_att_per_club)
+        transfer_mode(pool, n, allow_haaland, max_att_per_club, free_transfers=free_transfers,
+                      role_rivals=role_rivals)
         return
 
-    xi, bench, obj = optimise(pool, allow_haaland, max_att_per_club)
+    xi, bench, obj = optimise(pool, allow_haaland, max_att_per_club, role_rivals=role_rivals)
     print("=== OPTIMAL (ILP)" + ("" if allow_haaland else " — WITH THE NO-HAALAND PREFERENCE APPLIED") + " ===")
     show(xi, bench, obj)
 

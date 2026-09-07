@@ -15,7 +15,124 @@ one-line record. What remains is what actually governs a decision today.
 
 ---
 
-## CURRENT STATE — as at Fri 4 Sep 2026 (GW3 pre-deadline)
+## CURRENT STATE — as at Mon 7 Sep 2026 (GW4 pre-deadline)
+
+**Deadline:** Sat 12 Sep 2026, 13:30 BST (12:30 UTC) · **Formation:** 3-4-3 (unchanged)
+
+**Last change: 2 transfers, 7 Sep 2026 — `O'Reilly -> Van de Ven` and
+`O.Dango -> Szoboszlai`.** Both banked free transfers used (the GW3 hold
+paid for exactly this), **0 pts cost**. Bank £0.4m -> **£1.3m**. Sylvan's
+call on the brief's Option 2. Also clears the 3-Brentford-attacker soft
+breach the optimiser has flagged since GW3.
+
+**Squad value** £98.7m · **Bank** £1.3m · **Captain** João Pedro ·
+**Vice** Gabriel
+
+**Why these two out, when the standing fence said otherwise.** On the live
+`ROLE_INTEL.md` fence alone the optimiser did *not* want this move: forcing
+O'Reilly and O.Dango out is worth **+0.14 xP/90 (+0.7 pts over a 5-GW
+hold)**, essentially noise, and the unconstrained recommendation was
+`Schade, Virgil -> Szoboszlai, Van de Ven` (+1.93 xP/90). The case rests
+entirely on **two Trello news bites that are not yet fence rows**, priced
+here as a `scenario_squad.py` run (hypothetical, wrote nothing to
+`ROLE_INTEL.md`):
+
+- **O'Reilly** — `OReilly-MCI` card, 6 Sep evening sweep: first *sourced*
+  timeline for the back strain, mild ~2 weeks (misses the CL opener v Porto
+  and the derby at Old Trafford), severe up to 4 weeks. **Both estimates run
+  past the 12 Sep deadline.** `injury_report` still lags at DOUBTFUL 75%.
+  Modelled at `stp 0.10`.
+- **O.Dango** — `Dango-BRE-stp-20260901-1`: started GW1, dropped for Anthony
+  GW2, started GW3 and was **hooked at half-time**. Andrews does not trust
+  him for 90 minutes even when he starts him. The card proposes **no**
+  magnitude; `stp 0.65` is my own sizing for this run only, not a card
+  value and not approved.
+
+With those priced in the same move becomes the optimiser's own top choice:
+**+3.33 xP/90, +16.6 pts over a 5-GW hold**, free.
+
+**That +16.6 is a conditional upper bound, not a forecast — flagged before
+the decision, accepted knowingly.** `xP_adj` is points *per 90* and is blind
+to start rate; `stp` enters only as the **75% XI gate**. Dropping O'Reilly to
+10% and O.Dango to 65% simply makes both ineligible for the XI, and the model
+swaps in the best available. So the number is the value of replacing two
+players who do not play, and it decays back toward **+0.14** if the news is
+wrong. This is exactly the hole roadmap **A0.5** (start-weighted objective,
+gate GW5-6) is meant to close.
+
+**Why Van de Ven and Szoboszlai specifically, and why not more money.**
+Sylvan asked whether to spend up. The answer from the scored pool
+(GW4-7 window, `--estimator shrunk`, intel on) is no:
+
+- **Van de Ven** (TOT, £5.0m) is the **second-best defender in the entire
+  248-player pool** on xP_adj (4.61), behind only the £8.0m Gabriel already
+  owned. Nothing more expensive beats him — Virgil is 3.71. TOT carry the
+  2nd-best defensive run in the window (DEF x 0.85). 100% available, 3.8%
+  owned, E[pts] 5.05 on `captaincy_odds`.
+- **Szoboszlai** (LIV, £7.0m) xP_adj 5.68. The next midfielder up is
+  **Palmer at £9.6m for 5.70** — £2.6m for +0.02 xP_adj, and unaffordable
+  anyway (£14.6m needed against £13.3m available).
+- The ILP deliberately left **£1.3m unspent**: there was nothing better to
+  buy with it.
+
+**Konsa was considered and rejected — and exposed a data bug.** Sylvan's own
+suggestion. He is a **contaminated prior the sweep MISSED**: absent from both
+`docs/data/club_changes.json` and `provenance.json`'s `unmatched` list, so
+`build_squad.load()` still returns him as **AVL** and `fixture_adjust.py` was
+scoring him on Aston Villa's fixture run. Correcting his club by hand and
+setting `stp 0.90` (full Arsenal debut at CB alongside Gabriel, 6 Sep, 2-1 v
+Chelsea; Mosquera omitted from the 20-man squad entirely) still gives
+**xP_adj 2.88 against Van de Ven's 4.61** — outside the top 14 defenders. The
+live screen has him at **0.00 expected xGI over GW4-8**; all his value is
+clean sheets, which the squad already owns through Gabriel. Note his CBIT/90
+and start rate *still* describe Villa even after the club fix, so 2.88 is
+itself only approximately right. **Background task queued** to fix the sweep,
+and to fix the fact that `scenario_squad.py`'s `KNOWN_CORRECTIONS` (Enzo
+CHE->MCI, Muñoz CRY->NFO) never reach `optimise_squad.py` — the weekly tool is
+still scoring Muñoz on Crystal Palace's fixtures.
+
+**Captain: B.Fernandes -> João Pedro. Vice: Thiago -> Gabriel.** Sylvan's
+call. `captaincy_odds` (shrunk, intel on, neutral): João Pedro **5.50**
+E[pts] v HUL(H), Gabriel 5.42 v SUN(a), B.Fernandes 5.21 — Bruno drops
+because **United host City** in GW4. The trade-off is real and was taken
+knowingly: **João Pedro's P(blank) is 48.8% against Gabriel's 26.3%** — this
+is a ceiling pick over a floor pick, not a free upgrade. Gabriel was
+presented as the floor alternative and not taken. Note also that **every
+transfer resets the armband** on the live site, so this must be re-set and
+verified there, not assumed.
+
+**Chips:** all four set-1 chips available, 116 days to the GW19 expiry. No
+trigger — `escalation_check` scores **0/4** over GW4-7, no doubles, no
+blanks, one flagged squad player (O'Reilly, now sold).
+
+**Ledger drift, flagged not absorbed.** O.Dango was recorded at £6.5m and
+sold **live at £6.4m** — a real price fall, so squad_value+bank moves
+100.1 -> 100.0. Two *unrealised* drifts remain and were deliberately not
+reconciled: **Mbeumo and Thiago are both recorded at £8.0m but price £7.9m
+live**, so live team value is ~£0.2m below this file's figure. **Do not treat
+that £0.2m as spendable.** Root cause is roadmap **B1** (price forecasting),
+gate GW3 — **now overdue**.
+
+**Fixture window** refreshed to **GW4-7** this session (`fixture_window.json`
+stamped `generated_for_gw: 4`, 7 Sep 15:36 UTC). Note `optimise_squad.py:714`
+prints the header as "GW1-4" — a hardcoded `GW1-{HORIZON}` label bug, not a
+stale window. Included in the queued background task, because the runbook
+tells the operator to abort on a mismatched stamp and this label trains
+distrust of a correct window.
+
+**Predictions logged** for GW4 (8 players) before the deadline, via
+`log_predictions`. Logged *before* the captaincy change was actioned, so the
+armband recorded there is the model's own ranking, not the final pick —
+`log_predictions` is deliberately intel-blind and scores the model, not
+model+intel.
+
+**Not yet actioned live** on fantasy.premierleague.com. This log and
+`squad.json` record the decision; live-site submission is a separate,
+explicit-ask-only step per the weekly-brief runbook.
+
+---
+
+## CURRENT STATE — as at Fri 4 Sep 2026 (GW3 pre-deadline, superseded above)
 
 **Deadline:** Fri 4 Sep 2026, 18:30 BST (17:30 UTC) · **Formation:** 3-4-3 (unchanged)
 
@@ -535,6 +652,105 @@ share rises; the differential case depends entirely on him playing.
 ---
 
 ## CHANGE HISTORY (newest first)
+
+### Mon 7 Sep 2026 — methodology fix, not a transfer — clubs now read live
+
+**Trigger.** Running this morning's GW4 brief: `fetch_gw_history.py`'s
+club-change sweep had no entry for **Ezri Konsa**, who moved **AVL -> ARS** on
+deadline day. He was not in `docs/data/club_changes.json` and not in
+`provenance.json`'s `unmatched` list either — so `build_squad.load()` returned
+him as an Aston Villa player, `fixture_adjust.py` scored him on Villa's fixture
+run, and the `contaminated` fence never fired for him.
+
+**The name matching was never the problem.** The sweep matched him cleanly to
+the archive's "Ezri Konsa Ngoyo". It detects a move by comparing the archive's
+club against **the pool's** club — and the pool's club came from
+`fpl_priors_2025_26_v2.json`, frozen **8 Aug 2026**, before the window shut. So
+the archive said AVL, the pool said AVL, and the sweep correctly concluded
+nothing had changed. **Both sides of the comparison were stale in the same
+direction**, which is why it failed silently rather than loudly: there was no
+disagreement left to detect. That also means the sweep could only ever see
+moves completed *before* 8 Aug — exactly the 19 it found on 9 Aug, and nothing
+since.
+
+**One stale field defeated two guards at once.** The `contaminated` fence
+excludes on a **team + surname** match (deliberately — see `_contaminated()`'s
+Henderson note). It looks for the fence's destination club on the row. Konsa's
+row said AVL, a fence line would say ARS, so even *writing the fence line
+would not have excluded him*.
+
+**It was 16 players, not one.** Checking every pool row's frozen club against
+live `bootstrap-static`: Baleba, Bruno G., Danso, Delap, Enzo, Grealish,
+Guessand, Iroegbunam, Johnson, **Konsa**, Lukić, Martinez, McNeil, **Muñoz**,
+N.Gonzalez, Ndiaye. Only two of them — Enzo and Muñoz — were being corrected
+anywhere, by a hand-maintained `KNOWN_CORRECTIONS` dict in `scenario_squad.py`,
+which `optimise_squad.py` (the weekly tool) does not read. **A hand-kept list
+can only hold the movers somebody already noticed.**
+
+**Applied.** `build_squad.load()` now reads **club** from live
+`bootstrap-static` on every call, on the same argument as the 3 Sep price fix
+above: a stale price is a wrong budget, a stale club is a **wrong fixture
+run**. Same degrade-safe pattern — falls back to the frozen snapshot with a
+loud warning if the fetch fails, and prints every correction it makes.
+
+Every row also keeps `team_prior`, the snapshot club, because prior-season
+data is still keyed by it: `last16_starts.json`, `dc_hit_rates.json` (via the
+new `scoring.dc_key()`) and the gameweek archive's own name tie-break all
+address a 2025/26 record and must keep using the 2025/26 club. Getting the
+live club right would be worth nothing if it silently dropped a mover's start
+rate to `season_fallback` or his empirical DC hit rate to the parametric one.
+Verified: flat `xP` is **unchanged to 2dp** for every corrected player — the
+fix moves the fixture adjustment and nothing else.
+
+**What it moves.** Over the GW4-7 window: Baleba **+3.2 pts**, Iroegbunam
++2.7, Lukić +1.9, N.Gonzalez **−1.8**, Delap −1.2, **Muñoz −1.0** (CRY's run
+is materially better than NFO's), Konsa −0.8. This week's top recommendation
+is unchanged (`Virgil -> O'Reilly`, +0.82 xP/90), so **no transfer decision
+was made on the bad numbers** — but the candidate ranking behind it was wrong.
+
+**Also fixed by it, unnoticed until now:** the `--role-rivals` constraint
+added **6 Sep** was a silent no-op for its own motivating example. Sylvan's
+`O'Reilly:MCI,Enzo:MCI` names Enzo at his real club; the pool called him CHE,
+so the group matched **one** member instead of two and
+`_apply_role_rivals()` skipped it by design ("silently skips a group with 0 or
+1 members present"). It now binds.
+
+**Consequences to review (not applied — Sylvan's call):**
+
+- **15 movers have a corrected club but an old club's rates.** The fence
+  covers none of them. `fetch_gw_history.py` now prints them as ready-to-paste
+  fence lines.
+- **The `Grealish | EVE -> MCI` fence line is now dead.** He is back at
+  Everton, so his 2025/26 Everton record is no longer contaminated; he
+  re-enters the pool (248 -> 249) and the line excludes nobody.
+- **`Guessand | AVL` in the `adjustments` fence no longer matches** — he is at
+  Palace, so the Villa-exodus haircut correctly stops following him, and
+  `load()` now says so out loud.
+
+**Also.** `optimise_squad.py` printed `OBJECTIVE: xP_adj over GW1-4` for a
+window correctly stamped GW4 — it hardcoded the start at GW1. The weekly
+runbook tells the operator to **abort** if the printed stamp does not match
+the current gameweek, so that label was training the operator to distrust a
+correct window. It now reads `generated_for_gw` from `fixture_window.json`
+via the new `fixture_adjust.window_label()`, and prints `GW4-7`.
+
+`test_scoring.py`, `test_apply_intel_decisions.py` and the new
+`test_club_hygiene.py` all pass.
+
+### Mon 7 Sep 2026 — GW4 — 2 transfers (both banked FTs, 0 pts) + captain change
+
+**`O'Reilly -> Van de Ven` (£6.5m -> £5.0m)** and **`O.Dango -> Szoboszlai`
+(£6.4m -> £7.0m)**. Bank £0.4m -> £1.3m. On the standing fence this move was
+worth only +0.14 xP/90; with two un-fenced Trello news bites priced in
+(O'Reilly's back strain at `stp 0.10`, O.Dango's rotation/hook pattern at
+`stp 0.65`) it becomes +3.33 xP/90, +16.6 pts over a 5-GW hold — a figure
+that is a **conditional upper bound**, since stp acts only as the 75% XI
+gate (roadmap A0.5). Konsa considered and rejected (xP_adj 2.88 v Van de
+Ven's 4.61) — and found to be an unflagged contaminated prior. Palmer
+rejected: £2.6m more than Szoboszlai for +0.02 xP_adj. **Captain
+B.Fernandes -> João Pedro, vice Thiago -> Gabriel** (E[pts] 5.50 v 5.21;
+ceiling over floor, P(blank) 48.8% v Gabriel's 26.3%). See CURRENT STATE
+above for the full reasoning and the ledger-drift note.
 
 ### Fri 4 Sep 2026 — GW3 — HOLD (free transfer banked) + captain change
 

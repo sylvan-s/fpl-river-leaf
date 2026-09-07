@@ -3,7 +3,7 @@
   "source_url": "https://raw.githubusercontent.com/vaastav/Fantasy-Premier-League/master/data/2025-26/gws/merged_gw.csv",
   "caveat": "Community archive mirroring the official FPL API gameweek by gameweek. NOT the official API. Externally derived.",
   "season": "2025-26",
-  "fetched_utc": "2026-08-09T20:21:25+00:00",
+  "fetched_utc": "2026-09-07T15:54:56+00:00",
   "rows_in_source": 29757,
   "gameweeks": [
     1,
@@ -43,8 +43,8 @@
     "recoveries"
   ],
   "columns_missing": [],
-  "pool_size": 267,
-  "matched": 261,
+  "pool_size": 249,
+  "matched": 243,
   "unmatched": [
     "Beto|EVE",
     "Fernandes|TOT",
@@ -53,5 +53,7 @@
     "Morato|NFO",
     "Wilson|LEE"
   ],
-  "club_changes": 19
+  "club_changes": 15,
+  "pool_club_source": "live bootstrap-static via build_squad.load()",
+  "club_changes_missed_by_snapshot": 15
 }

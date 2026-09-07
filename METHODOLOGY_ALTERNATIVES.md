@@ -1814,6 +1814,9 @@ GW4      Continuous-metric shrinkage flag flips to default-on, if the GW3
          build_dashboard.py's live-price port — DONE 3 Sep 2026, ahead of
          schedule (see TEAM_CHANGE_LOG.md's 3 Sep entries for the fix and
          the build_squad.py bug it followed).
+         Team/share split on the xGI-delta panel (Stage 1) — diagnostic
+         only, ungated, no selection effect. See "Team output x player
+         share". Stage 2 (`--estimator compos`) after it, compare-only.
 GW5      Sanity/kill-switch review of continuous-metric shrinkage against
          `docs/priors.html` — NOT the statistically-powered read (too little
          data by then), just a "did anything break" pass. See A0.2 above.
@@ -1833,6 +1836,8 @@ GW8      Club rotation index (A0.3) + manager-change register. EO if
 GW10     ** THE GATE ** Backtest. Decides C1 outright. Re-read C4.
          Also decides A0.5: if start-weighted ranking does not beat per-90
          out of sample, revert to the gate and delete xp_gw.
+         Also decides `compos`: delete it unless the tracker's paired win
+         rate has moved off chance. Expected outcome is deletion.
          Elite squad structure sampling unlocks (B5) — table no longer noise.
          Congestion overlay (A0.4) — only if A0.2/A0.3 have paid off.
 GW12–19  DGW/BGW forecasting (B4) ahead of chip-set-1 deadline.
@@ -2065,3 +2070,238 @@ archives (community-maintained, not the official FPL API) — see
 `fetch_gw_history.py`'s own caveat. `historical_backtest_2025_26.json` (repo
 root, gitignored cache files aside) holds the full per-gameweek trajectory for
 anyone who wants to re-chart it.
+
+---
+
+## Team output × player share — logged AND probed 6 Sep 2026
+
+**Verdict up front: the general form is not worth building. Two narrow pieces
+of it are.** Proposed same day, probed the same day against both cached
+seasons before any of it reached the pipeline. Every number below comes out of
+`team_share_probe.py`; nothing here was estimated by eye.
+
+### The proposal in brief
+
+Stop fitting a player's prior directly to his own historical xG. Split the
+estimate in two:
+
+```
+expected_player_xGI_per90 ≈ team_npxG_per90 (fixture-adjusted)
+                              × shrunk_player_share_of_team_output
+                              + penalty/set-piece overlay (assigned, not split)
+```
+
+The stated motivation is that a player-level prior bakes last season's share
+of team output into the player as if it were a stable individual trait, when
+much of it is team-level and moves the moment the squad does. And that it
+cannot separate two cases a raw xG table collapses together: a Brentford-type
+squad, where the total pie is capped so stacking forwards does not compound,
+and a City-type squad, where the pie is large but any one player's slice is
+diluted and volatile.
+
+Both observations are correct. The proposed remedy does not follow from them.
+
+### The structural objection — this is an identity, not a model
+
+Share is *defined* as player xG ÷ team xG. So
+
+```
+share × team_output ≡ player_xG
+```
+
+exactly, by construction. Feed the decomposition a team's own observed output
+and it collapses algebraically back to the direct per-90 prior — the same
+number, reached by a longer route. It carries new information **only** to the
+extent the team-output term is set to something other than what that team
+already did.
+
+The whole idea therefore rests on one input: a forecast of team attacking
+output that beats "what this team has been doing". Not on the share
+machinery, which is plumbing. That reframing is what the probe went after,
+and it is what the proposal, written share-first, obscures.
+
+### The evidence
+
+**E — live-equivalent walk-forward, no foreknowledge.** Predict 2025/26
+GW20–38 from 2024/25 plus GW1–19, scored against the pipeline's own shrinkage
+(`scoring.estimate_k_priors` / `shrink_rate`), 92 MID/FWD with ≥5 n90 in all
+three windows:
+
+| estimator | MAE | RMSE | corr | vs shrunk direct |
+|---|---|---|---|---|
+| raw (current season only) | 0.0722 | 0.0986 | 0.814 | −18.2% |
+| **shrunk direct** (what ships today) | **0.0610** | 0.0849 | 0.856 | — |
+| compositional (share × team output) | 0.0592 | 0.0809 | 0.866 | +3.0% |
+| compositional, the note's hand-set k | 0.0593 | 0.0816 | 0.863 | +2.9% |
+
+**A 3.0% MAE gain that is indistinguishable from chance player by player: the
+compositional estimate is closer on 46 of 92 players — exactly 50.0%, two-sided
+p = 1.000.** MAE moved because a few large errors moved, not because the
+estimator is better. On this evidence it does not earn a place in the
+selection path.
+
+**B — the ceiling, if it were handed the answer.** Given the *target* season's
+real team output (information no live model has), the decomposition wins by
+9.7% MAE overall. That is the upper bound. Against it, section D's finding
+that a season-ahead team-output forecast is already 10.7% off means **the
+error budget does not close**: the new input the proposal requires is noisier
+than the best case it buys. Note also which subgroup the ceiling favours —
++11.0% for players who stayed at one club versus +6.1% for those who moved,
+the *opposite* of the note's thesis. The apparent gain is largely foreknowledge
+of team output leaking in, not squad-change adaptation.
+
+**C — is share a more stable trait than the rate?** The premise requires yes.
+
+| subgroup | n | corr(share) | corr(xG90) | |
+|---|---|---|---|---|
+| all | 115 | 0.823 | 0.817 | a tie |
+| same club both seasons | 96 | 0.855 | 0.857 | share slightly **worse** |
+| changed club | 19 | 0.771 | 0.683 | **share clearly better** |
+
+For the ~84% of attackers who stay put, share buys nothing. The premise holds
+only for movers — n=19, indicative, not established.
+
+**D — how forecastable is team output?** Season to season, corr 0.678 and MAE
+0.156 xG/match, 10.7% of the 1.46 league mean. Within season, only **15% of
+single-match team xG variance is between-team**; the other 85% is match noise
+no model recovers.
+
+### Four defects, each independent of the verdict
+
+1. **npxG is not in this data.** The proposal is written in npxG throughout and
+   claims it comes free from what is already pulled. It does not: FPL's
+   `expected_goals` is Opta xG *including* penalties. Measured — across both
+   seasons, 28 player-matches containing a missed penalty have median xG 0.91
+   and 0.94, and **none** below 0.70, against ~0.76–0.79 for the penalty
+   alone. Step 5 (assign the penalty slice to the named taker instead of
+   splitting it) is unbuildable without an external npxG source. Understat has
+   it as a first-class field; nothing in this repo does.
+2. **The proposed EWMA is worse than doing nothing clever.** Step 2 asks for an
+   exponentially-weighted average of the last 6–10 matches. Measured against a
+   flat season-to-date mean, on next-match team xG: 43.0% vs 42.2% MAE in
+   2024/25, 42.9% vs 40.8% in 2025/26. **The flat mean wins in both seasons.**
+   Recency weighting on team output is actively harmful here — consistent with
+   D's 15% between-team variance, since a short window mostly re-samples noise.
+3. **It would double-count the fixture channel.** `fixture_adjust.py` already
+   derives `att_x` from opponent xG/xGC with home/away applied, shrunk toward
+   the prior season, and scales xg90/xa90 by it. A "fixture-adjusted team
+   npxG" term multiplied into a pipeline that then applies `att_x` prices
+   opponent defensive strength twice. The team term must be the club's
+   **neutral-fixture** level, with opponent adjustment left where it already
+   lives. This is close to the standing kill criterion on terms in mismatched
+   units, and would fail the same way: plausible output, silently wrong.
+4. **Wrong shrinkage family, and the wrong k.** Share is a proportion in [0,1],
+   so its conjugate model is Beta-Binomial, not the Poisson-Gamma the repo
+   uses for count rates — `_estimate_k_binomial()` in
+   `build_prediction_tracker.py` is the right family and already written. The
+   hand-set k of 900 minutes is also too small: fitted from the pool's own
+   variance, share wants **k = 14.85 n90 ≈ 1,340 minutes** against 8.12 for
+   xG90. Share needs *more* shrinkage than the rate, not the same amount.
+
+Two further traps, both handled in `team_share_probe.py:aggregate()` and both
+easy to get wrong while producing plausible numbers: the share denominator
+must be the team output that accrued **while the player was on the pitch**
+(pro-rate the match total by mins/90, or every substitute's share is deflated
+by construction), and numerator and denominator must be summed over the window
+and divided **once** — mean-of-ratios is badly biased upward when team xG in a
+single match routinely dips near 0.3.
+
+### What survives
+
+**(a) The decomposition as a diagnostic — build this, it is the best idea in
+the note.** Splitting an xGI-delta into "the team's output moved" versus "his
+share of it moved" is genuinely more actionable than the current flag that
+output diverged from prior. It carries none of the forecast risk above,
+because a diagnostic describes what already happened rather than predicting.
+It is not a projection change at all, which is why it can ship on its own.
+
+**(b) The regime-change override — the only place the premise holds.** Where a
+player has moved club or the squad around him has turned over, his own prior
+is not merely noisy, it is measuring a team that no longer exists. That is
+exactly where C shows share carrying (0.771 vs 0.683) and exactly where the
+hand-tuned multipliers currently live — Villa squad-wide ×0.70, O'Reilly
+×1.20, Anderson ×1.15. The prize is not a better general estimator; it is
+**turning those judgement calls into derived numbers in the narrow band where
+they are already being made by hand.** Much smaller build, and it targets a
+known weakness rather than a theoretical one.
+
+**(c) A free win, available without any of the above.** E's 3.0% came from
+shrinking *share* rather than shrinking the *rate* — a better-chosen
+shrinkage basis, with the team term left as the club's own observed output.
+No team forecaster, no new estimator, no pipeline: it is a change of target
+inside the existing shrink step. Worth testing on its own precisely because it
+isolates the one component that measured anything.
+
+### Implementation plan — staged, parallel, each stage killable alone
+
+The parallel-running architecture this needs **already exists** and should be
+reused rather than rebuilt: `ESTIMATOR_CHOICES` / `build_squad.load(estimator=)`
+/ `--estimator`, the squad page's three-estimator transfer and captaincy
+tables, and `build_prediction_tracker.py`'s per-gameweek scoring of each
+estimator with μ and σ. Nothing below adds a second pipeline.
+
+| stage | what | touches | gate to start |
+|---|---|---|---|
+| 0 | The probe above | `team_share_probe.py` | **done 6 Sep 2026** |
+| 1 | Team/share split on the xGI-delta panel — diagnostic only, zero selection effect | `build_dashboard.py`, `xgi_delta` | none — read-only |
+| 2 | `--estimator compos` as a **fourth** estimator, compare-only | `build_squad.py`, `build_squad_page.py`, `build_prediction_tracker.py` | Stage 1 shipped |
+| 3 | Team-output forecaster as a standalone module, scored on its own before it multiplies anything | new `team_output.py` | Stage 2 shows a real margin at GW10 |
+| 4 | Regime-change override replacing the hand-tuned multipliers | `intel_adjust.py`, `ROLE_INTEL.md` | Stage 3 beats a flat club mean |
+
+**Stage 1** is the only one worth starting now. Compute team xG per fixture by
+summing `expected_goals` across every player who featured — no new feed — and
+report, alongside the existing delta, whether the club's output or the
+player's slice of it moved. Read-only, so it cannot corrupt a team decision
+even if the arithmetic is wrong.
+
+**Stage 2 runs it in parallel the way the other three already run in
+parallel.** Add `compos` to `ESTIMATOR_CHOICES`, compute it in `load()`'s
+shrink branch beside `shrunk`, let the existing four-up tables and the
+prediction tracker score it week by week against reality. Two rules,
+non-negotiable: the team term is the club's **neutral-fixture** mean (defect
+3), and share shrinks under `_estimate_k_binomial()` with a fitted k (defect
+4). Do not wire it into `optimise_squad.py`'s default. It earns that only at
+GW10, on the tracker's own numbers.
+
+**Stage 3 is the real decision point and should be built alone.** Because of
+the identity, the team-output forecaster *is* the proposal — everything else
+is arithmetic around it. Score it as a standalone forecast of team xG per
+match before it is ever multiplied into a player estimate, against two
+baselines it must beat: the club's flat season-to-date mean, and last
+season's mean. D says a 10-match EWMA loses to the flat mean, so **the
+obvious v1 is already falsified** — anything built here has to be better than
+the thing the note proposed, not merely better than nothing.
+
+**Stage 4 only exists if Stage 3 pays.** Then, and only then, does the
+override replace hand-tuned multipliers with derived ones — and it should stay
+scoped to genuine regime change (transfer in, manager change, a named
+tactical shift), never applied squad-wide by default.
+
+### Kill criteria
+
+- **Stage 2's paired win rate stays at chance through GW10** → delete `compos`.
+  A 3% MAE edge with a 50% win rate is a tail artifact, not an estimator. This
+  is the expected outcome on current evidence.
+- **Stage 3's forecaster cannot beat a flat club mean** → stop. The
+  decomposition reduces to the identity and there is nothing left to build.
+- **Anyone reaches for npxG** → stop until an external source is agreed. Every
+  "np" in the original note is currently unbacked by the data in this repo.
+- **A fixture-adjusted team term meets `att_x`** → void, not approximate. Same
+  rule as any other double-counted channel.
+- **Stage 4 is applied to a player who has not actually changed regime** →
+  it has become a general estimator through the back door, which C says it is
+  not good enough to be.
+
+### Scope limits on all of the above
+
+`team_share_probe.py` scores **season-half aggregates, one split of one
+season, MID/FWD only**. Its RMSE figures are *not* comparable to
+`historical_backtest_2025_26.py`'s per-gameweek table above — different
+denominator, different population, no cameo gate needed at this aggregation
+window. The mover subgroup is n=19. Direction is informative; magnitudes are
+indicative. Re-run it against 2026/27 once that season has a usable back half
+before treating any of this as settled — particularly (b), which is the piece
+most likely to survive and is resting on the thinnest sample here.
+
+**Data source caveat.** As above: both seasons are vaastav archives, not the
+official API.

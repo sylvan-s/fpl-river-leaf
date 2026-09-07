@@ -21,11 +21,18 @@ player: it looks justified but cannot be reproduced.
 MOSTLY not a live tool - its RATE stats (xg90/xa90/xgi90/...) still read the
 frozen prior-season snapshot regardless of estimator, so from GW1 it should
 read player_gw from SQLite instead — see METHODOLOGY_ALTERNATIVES.md B6.
-PRICE is the one exception (added 3 Sep 2026): every load() call fetches live
-bootstrap-static for current `now_cost`, because a stale price is a wrong
-budget, not just a wrong estimate - see the "PRICE" comment above load()'s
-current-season fetch. Degrades to the frozen snapshot's price if unreachable,
-same silent-safe pattern as the rate fetch.
+PRICE and CLUB are the exceptions - both are live facts, not modelled rates,
+so both are read from live bootstrap-static on every load() call and both
+degrade to the frozen snapshot (with a warning) if it is unreachable.
+
+    PRICE (3 Sep 2026) - a stale price is a wrong budget, not just a wrong
+    estimate. See the "PRICE" comment above load()'s current-season fetch.
+    CLUB  (7 Sep 2026) - a stale club is a wrong FIXTURE RUN. The frozen
+    snapshot was captured 8 Aug, before the window shut, so it named the
+    pre-deadline club for every late mover; 15 pool players were carrying
+    one when this was fixed. Rows also keep `team_prior`, the snapshot club,
+    because prior-season lookups (last16_starts.json, the gameweek archive)
+    are still keyed by it. See the "CLUB" comment in load().
 
 GATE 2 CHANGED 9 Aug 2026 — starts% is now measured over the LAST 16 GAMEWEEKS
 of 2025/26 (GW23-38), not the full 38-GW season. Sylvan's point: a lot changes
@@ -268,10 +275,13 @@ _bonus_shrinkage = scoring.bonus_shrinkage
 # sandboxed or offline run behaves exactly as before this existed, just with
 # one warning printed rather than a crash.
 _current_cache = None
+# {element_id: SHORT_CODE} from the same bootstrap-static call. Populated by
+# _fetch_current_season(); {} when that fetch fails. See load()'s CLUB comment.
+_live_clubs_cache = None
 
 
 def _fetch_current_season():
-    global _current_cache
+    global _current_cache, _live_clubs_cache
     if _current_cache is not None:
         return _current_cache
     import urllib.request
@@ -282,12 +292,20 @@ def _fetch_current_season():
         with urllib.request.urlopen(req, timeout=15) as resp:
             data = json.loads(resp.read().decode("utf-8"))
         _current_cache = {str(e["id"]): e for e in data.get("elements", [])}
+        _code = {t["id"]: t["short_name"] for t in data.get("teams", [])}
+        _live_clubs_cache = {str(e["id"]): _code[e["team"]]
+                             for e in data.get("elements", [])
+                             if e.get("team") in _code}
     except Exception as exc:
         print(f"  LIVE FETCH: bootstrap-static fetch failed ({exc}) - raw/shrunk "
-              f"rates fall back to prior-only for every player this run, and every "
-              f"price falls back to the frozen 8 Aug pre-season snapshot.",
+              f"rates fall back to prior-only for every player this run, every "
+              f"price falls back to the frozen 8 Aug pre-season snapshot, and so "
+              f"does every CLUB - so anyone transferred since 8 Aug 2026 is "
+              f"scored on his OLD club's fixtures this run. Treat a fixture-"
+              f"adjusted run under this warning as unreliable for movers.",
               file=sys.stderr)
         _current_cache = {}
+        _live_clubs_cache = {}
     return _current_cache
 
 
@@ -344,7 +362,35 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
     # force on; price correctness shouldn't depend on which estimator a run
     # happens to be using.
     current = _fetch_current_season()
+    # CLUB IS A LIVE FACT, NOT A MODELLED RATE - the same argument the PRICE
+    # comment above makes, and the same fix. `teams` above is the frozen
+    # 8 Aug 2026 pre-season snapshot, so it names the club a player was at
+    # BEFORE the transfer window closed. Everything downstream that keys off
+    # a row's club - fixture_adjust.py's opponent multipliers, the 3-per-club
+    # and max-attackers-per-club ILP constraints, the `contaminated` fence's
+    # team+surname match - was therefore reading a pre-deadline club for
+    # every deadline-day mover.
+    #
+    # ADDED 7 Sep 2026, found while running the GW4 brief: Konsa moved
+    # AVL->ARS on deadline day, and NOTHING caught it. He was not in
+    # club_changes.json, because fetch_gw_history.py's sweep detects a move by
+    # comparing the archive's club against THIS pool's club - and both said
+    # AVL, so there was nothing to see. He was not excluded by the
+    # `contaminated` fence either, because that match requires the fence's
+    # destination club to equal the row's club, and the row said AVL while
+    # the fence would have said ARS. One stale field defeated both guards at
+    # once. 15 pool players carried a wrong club the day this was fixed, not
+    # one. scenario_squad.py's hand-maintained KNOWN_CORRECTIONS dict was the
+    # only thing correcting any of them, and only for two players, and only
+    # in the scenario tool - never in optimise_squad.py, the weekly tool.
+    #
+    # `team_prior` is kept on every row because the prior-season club is
+    # still the right key for prior-season data: last16_starts.json is keyed
+    # by it (below), and fetch_gw_history.py tie-breaks archive name matches
+    # on it.
+    live_clubs = _live_clubs_cache or {}
     stale_price_n = 0
+    club_fixed = []
     excluded = []
     matched = set()
     # PASS A - baseline rows (prior-season / last16 / bonus), no intel yet.
@@ -357,7 +403,10 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
         if m < MIN_MINUTES:
             continue
         name = p["web_name"]
-        team = teams.get(p.get("team"), "?")
+        team_prior = teams.get(p.get("team"), "?")
+        team = live_clubs.get(pid, team_prior)
+        if team != team_prior:
+            club_fixed.append((name, team_prior, team))
         if contam:
             hit_dest = next((dest for w, dest in contam.items()
                               if w.lower() in name.lower() or name.lower() in w.lower()), "MISS")
@@ -375,7 +424,11 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
         xgi = f(p.get("expected_goal_involvements"))
         ga = (p.get("goals_scored", 0) or 0) + (p.get("assists", 0) or 0)
         stp_season = (p.get("starts", 0) or 0) / 38
-        hit = last16.get((name, team))
+        # PRIOR club, deliberately: last16_starts.json was built on 9 Aug
+        # against the frozen snapshot, so its keys are pre-deadline clubs.
+        # Looking it up with the corrected live club would miss every mover
+        # and silently drop him to the weaker `season_fallback` start rate.
+        hit = last16.get((name, team_prior))
         if hit:
             starts16, games16 = hit
             stp, stp_src = starts16 / games16, "last16"
@@ -386,7 +439,7 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
             stale_price_n += 1
         price = (live_cost if live_cost is not None else (p.get("now_cost") or 0)) / 10
         r = dict(name=name, pos=POS[p["element_type"]],
-                 team=team, price=price,
+                 team=team, team_prior=team_prior, price=price,
                  starts=p.get("starts", 0) or 0, stp=stp, stp_season=stp_season,
                  stp_src=stp_src,
                  xgi90=xgi/n90, delta=ga - xgi, cbit90=(cbi+tk)/n90,
@@ -471,6 +524,20 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
               f"fetch — using the frozen 8 Aug pre-season price for those (see the "
               f"fetch warning above, if any). Affordability for everyone else is live.",
               file=sys.stderr)
+    if club_fixed:
+        # Reported, not hidden — the same rule fetch_gw_history.py applies to
+        # its unmatched list. A silent club correction would be its own
+        # version of the bug this fixes.
+        print(f"  CLUB CORRECTED — {len(club_fixed)} player(s) whose frozen 8 Aug "
+              f"club is not their live club; scored on the LIVE one: "
+              + ", ".join(f"{n} {a}->{b}" for n, a, b in sorted(club_fixed))
+              + ". Prior-season rates still describe the OLD club — check the "
+                "`contaminated` fence in ROLE_INTEL.md covers anyone here who "
+                "matters.", file=sys.stderr)
+    elif not live_clubs:
+        print(f"  CLUB: no live club map this run (bootstrap-static unreachable) "
+              f"— every club is the frozen 8 Aug snapshot's, so any post-deadline "
+              f"mover is scored on his OLD club's fixtures.", file=sys.stderr)
     if use_intel:
         # UNMATCHED IS A BUG, NOT A NO-OP. A typo'd name/team in the fence
         # would otherwise adjust nothing and say nothing - the exact silent

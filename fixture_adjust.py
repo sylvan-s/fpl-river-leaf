@@ -125,6 +125,37 @@ def active_window():
                       "fixture_window.json found, run --update"), None
 
 
+def window_gws():
+    """(start_gw, horizon) for the window actually in force.
+
+    start_gw is None when no fixture_window.json was found and the built-in
+    FIXTURES fallback is being used — there is no stamp to read a start
+    gameweek from, and inventing one is what this exists to stop.
+    """
+    _fx, _prov, stamp = active_window()
+    if stamp is None:
+        return None, HORIZON
+    return stamp["generated_for_gw"], stamp.get("horizon", HORIZON)
+
+
+def window_label():
+    """The window as a range, e.g. "GW4-7". READ, never assumed.
+
+    ADDED 7 Sep 2026. Callers used to print an f-string hardcoding the start
+    at 1 ("GW1-{HORIZON}"), so a window correctly refreshed and stamped for
+    GW4 printed "GW1-4". The weekly runbook tells the operator to abort if
+    the printed stamp does not match the current gameweek, which made that
+    label worse than merely wrong: it trained the operator to distrust a
+    window that was right. The start gameweek is in fixture_window.json's
+    `generated_for_gw` — this reads it.
+    """
+    start, horizon = window_gws()
+    if start is None:
+        return (f"GW?-{horizon} — BUILT-IN FALLBACK, no fixture_window.json; "
+                f"run fixture_adjust.py --update")
+    return f"GW{start}-{start + horizon - 1}"
+
+
 def check_stale(current_gw):
     """True if the stored window is for a different gameweek. Cheap tripwire."""
     _fx, _prov, stamp = active_window()
