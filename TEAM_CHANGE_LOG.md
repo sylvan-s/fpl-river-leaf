@@ -126,9 +126,29 @@ armband recorded there is the model's own ranking, not the final pick —
 `log_predictions` is deliberately intel-blind and scores the model, not
 model+intel.
 
-**Not yet actioned live** on fantasy.premierleague.com. This log and
-`squad.json` record the decision; live-site submission is a separate,
-explicit-ask-only step per the weekly-brief runbook.
+**ACTIONED LIVE, confirmed 7 Sep 2026, via Claude-in-Chrome browser
+automation.** The Confirm Transfers panel read exactly
+`O'Reilly -> Van de Ven 0 pts`, `O.Dango -> Szoboszlai 0 pts`,
+`Total cost 0 pts`, active for Gameweek 4. After a **fresh reload** the site
+shows 15/15, Gameweek transfers 2, **In the bank £1.3m**, and zoomed badges
+confirm **João Pedro C / Gabriel V**.
+
+**The armband save failed silently on the first attempt — third occurrence.**
+Both checkboxes were ticked and the C/V badges appeared on the pitch, but a
+hard reload had reverted them to B.Fernandes C / Thiago V. The transfers had
+persisted; only the captaincy had not. It took a second pass, the
+**"Save Your Team"** button, and the **"Your team has been saved."** banner
+before it stuck. `FPL_LIVE_TRANSFER_STEPS.md`'s reload check is what caught
+it — again. Do not skip it, and do not trust the on-screen badge.
+
+**Live price drift now VERIFIED against the site, not just inferred.** The
+site reports **Squad value £98.4m** against this file's £98.7m. Three held
+players account for the full £0.3m: **Mbeumo £8.0m→£7.9m, Thiago
+£8.0m→£7.9m, Shaw £4.5m→£4.4m**. The live **bank matched exactly at £1.3m**,
+so nothing in the GW4 transfer was mispriced — the gap is entirely players
+whose price has fallen since purchase. Not reconciled into `squad.json` (the
+ledger is bought_for-based by design); **do not treat that £0.3m as
+spendable.** Roadmap B1, gate GW3, still overdue.
 
 ---
 
