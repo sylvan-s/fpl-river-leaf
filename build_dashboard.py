@@ -162,10 +162,13 @@ def degenerate(k):
 # import, for the same "separate hand-maintained copy" reason the estimator
 # section below gives - see that comment.
 _current_cache = None
+# {element_id: SHORT_CODE} from the same call. See the CLUB comment in the
+# loader below. {} when the fetch fails.
+_live_clubs_cache = None
 
 
 def _fetch_current_season():
-    global _current_cache
+    global _current_cache, _live_clubs_cache
     if _current_cache is not None:
         return _current_cache
     import urllib.request
@@ -176,12 +179,19 @@ def _fetch_current_season():
         with urllib.request.urlopen(req, timeout=15) as resp:
             data = json.loads(resp.read().decode("utf-8"))
         _current_cache = {str(e["id"]): e for e in data.get("elements", [])}
+        _code = {t["id"]: t["short_name"] for t in data.get("teams", [])}
+        _live_clubs_cache = {str(e["id"]): _code[e["team"]]
+                             for e in data.get("elements", [])
+                             if e.get("team") in _code}
     except Exception as exc:
         print(f"  LIVE FETCH: bootstrap-static fetch failed ({exc}) - raw/shrunk "
-              f"rates fall back to prior-only for every player this run, and "
-              f"every price falls back to the frozen 8 Aug pre-season snapshot.",
+              f"rates fall back to prior-only for every player this run, every "
+              f"price falls back to the frozen 8 Aug pre-season snapshot, and so "
+              f"does every CLUB, so a player transferred since 8 Aug is shown at "
+              f"his old club and scored on its fixtures this run.",
               file=sys.stderr)
         _current_cache = {}
+        _live_clubs_cache = {}
     return _current_cache
 
 
@@ -203,7 +213,22 @@ LAST16, LAST16_META = load_last16()
 XBONUS_MAP, _XBONUS_K = scoring.bonus_shrinkage(snap.get("players") or {}, teams,
                                                  min_minutes=MIN_MINS)
 current = _fetch_current_season()
+# CLUB IS A LIVE FACT — ported from build_squad.py's fix (7 Sep 2026), for
+# exactly the reason the PRICE port above gives: this file has its OWN copy of
+# the loader, so fixing the optimiser alone left this page showing a
+# transferred player at his old club AND scoring his xp4_adj on that club's
+# fixture run (FIXTURE_MAP lookups below). `teams` is the frozen 8 Aug
+# snapshot, captured before the window shut.
+#
+# Every row keeps `team_prior`, the snapshot club, because the prior-season
+# lookups on these rows are keyed by it and must stay that way: LAST16, the
+# CBIT hit-rate map, scoring.dc_key()'s dc_hit_rates.json key, and the
+# club-level 2025/26 xGC/clean-sheet panel. Only the two things that were
+# actually wrong move to the live club — what the page DISPLAYS, and the
+# fixture window it scores against.
+live_clubs = _live_clubs_cache or {}
 stale_price_n = 0
+club_fixed = []
 rows = []
 for pid, p in (snap.get("players") or {}).items():
     mins = p.get("minutes", 0) or 0
@@ -215,9 +240,13 @@ for pid, p in (snap.get("players") or {}).items():
     xgi = f(p.get("expected_goal_involvements"))
     ga  = (p.get("goals_scored", 0) or 0) + (p.get("assists", 0) or 0)
     name = p.get("web_name", "")
-    team = teams.get(p.get("team"), "?")
+    team_prior = teams.get(p.get("team"), "?")
+    team = live_clubs.get(pid, team_prior)
+    if team != team_prior:
+        club_fixed.append((name, team_prior, team))
     stp_season = (p.get("starts", 0) or 0) / 38.0
-    hit = LAST16.get((name, team))
+    # PRIOR club — last16_starts.json is keyed by it (same as build_squad).
+    hit = LAST16.get((name, team_prior))
     if hit:
         starts16, games16 = hit
         stp, stp_src = starts16 / games16, "last16"
@@ -229,7 +258,7 @@ for pid, p in (snap.get("players") or {}).items():
     price = (live_cost if live_cost is not None else (p.get("now_cost") or 0)) / 10.0
     rows.append(dict(
         id=int(pid), name=name, pos=POS.get(p["element_type"], "?"),
-        team=team, n90=n90, mins=mins,
+        team=team, team_prior=team_prior, n90=n90, mins=mins,
         starts=p.get("starts", 0) or 0, stp=stp, stp_season=stp_season,
         stp_src=stp_src,
         price=price,
@@ -245,6 +274,14 @@ for pid, p in (snap.get("players") or {}).items():
         squad=name in SQUAD,
         xbonus90=XBONUS_MAP.get(pid, 0.0),
     ))
+if club_fixed:
+    print(f"  CLUB CORRECTED — {len(club_fixed)} player(s) whose frozen 8 Aug club "
+          f"is not their live club; shown and fixture-scored on the LIVE one: "
+          + ", ".join(f"{n} {a}->{b}" for n, a, b in sorted(club_fixed))
+          + ". Their 2025/26 rates still describe the OLD club.", file=sys.stderr)
+elif not live_clubs:
+    print("  CLUB: no live club map this run (bootstrap-static unreachable) — every "
+          "club is the frozen 8 Aug snapshot's.", file=sys.stderr)
 if stale_price_n:
     print(f"  PRICE: {stale_price_n}/{len(rows)} player(s) missing from the live "
           f"fetch — using the frozen 8 Aug pre-season price for those (see the "
@@ -317,7 +354,10 @@ def load_cbit_hitrates(pool):
         if len(cands) > 1:
             cands = [a for a in cands if a["pos"] == pl["pos"]] or cands
         if len(cands) > 1:
-            byteam = [a for a in cands if a["club"] == pl["team"]]
+            # PRIOR club: `a["club"]` comes from 2025/26 minutes, so the
+            # contemporary club is the right tie-break (same as
+            # fetch_gw_history.py's).
+            byteam = [a for a in cands if a["club"] == pl.get("team_prior", pl["team"])]
             cands = byteam if len(byteam) == 1 else sorted(cands, key=lambda a: -a["mins"])[:1]
         if len(cands) != 1:
             continue
@@ -326,13 +366,14 @@ def load_cbit_hitrates(pool):
         if N < MIN_APPS_FOR_HIT:
             continue
         hits = sum(1 for x in v if x >= CBIT_HIT_THRESH)
-        out[(pl["name"], pl["team"])] = {"rate": round(100.0 * hits / N, 1), "apps": N, "hits": hits}
+        out[(pl["name"], pl.get("team_prior", pl["team"]))] = {
+            "rate": round(100.0 * hits / N, 1), "apps": N, "hits": hits}
     return out
 
 
 _CBIT_HITS = load_cbit_hitrates(rows)
 for r in rows:
-    hit = _CBIT_HITS.get((r["name"], r["team"]))
+    hit = _CBIT_HITS.get((r["name"], r.get("team_prior") or r["team"]))
     r["cbit_hit10"] = hit["rate"] if hit else None
     r["cbit_hit10_apps"] = hit["apps"] if hit else 0
 
@@ -356,7 +397,9 @@ def blank_risk(r):
     import math
     p_start = min(max(r["stp"], 0.0), 0.98)
     p_cs = math.exp(-max(r["xgc90"], 0.05)) if r["pos"] in ("DEF", "GKP") else 0.0
-    p_dc = scoring.p_threshold(r["cbit90"], CBIT_THRESH, key=f'{r["name"]}|{r["team"]}')
+    # scoring.dc_key(), not a hand-built f-string: dc_hit_rates.json is keyed
+    # on the PRIOR club, and r["team"] is live since the club port above.
+    p_dc = scoring.p_threshold(r["cbit90"], CBIT_THRESH, key=scoring.dc_key(r))
     p_ret = 1.0 - math.exp(-max(r["xgi90"], 0.0))
     played_blank = (1 - p_cs) * (1 - p_dc) * (1 - p_ret)
     return round(100.0 * ((1 - p_start) + p_start * played_blank), 1)
@@ -514,12 +557,18 @@ club_xgc = {}
 club_cs = {}
 club_cs_mins = {}
 for r in rows:
+    # PRIOR club throughout this panel: every number in it is a 2025/26
+    # record, so a player who has since moved must count toward the club he
+    # actually kept those clean sheets and conceded those goals for. Keying
+    # on the live club would post a mover's Villa xGC into Arsenal's average
+    # and remove it from Villa's.
+    club = r.get("team_prior") or r["team"]
     if r["pos"] in ("GKP", "DEF"):
-        club_xgc.setdefault(r["team"], []).append(r["xgc90"])
+        club_xgc.setdefault(club, []).append(r["xgc90"])
     if r["pos"] == "GKP":
-        if r["team"] not in club_cs_mins or r["mins"] > club_cs_mins[r["team"]]:
-            club_cs_mins[r["team"]] = r["mins"]
-            club_cs[r["team"]] = r["cs"]
+        if club not in club_cs_mins or r["mins"] > club_cs_mins[club]:
+            club_cs_mins[club] = r["mins"]
+            club_cs[club] = r["cs"]
 club_xgc_cs = sorted(
     ([team, round(sum(vals) / len(vals), 3), club_cs[team]]
      for team, vals in club_xgc.items() if team in club_cs),
@@ -568,6 +617,23 @@ for _metric, _disp in scoring.PRIORS_DISPERSION.items():
     _shrunk_ks[_metric] = scoring.estimate_k_priors(_samples, dispersion=_disp)
 
 
+def _ship(rs):
+    """Row copies for the SHIPPED payload, minus loader-internal keys.
+
+    `team_prior` (the frozen 8 Aug club) exists so the loader can key
+    prior-season lookups correctly — LAST16, the CBIT hit map, dc_key(),
+    the club xGC panel. Every one of those has already run by here, and no
+    template reads the field, so shipping it put ~16KB of dead JSON on each
+    of three published pages. Kept on the in-process `rows` for any consumer
+    that imports this module; dropped on the way out.
+
+    (It IS the provenance a viewer would want next to a transferred player —
+    "shown at ARS, 2025/26 record is AVL's". Re-add it here the day a
+    template actually renders that, not before.)
+    """
+    return [{k: v for k, v in r.items() if k != "team_prior"} for r in rs]
+
+
 def _build_estimator_variant(estimator):
     """Recompute the estimator-sensitive fields for every row, then re-derive
     everything downstream of them in the SAME ORDER the prior computation
@@ -607,12 +673,12 @@ def _build_estimator_variant(estimator):
     for r in vrows:
         for k in ("xgi90", "xg90", "xa90", "delta", "cbit90", "cbirt90", "xgc90", "sv90"):
             r[k] = round(r[k], 3)
-    return dict(rows=vrows, med_xgc=round(med_xgc_v, 4), med_xgi_m=round(med_xgi_m_v, 4),
+    return dict(rows=_ship(vrows), med_xgc=round(med_xgc_v, 4), med_xgi_m=round(med_xgi_m_v, 4),
                 stats=dict(mid_n=len(Mv), mid_clear=sum(1 for r in Mv if r["cbirt90"] >= CBIRT_THRESH)))
 
 
 estimators = {
-    "prior": dict(rows=rows, med_xgc=round(med_xgc, 4), med_xgi_m=round(med_xgi_m, 4),
+    "prior": dict(rows=_ship(rows), med_xgc=round(med_xgc, 4), med_xgi_m=round(med_xgi_m, 4),
                   stats=dict(mid_n=stats["mid_n"], mid_clear=stats["mid_clear"])),
     "raw": _build_estimator_variant("raw"),
     "shrunk": _build_estimator_variant("shrunk"),
@@ -623,7 +689,7 @@ estimator_live = bool(current)   # False -> raw/shrunk silently equal prior; UI 
 # and build_team_benchmarking.py each pick their own subset of keys out of
 # this before writing their page (see either file); build_relationships_page.py
 # reads it directly, as it already did before the split.
-payload = dict(rows=rows, med_xgi_m=round(med_xgi_m,4), fixtures=FIXTURES, stats=stats, kpanel=kpanel,
+payload = dict(rows=_ship(rows), med_xgi_m=round(med_xgi_m,4), fixtures=FIXTURES, stats=stats, kpanel=kpanel,
                club_xgc_cs=club_xgc_cs,
                med_xgc=med_xgc, med_xgi_mid=med_xgi_mid,
                captured=snap.get("captured_utc", "")[:19],

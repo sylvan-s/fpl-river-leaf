@@ -653,6 +653,53 @@ share rises; the differential case depends entirely on him playing.
 
 ## CHANGE HISTORY (newest first)
 
+### Mon 7 Sep 2026 — methodology fix, not a transfer — the club port reaches the dashboard
+
+**Asked for a one-line change; it was a no-op, and that was the finding.**
+`build_dashboard.py:359` hand-built the `dc_hit_rates.json` key as
+`f'{name}|{team}'` instead of the new `scoring.dc_key()`. Swapping it alone
+changes nothing there — *because that file still had the stale-club bug*.
+Its `team` came from the frozen 8 Aug snapshot, which is exactly what the
+hand-built key wanted, so the two errors cancelled.
+
+**The real defect underneath.** `build_dashboard.py` keeps its own copy of the
+loader (the same reason the 3 Sep price fix had to be ported here separately).
+`FIXTURE_MAP.get(r["team"])` therefore computed `xp4_adj` — the published
+dashboard's fixture-adjusted points — on the club each player left, and every
+page **displayed** that club. Konsa's row read AVL and was scored on Villa's
+GW4-7 run.
+
+**Ported, splitting the lookups the same way `build_squad.py` does.** Live club
+on the row, snapshot club kept as `team_prior`, and each consumer pointed at
+whichever one it is actually asking about:
+
+| reads | club | why |
+|---|---|---|
+| `FIXTURE_MAP` (`xp4_adj`), page display | **live** | the fixture run he will actually play |
+| `LAST16`, CBIT hit map + its archive tie-break, `dc_key()`, club xGC/CS panel | **prior** | every one is a 2025/26 record |
+
+The club panel matters most and was easiest to get wrong: keying it live would
+post a mover's Villa xGC into Arsenal's average *and* remove it from Villa's,
+silently corrupting both clubs in a panel that is purely a 2025/26 record.
+
+**Verified as behaviour-preserving except where it was wrong.** Across all 311
+rows, exactly two fields move: `team` and `xp4_adj`, on the 20 movers this
+page's broader 450-minute gate catches (four more than the optimiser's 900:
+Awoniyi, Marmoush, Savinho, Tosin). `xp`, `cbit_hit10`, `stp`, `stp_src`,
+`blank` and the whole club xGC/clean-sheet panel are **identical**. Biggest
+swings over the 4-GW window: Baleba 12.57 -> 15.73, Iroegbunam 12.32 -> 14.98,
+N.Gonzalez 15.12 -> 13.37, Konsa 11.26 -> 10.52.
+
+**Payload kept the same size.** `team_prior` is loader-internal and no template
+reads it, but shipping it added ~16KB to each of three published pages. New
+`_ship()` drops it on the way out; the built page is 632KB, unchanged. It *is*
+the provenance a viewer would want beside a transferred player ("shown at ARS,
+2025/26 record is AVL's") — re-add it the day a template renders that.
+
+**NOT PUBLISHED.** All five page builders and all four `verify_*.js` scripts
+pass, run in a scratch copy so `docs/` was left alone. The committed dashboard
+still shows the old clubs until someone runs `publish_dashboard.sh`.
+
 ### Mon 7 Sep 2026 — tooling fix, not a transfer — `--allow-contaminated` now works where it is advertised
 
 **Found while acting on the fence update above.** `build_squad.load()`'s
