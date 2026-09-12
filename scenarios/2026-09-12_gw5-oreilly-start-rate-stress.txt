@@ -17,21 +17,56 @@ Calvert-Lewin | LEE | stp | set | 0.80 | 5-8 | speculative | 2026-09-12 | Scenar
 # The variable under test.
 O'Reilly | MCI | stp | set | 0.60 | 5-8 | speculative | 2026-09-12 | Scenario: Enzo Fernandez displaces him beyond the accepted 0.75 row
 
-# RESULT, 12 Sep 2026 (recorded here because it is the point of the file):
+# RESULT, 12 Sep 2026 (recorded here because it is the point of the file).
 #
-#   stp 0.75 (live fence) : Virgil -> O'Reilly   +1.25 xP/90
-#   stp 0.60              : O'Reilly VANISHES. Best free move becomes
-#                           Schade -> O.Dango at +0.39 xP/90 (+2.0 pts/5GW).
-#   stp 0.40              : IDENTICAL to 0.60.
+# READ THE ESTIMATOR LINE FIRST. scenario_squad.py defaults to --estimator
+# prior; nothing here is true of both estimators, and they disagree about
+# the squad's starting back three. Run BOTH before quoting either.
 #
-# That last line is the finding. It is a CLIFF AT THE GATE, not a gradient:
-# below 75% he leaves the XI entirely and any further cut changes nothing,
-# because stp enters the objective ONLY as the binary XI gate and never as a
-# weight. This is roadmap A0.5 (start-weighted objective, NOT BUILT) showing
-# up in a live decision — the recommendation is not "robust to O'Reilly being
-# rotated", it is "correct if he starts, void if he does not", with no
-# middle.
+# --- estimator: prior (the default) -------------------------------------
+#   O'Reilly stp 0.75 (live fence) : Virgil -> O'Reilly  +1.25 xP/90
+#   O'Reilly stp 0.60              : move VANISHES. Best free move becomes
+#                                    Schade -> O.Dango, +0.39 xP/90.
+#   O'Reilly stp 0.40              : IDENTICAL to 0.60.
 #
-# Selling Virgil survives every variant; BUYING O'REILLY does not. Botman
-# (NEW, GBP5.0m) is the fallback the 2-transfer runs keep surfacing —
-# exp CS 1.33 over GW5-9 against Virgil's 0.99 and O'Reilly's 2.74.
+# That last line is a CLIFF AT THE GATE, not a gradient: below 75% he leaves
+# the XI entirely and further cuts change nothing, because stp enters the
+# objective ONLY as the binary XI gate, never as a weight. Roadmap A0.5
+# (start-weighted objective, NOT BUILT) surfacing in a live decision.
+#
+# --- estimator: shrunk ---------------------------------------------------
+#   The O'Reilly move is already gone before his stp is touched at all.
+#   Adding ONLY the two Justin CB rows — nothing about O'Reilly — flips the
+#   free transfer to Schade -> O.Dango, +1.19 xP/90. The Calvert-Lewin row
+#   changes nothing either way (verified in isolation).
+#
+# WHY, and it is not really about O'Reilly. The two estimators pick a
+# different back three out of the same five defenders:
+#
+#   estimator   Gabriel  Van de Ven  Virgil  Justin  Shaw   -> XI three
+#   prior        5.85      3.41       4.08    3.59   3.30      Gab/Virgil/Justin
+#   shrunk       5.78      4.04       3.68    3.88   3.44      Gab/VdV/Justin
+#
+# Under shrunk, VIRGIL IS ALREADY BENCHED — the GBP6.5m XI defender scores
+# below the GBP4.5m first substitute before any scenario row is applied. So
+# "sell Virgil" is worth far less than the prior-based +1.25 implies: he is
+# not being removed from the XI, he is already out of it, and the fix is the
+# bench order, not a transfer.
+#
+# The Justin rows then push his cbit90 from 9.68 to 12.09 — across the 10.0
+# DC line rather than fractionally under it. Band-edge caution applies and is
+# the sharper caveat here, not a footnote: a Poisson fitted to the mean
+# overstates the hit rate at the line by up to 14pp, so a call hinging on a
+# DC threshold crossing is close to a coin-flip.
+#
+# O'Reilly's own cbit90 collapses 4.69 -> 2.66 between the estimators (live
+# 2026/27 minutes are central midfield, not back four), which is the same
+# role bet the accepted cbit90 x0.8 fence row already makes — under shrunk
+# the live data makes that row close to redundant.
+#
+# STANDING IMPLICATION. This is the A0.2 gate (start-rate shrinkage, gate
+# GW5-6) arriving as a live disagreement rather than a scheduled review, and
+# METHODOLOGY_ALTERNATIVES' plan of record was to flip shrunk to default-on
+# before the GW4 deadline. That never happened - optimise_squad.py still
+# prints "ESTIMATOR: PRIOR (default)" - so every weekly run since has been
+# prior-only on a question the two estimators do not agree about.
