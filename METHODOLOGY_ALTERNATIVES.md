@@ -949,6 +949,92 @@ transfer decision. `--shrunk-priors` ships this week for sanity-checking
 via `--compare-shrink`; the flag flips to default-on before the GW4
 deadline once that check looks sane.
 
+**GW5 REVIEW RUN, 12 Sep 2026 — RESULT. Nothing broke; the direction is
+right for ONE metric and wrong for the other five.** Ran through GW3
+(GW4 was still in play). Evidence, all four prescribed pieces:
+
+*1. Walk-forward RMSE, `prediction_tracker.json`, GW3 (lower is better):*
+
+| metric | n | raw | prior | shrunk | winner | shrunk vs prior |
+|---|---|---|---|---|---|---|
+| **stp** | 218 | **0.3433** | 0.5030 | 0.3773 | raw | **-25.0%** |
+| cbirt90 | 86 | 3.798 | 3.549 | 3.510 | shrunk | -1.1% |
+| sv90 | 15 | 2.398 | 2.270 | 2.258 | shrunk | -0.5% |
+| cbit90 | 60 | 4.132 | 3.120 | 3.122 | prior | +0.1% |
+| xa90 | 146 | 0.178 | 0.135 | 0.135 | prior | +0.4% |
+| xgc90 | 75 | 0.986 | 0.754 | 0.765 | prior | +1.5% |
+| xg90 | 146 | 0.336 | 0.241 | 0.247 | prior | +2.2% |
+
+**Start rate is a different animal from the per-90 rates and the split is
+not marginal.** On `stp` the 2025/26 prior is the WORST of the three
+estimators, and shrinkage beats it by 25%. On every per-90 rate the prior
+still wins or ties, and shrinkage is worth between -1% and +2% — noise.
+Same result in GW2. That is what theory predicts: a start/no-start bit
+accumulates information every single match, while a per-90 rate needs many
+matches before three games say anything.
+
+*2. Maturity, `priors_player_snapshot.json` (through GW3):*
+
+| metric | rows | still on fallback k | mean weight (share from live data) |
+|---|---|---|---|
+| **stp** | 273 | **6%** | **0.664** |
+| cbit90 | 94 | 0% | 0.295 |
+| xgc90 | 111 | 15% | 0.188 |
+| xg90 / xa90 | 256 ea | 63% | ~0.12 |
+| cbirt90 / sv90 | 162 / 17 | 100% | 0.13 / 0.21 |
+
+Same story from the other side: `stp` has a properly-derived k for 94% of
+players and already draws two thirds of its estimate from live data, while
+xg90/xa90 are majority-fallback and draw about an eighth. (The week-level
+`degenerate` flag in `prediction_tracker.json` reads `true` for every
+metric, but it is an `any()` across positions and is pessimistic — the
+per-player snapshot is the one to read.)
+
+*3. Squad-level `--compare-shrink`:* prior XI 54.76 xP/90, shrunk 57.10,
+**same recommendation** (Virgil -> O'Reilly, +1.25 vs +1.24). Nothing broke.
+
+*4. `--compare-estimators`,* the gate `build_squad.py`'s ESTIMATOR_DEFAULT
+comment names explicitly:
+
+| estimator | XI xP/90 | best free transfer |
+|---|---|---|
+| prior | 54.76 | Virgil -> O'Reilly +1.25 |
+| raw | **61.21** | Justin -> Bogle +1.82 |
+| shrunk | 57.10 | Virgil -> O'Reilly +1.24 |
+
+**Do not read raw's RMSE win on `stp` as a case for the raw estimator.**
+Raw inflates the XI to 61.21 xP/90 off three games and proposes an entirely
+different transfer that neither other estimator sees — small-sample
+overfitting, visible directly. It is also structurally unsafe for exactly
+the case this squad is live on right now: O'Reilly missed matches injured,
+so his RAW start rate is low and raw would eject him, while shrinkage pulls
+him back toward his prior. Raw wins a scoring metric and loses the decision.
+
+**RECOMMENDATION — shrink start rate, leave the per-90 rates on the prior.**
+This is the roadmap's own "revisit which of the six metrics are worth
+shrinking" lever, and the evidence points at it rather than at the
+all-or-nothing flag. `ESTIMATOR_CHOICES` is currently applied across every
+metric at once, so acting on this needs a per-metric split that does not
+exist yet — a small build, NOT DONE, and deliberately not done inside the
+review. Flipping the existing flag wholesale would buy a 25% improvement on
+`stp` and pay for it with a 0-2% degradation across five rates that are
+mostly still running on a fallback k.
+
+**Live stakes, recorded so the GW10 gate can check it.** The two estimators
+already disagree about this squad's starting back three — prior starts
+Virgil (4.08) and benches Van de Ven (3.41), shrunk starts Van de Ven
+(4.04) and benches Virgil (3.68). See
+`scenarios/2026-09-12_gw5-oreilly-start-rate-stress.txt`. This is no longer
+a scheduled review item; it is deciding selection now.
+
+**Caveats, and they are severe.** TWO scored gameweeks (GW1 had no raw
+comparison). The doc's own framing stands — nowhere near the power the
+GW1-5-vs-GW6-10 design assumed, and not a verdict. n falls 234 -> 218
+across the weeks, so there is survivorship in the panel. A coarse raw start
+rate over three games takes only four values, which flatters it on players
+who are simply nailed or simply dropped. The GW10 `predictive_backtest`
+remains the real read.
+
 **GW5 review, reframed as a sanity/kill-switch check, not a verdict.**
 With one or two live gameweeks banked by GW5, this is nowhere near the
 statistical power the original GW1-5-vs-GW6-10 design assumed — it is a
