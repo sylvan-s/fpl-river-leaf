@@ -1,0 +1,37 @@
+# Scenario, logged 12 Sep 2026 — GW5. HYPOTHETICAL, no decision implied.
+# Run: python3 scenario_squad.py scenarios/2026-09-12_gw5-oreilly-start-rate-stress.txt --fixtures --transfers 2
+#
+# WHY. The GW5 recommendation (Virgil -> O'Reilly, +1.25 xP/90) rests on
+# O'Reilly clearing the 75% XI gate. The live fence has him at EXACTLY 0.75 —
+# sitting on the edge — and Maresca has confirmed him fit ("100 per cent
+# available", 11 Sep) but NOT confirmed that he starts, with Enzo Fernandez's
+# GBP125m arrival ahead of him in central midfield. This stresses that.
+#
+# Carries the same Justin/Calvert-Lewin rows as
+# 2026-09-12_gw5-live-board-bites.txt so the only variable is O'Reilly.
+
+Justin | LEE | cbit90 | mult | 1.25 | 5-11 | speculative | 2026-09-12 | Scenario: confirmed CB in a back three; my sizing, card proposes none
+Justin | LEE | xa90   | mult | 0.80 | 5-11 | speculative | 2026-09-12 | Scenario: CB supplies fewer assists than a wing-back; my sizing
+Calvert-Lewin | LEE | stp | set | 0.80 | 5-8 | speculative | 2026-09-12 | Scenario: shared minutes with Nmecha; my sizing, card rates itself low confidence
+
+# The variable under test.
+O'Reilly | MCI | stp | set | 0.60 | 5-8 | speculative | 2026-09-12 | Scenario: Enzo Fernandez displaces him beyond the accepted 0.75 row
+
+# RESULT, 12 Sep 2026 (recorded here because it is the point of the file):
+#
+#   stp 0.75 (live fence) : Virgil -> O'Reilly   +1.25 xP/90
+#   stp 0.60              : O'Reilly VANISHES. Best free move becomes
+#                           Schade -> O.Dango at +0.39 xP/90 (+2.0 pts/5GW).
+#   stp 0.40              : IDENTICAL to 0.60.
+#
+# That last line is the finding. It is a CLIFF AT THE GATE, not a gradient:
+# below 75% he leaves the XI entirely and any further cut changes nothing,
+# because stp enters the objective ONLY as the binary XI gate and never as a
+# weight. This is roadmap A0.5 (start-weighted objective, NOT BUILT) showing
+# up in a live decision — the recommendation is not "robust to O'Reilly being
+# rotated", it is "correct if he starts, void if he does not", with no
+# middle.
+#
+# Selling Virgil survives every variant; BUYING O'REILLY does not. Botman
+# (NEW, GBP5.0m) is the fallback the 2-transfer runs keep surfacing —
+# exp CS 1.33 over GW5-9 against Virgil's 0.99 and O'Reilly's 2.74.

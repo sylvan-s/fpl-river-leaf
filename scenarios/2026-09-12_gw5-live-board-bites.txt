@@ -1,0 +1,63 @@
+# Scenario, logged 12 Sep 2026 — GW5 pre-deadline. HYPOTHETICAL, no decision implied.
+# Format matches ROLE_INTEL.md's `adjustments` fence exactly:
+#   player|team|field|op|value|gws|confidence|date|why
+# Run: python3 scenario_squad.py scenarios/2026-09-12_gw5-live-board-bites.txt --fixtures --transfers 1
+#
+# WHY THIS EXISTS. Of the fifteen, exactly ONE (Szoboszlai) carries a live
+# ROLE_INTEL adjustments row. The other fourteen are scored on pure 2025/26
+# priors with no news overlay at all, while the Trello board holds bites that
+# bear directly on two of them. This prices those bites WITHOUT writing them
+# into the real fence — that only happens in the Friday review.
+#
+# Both magnitudes below are MY sizing. Neither card proposes one; both say so
+# explicitly ("NO MAGNITUDE PROPOSED, needs Modeller sizing" / "no magnitude
+# proposed"). Treat every number here as an assumption under test.
+
+# --- 1. Justin (LEE): wing-back -> centre-back in a back three -------------
+# Card Justin-LEE-role-20260904-1 (Take action, RESOLVED confirmed 10 Sep,
+# confidence HIGH). Confirmed on the Brighton 1-1 Leeds sheet of 5 Sep: a
+# 3-4-2-1 back three of Elvedi, Muharemovic and JUSTIN, with Bogle and
+# Gudmundsson as the wing-backs and Bijol fit on the bench — a selection
+# choice, not injury cover. Rodon out 8-10 weeks from GW2 (~GW11-13), which
+# sets the window below.
+#
+# NOTE this reverses the 6 Sep scenario, which sized Justin as a WING-BACK
+# (cbit90 1.2, xa90 1.2). That hypothesis is now superseded: a centre-back in
+# a back three wins MORE defensive actions and supplies FEWER assists than a
+# wing-back. Same player, opposite sign on the attacking lever.
+#
+# Sizing rationale: the accepted O'Reilly rows use +/-20% for a comparable
+# role shift (central midfield vs back four). A wing-back -> CB move is at
+# least that large on defensive volume, so 1.25 on cbit90; 0.80 on xa90 for
+# the lost final-third involvement. He is BENCH (order 1) and the squad's
+# most valuable autosub, so this tests promotion into the XI as much as it
+# tests his own score.
+Justin | LEE | cbit90 | mult | 1.25 | 5-11 | speculative | 2026-09-12 | Scenario: confirmed CB in a back three wins more clearances/blocks/interceptions than a wing-back; my sizing, card proposes none
+Justin | LEE | xa90   | mult | 0.80 | 5-11 | speculative | 2026-09-12 | Scenario: CB supplies fewer assists than the wing-back role the 6 Sep scenario assumed; my sizing, card proposes none
+
+# --- 2. Calvert-Lewin (LEE): rotation with Nmecha -------------------------
+# Card CalvertLewin-LEE-stp-20260911-1 (Wait for more evidence, confidence
+# LOW). ONE phrase in ONE tier-3 predicted-XI piece that itself predicts him
+# to START, describing his "usual ROTATION with Lukas Nmecha". As of the
+# 12 Sep sweep nothing corroborates it and nothing contradicts it; no fitness
+# concern; injury_report clean. He is OWNED and in the live XI at GBP6.0m on
+# a priors start assumption (94%) that no card had previously challenged.
+#
+# Sizing rationale: 0.80 is a genuine-but-not-severe rotation — he still
+# starts four games in five. Deliberately kept ABOVE the 0.75 XI gate so this
+# row tests his SCORE rather than silently ejecting him from the XI on a
+# gate technicality. The cliff at 0.75 is tested separately.
+Calvert-Lewin | LEE | stp | set | 0.80 | 5-8 | speculative | 2026-09-12 | Scenario: shared minutes with Nmecha at ~4 starts in 5; my sizing, card proposes none and rates itself low confidence
+
+# --- NOT INCLUDED, and why -----------------------------------------------
+# Van Dijk (VanDijk-LIV-teamnews-20260909-1): the 12 Sep sweep CONFIRMED him
+# starting v Fulham (0-0), card's own field impact reads "none - narrative
+# only". No row. Do not discount Virgil on a knock he has already cleared.
+#
+# O'Reilly (OReilly-MCI-cbit90-20260826-1): Maresca 11 Sep — "100 per cent
+# available"; injury_report flipped DOUBTFUL 75% -> AVAILABLE 100%. The
+# GW4-sale premise has expired. His cbit90 0.8 / xgi90 1.2 / stp 0.75 rows
+# are ALREADY live in the fence and apply underneath this scenario by
+# default, so adding anything here would double-count. The open question is
+# whether Enzo Fernandez displaces him further — tested as a separate run,
+# not folded in here.

@@ -307,7 +307,12 @@ def main():
               f"{games[0] if len(games)==1 else games} fixture(s)/team)\n")
     elif "--fixtures" in sys.argv:
         opt._fixture_scale(pool)
-        print(f"objective: xP_adj (opponent-adjusted, standing GW1-{fa.HORIZON} window)\n")
+        # The window's own stamp, not a hardcoded "GW1" — see
+        # fixture_adjust.window_label(). Ported here 12 Sep 2026; the 7 Sep
+        # fix landed in optimise_squad.py only, so this path kept printing
+        # "GW1-4" off a window correctly stamped for GW5 — exactly the
+        # failure window_label() was written to stop.
+        print(f"objective: xP_adj (opponent-adjusted, {fa.window_label()} window)\n")
 
     if "--transfers" in sys.argv:
         n = int(sys.argv[sys.argv.index("--transfers") + 1])
