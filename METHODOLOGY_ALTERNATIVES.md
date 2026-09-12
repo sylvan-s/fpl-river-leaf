@@ -1010,22 +1010,58 @@ the case this squad is live on right now: O'Reilly missed matches injured,
 so his RAW start rate is low and raw would eject him, while shrinkage pulls
 him back toward his prior. Raw wins a scoring metric and loses the decision.
 
-**RECOMMENDATION — shrink start rate, leave the per-90 rates on the prior.**
-This is the roadmap's own "revisit which of the six metrics are worth
-shrinking" lever, and the evidence points at it rather than at the
-all-or-nothing flag. `ESTIMATOR_CHOICES` is currently applied across every
-metric at once, so acting on this needs a per-metric split that does not
-exist yet — a small build, NOT DONE, and deliberately not done inside the
-review. Flipping the existing flag wholesale would buy a 25% improvement on
-`stp` and pay for it with a 0-2% degradation across five rates that are
-mostly still running on a fallback k.
+**CORRECTION, 12 Sep 2026, same session — the first version of this
+recommendation was wrong, and wrong in the direction that matters.** It read
+"shrink start rate, leave the per-90 rates on the prior", described as the
+existing flag's own lever. It is not. `--estimator shrunk` blends only the
+metrics in `scoring.PRIORS_DISPERSION` — `cbirt90, cbit90, sv90, xa90,
+xg90, xgc90, xgi90`. **`stp` is not among them.** Start rate is read from
+the frozen `last16_starts.json` and is IDENTICAL under prior, raw and
+shrunk; verified player by player across the squad and the transfer
+targets, every delta +0.000.
 
-**Live stakes, recorded so the GW10 gate can check it.** The two estimators
+So the flag does the exact inverse of what this review recommends: it
+shrinks the five metrics where the prior still wins, and leaves untouched
+the one metric where shrinkage wins by 25%. **Flipping it buys none of the
+stp gain and all of the per-90 cost.** A0.2's own status line — OBSERVATION
+BUILT, ACTIVATION gated — is literally accurate: the observation layer
+(`build_prediction_tracker.py`, `priors_player_snapshot.json`) has
+start-rate shrinkage; squad selection has never had it. What
+`--estimator shrunk` actually provides is per-90-rate shrinkage, a
+different thing sharing a flag name.
+
+**Also corrected:** the first version argued raw was unsafe because
+"O'Reilly missed matches injured, so raw ejects him". Wrong twice — his raw
+start rate through GW3 is 1.000 (the injury was a GW4 event, not in the
+data), and no estimator touches start rate anyway. The case against raw
+stands on what was actually measured: it inflates the XI to 61.21 xP/90 off
+three games and proposes a transfer neither other estimator sees.
+
+**RECOMMENDATION, revised. Keep `--estimator prior` as the default — it is
+already the right call for the only metrics the flag governs.** The review's
+finding is that the prior wins or ties on five of seven per-90 metrics and
+that shrinkage there is worth -1% to +2%, so there is nothing to activate
+and the GW5 kill-switch verdict is "leave the flag off", not "flip it".
+
+The real A0.2 activation — start-rate shrinkage reaching squad selection —
+remains NOT BUILT, and this review does not build it. Its value is now
+measured rather than assumed: 25% RMSE improvement over the frozen prior,
+the largest margin of any metric on the board.
+
+**Until it is built, the ROLE_INTEL `adjustments` fence is the ONLY
+mechanism that can correct a start rate**, via its uncapped `stp set` op.
+That reclassifies the news pipeline: the fence is not a refinement on top of
+the model, it is the model's sole start-rate input beyond a frozen
+last-season number. A squad carrying one fence row across fifteen players
+(the position on 12 Sep 2026) is running almost entirely on 2025/26 start
+rates in a season where live data already beats them by 25%.
+
+**Live stakes, recorded so the GW10 gate can check it.** The estimators
 already disagree about this squad's starting back three — prior starts
-Virgil (4.08) and benches Van de Ven (3.41), shrunk starts Van de Ven
-(4.04) and benches Virgil (3.68). See
-`scenarios/2026-09-12_gw5-oreilly-start-rate-stress.txt`. This is no longer
-a scheduled review item; it is deciding selection now.
+Virgil (4.08) and benches Van de Ven (3.41), shrunk starts Van de Ven (4.04)
+and benches Virgil (3.68). That disagreement is driven entirely by the
+per-90 rates, since stp is identical across both. See
+`scenarios/2026-09-12_gw5-oreilly-start-rate-stress.txt`.
 
 **Caveats, and they are severe.** TWO scored gameweeks (GW1 had no raw
 comparison). The doc's own framing stands — nowhere near the power the
