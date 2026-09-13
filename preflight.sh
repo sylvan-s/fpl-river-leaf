@@ -126,7 +126,7 @@ fi
 # downstream can reconstruct — a missing entry is indistinguishable from one
 # that was never written.
 say ""
-for log in docs/data/intel_sweep_log.jsonl fpl_calibration_log.jsonl; do
+for log in docs/data/intel_sweep_log.jsonl fpl_calibration_log.jsonl price_history.jsonl; do
   [ -f "$log" ] || continue
   L=$(wc -l < "$log" | tr -d ' ')
   R=$(git show "origin/main:$log" 2>/dev/null | wc -l | tr -d ' ')

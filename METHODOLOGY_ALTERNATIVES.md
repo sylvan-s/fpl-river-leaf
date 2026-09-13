@@ -20,6 +20,8 @@ if the GW10 bake-off justifies it.
 | **xP from FPL's scoring table** | built 9 Aug 2026 | `build_squad.py:expected_points()` |
 | **Exact ILP optimiser** | built 9 Aug 2026 | `optimise_squad.py` |
 | **xP validated against FPL's own official xP** | checked 11 Aug 2026 | see below |
+| B1 price momentum screen | built 13 Sep 2026 | `price_movers()` (fpl-research MCP), see §0 |
+| B1 sell-price fix in the optimiser | built 13 Sep 2026 | `optimise_squad._sell_price()`, see §0 |
 
 **The xP model replaced hand-picked coefficients.** The first selection scorer used
 `xGI/90 × 8` and `(1.6 − xGC/90) × 6` — numbers that appear nowhere in FPL's rules.
@@ -299,8 +301,30 @@ system. Not adopted; recorded for evaluation.
 
 ## 0. Price forecasting — logged Sat 8 Aug 2026. BUILD DECISION AT GW3.
 
-**Status: not built. Deliberately deferred to ~GW3**, once real transfer-flow
-data exists (all price fields are zero pre-season).
+**Status: partially built, 13 Sep 2026, GW4 — later than the GW3 target but for
+the reason the "why GW3" section below anticipated (needed real flow data).**
+Two of the three pieces below exist now:
+
+- **The `price_watch` tool this section proposed** is built as `price_movers()`
+  in the `fpl-research` MCP server — ranks by net transfers scaled against each
+  player's own ownership base, exactly the "threshold scales with how widely
+  owned" design below. Deliberately labelled a heuristic approximation, not a
+  reproduction of FPL's real (still undocumented) threshold — the "CHECK FIRST"
+  item below was checked and found nothing exposed.
+- **The optimiser's sell-price bug is fixed** (`optimise_squad._sell_price()`):
+  `optimise_transfers()` previously treated an owned player's full current price
+  as recoverable budget, which overstates proceeds on any risen player — FPL
+  only pays out half the rise, rounded down. This is the TIMING mechanics the
+  section below argues price should stay confined to; it was a correctness gap
+  in that mechanics, not a new ranking signal.
+- **Not yet built:** a calibrated threshold (the momentum score is unnormalized
+  against actual observed price-change history) and the transfer-timing check
+  that would turn "is this player moving" into "should I act tonight or wait
+  for Friday" — see the Friday-vs-early-action discussion this prompted,
+  13 Sep 2026 chat. Needs the nightly snapshot log (`price_history.py`,
+  built 13 Sep 2026, appending to `price_history.jsonl` — not yet scheduled,
+  see that script's own docstring for the cron/launchd setup) to accumulate
+  a few weeks of data first.
 
 ### Sizing first — this is a second-order effect
 

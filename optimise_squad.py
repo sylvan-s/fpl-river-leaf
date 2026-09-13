@@ -245,6 +245,40 @@ _STATE = squad_state.load()
 
 CURRENT_SQUAD = _STATE.names
 BANK = _STATE.bank
+# Purchase price per owned player, keyed by name — the OTHER half of the
+# sell-price calculation (see _sell_price() below). squad.json's own "price"
+# field is not reliable for this: it is sometimes hand-updated to track live
+# market moves (João Pedro: bought_for 7.5, price 7.7) and sometimes not
+# (Mbeumo/Thiago/Shaw held at bought_for while live price has drifted below
+# it — see squad.json's own ledger-drift comment). bought_for is the one
+# field that is never touched after purchase, by design.
+BOUGHT_FOR = {p["name"]: float(p["bought_for"]) for p in _STATE.players}
+
+
+def _sell_price(bought_for: float, current_price: float) -> float:
+    """What FPL actually pays out for selling a player — NOT current_price.
+
+    The real rule: a fall passes through in full, but a rise is only ever
+    HALF banked, rounded down to the nearest £0.1m. A player bought at £5.0m
+    now worth £5.4m (+£0.4m) sells for £5.2m, not £5.4m — the other £0.2m is
+    never realisable. optimise_transfers() used to treat owned players' full
+    current price as spendable budget, which silently overstated how much a
+    sale actually frees up on anyone who has risen (found 13 Sep 2026,
+    prompted by João Pedro/Mbeumo/Thiago/Shaw all drifting off their
+    bought_for price by GW4 — see squad.json's ledger-drift note and
+    TEAM_CHANGE_LOG.md's GW2-4 entries).
+
+    Compares in integer tenths of £1m, not raw floats — prices are always
+    exact multiples of £0.1m, but 5.7 - 5.5 in float64 is
+    0.19999999999999973, and floor-dividing THAT by 2 rounds the wrong way
+    once in a while. Round-tripping through tenths sidesteps it entirely.
+    """
+    bought_tenths = round(bought_for * 10)
+    now_tenths = round(current_price * 10)
+    if now_tenths <= bought_tenths:
+        return now_tenths / 10          # fall (or flat): full downside, no floor
+    profit_tenths = now_tenths - bought_tenths
+    return (bought_tenths + profit_tenths // 2) / 10
 
 
 def optimise(pool, allow_haaland=False, max_att_per_club=MAX_ATT_PER_CLUB_DEFAULT,
@@ -307,7 +341,7 @@ def optimise(pool, allow_haaland=False, max_att_per_club=MAX_ATT_PER_CLUB_DEFAUL
 def optimise_transfers(pool, owned_names, bank, n_transfers, allow_haaland=False,
                        max_att_per_club=MAX_ATT_PER_CLUB_DEFAULT,
                        free_transfers=1, force=False, role_rivals=(),
-                       pin_in=(), pin_out=()):
+                       pin_in=(), pin_out=(), bought_for=None):
     """Best n_transfers FROM the current squad. The weekly question.
 
     pin_in / pin_out: (name, team) pairs to force owned=1 / owned=0 - "given
@@ -337,15 +371,30 @@ def optimise_transfers(pool, owned_names, bank, n_transfers, allow_haaland=False
     calls this with force=True and applies its own MIN_GAIN threshold to the
     result to decide what to recommend.
 
-    SELL PRICE CAVEAT: this uses current price. FPL actually pays purchase price
-    plus half any rise, so mid-season the true proceeds can be lower. Pre-season
-    the two are identical. Do not trust a marginal call to 0.1m mid-season.
+    bought_for: {name: purchase price} for owned players, used to compute real
+    sell proceeds via _sell_price() rather than assuming a sale returns full
+    current price. Defaults to the module's own BOUGHT_FOR (squad.json's
+    bought_for field, the single source of truth for the live squad) - pass
+    an explicit dict only for a hypothetical squad that isn't CURRENT_SQUAD.
+    An owned player absent from the map (a hypothetical squad again) is
+    assumed to have neither gained nor lost, i.e. sells at current price.
+
+    FIXED 13 Sep 2026 (previously): this used raw current price as sell
+    proceeds for every owned player, which FPL only pays out in full on a
+    FALL. On a RISE only half is banked, rounded down to the nearest £0.1m -
+    see _sell_price(). That silently overstated the budget freed by selling
+    any player who had risen since purchase (by GW4, live: João Pedro
+    bought_for 7.5 price 7.7 - the old code would have credited the full
+    £0.2m, not the £0.1m FPL actually pays). Pre-season, when no price has
+    moved, the two are identical, which is why the bug went unnoticed.
     """
+    bought_for = BOUGHT_FOR if bought_for is None else bought_for
     P = [r for r in pool if r["ok"] or r["name"] in owned_names]
     if not allow_haaland:
         P = [r for r in P if r["name"] != "Haaland"]
     P = [r for r in P if r["stp"] >= bs.GATE_BENCH or r["name"] in owned_names]
     idx_owned = [i for i, r in enumerate(P) if r["name"] in owned_names]
+    idx_owned_set = set(idx_owned)
     missing = set(owned_names) - {P[i]["name"] for i in idx_owned}
     if missing:
         print(f"  WARNING: owned players not found in the pool: {sorted(missing)}")
@@ -366,8 +415,21 @@ def optimise_transfers(pool, owned_names, bank, n_transfers, allow_haaland=False
             prob += x[i] == 0
 
     # Budget: what you can spend is what you already own plus the bank.
-    owned_value = sum(P[i]["price"] for i in idx_owned)
-    prob += pulp.lpSum(P[i]["price"] * own[i] for i in range(len(P))) <= owned_value + bank
+    # coef[i] is the price used for player i in this constraint - REAL sell
+    # price (_sell_price) for currently-owned players, current market price
+    # for anyone else (what buying them costs). For an owned player who ends
+    # up KEPT this choice is moot - own[i]=1 on both sides of the algebra
+    # below cancels it out regardless of which price is used - so it only
+    # ever actually bites on players who are SOLD, which is exactly where it
+    # should. See optimise_transfers' own docstring for the derivation and
+    # the bug this replaced.
+    def _coef(i):
+        if i in idx_owned_set:
+            return _sell_price(bought_for.get(P[i]["name"], P[i]["price"]), P[i]["price"])
+        return P[i]["price"]
+    coef = {i: _coef(i) for i in range(len(P))}
+    owned_value = sum(coef[i] for i in idx_owned)
+    prob += pulp.lpSum(coef[i] * own[i] for i in range(len(P))) <= owned_value + bank
 
     # At most n_transfers players may LEAVE (exactly, if force=True) - so at
     # least (15 - n) must be kept, or precisely (15 - n) if forced.

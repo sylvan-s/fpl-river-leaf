@@ -64,11 +64,16 @@ overwritten origin's GW1–3 prediction record with a local GW1–2 copy.
    Untracked files need listing separately because `git diff origin/main`
    reports them as deletions: they are not in the index, so git cannot see
    them as present.
-4. **Append-only logs** — `docs/data/intel_sweep_log.jsonl` and
-   `fpl_calibration_log.jsonl` must never shrink. If the local copy has
+4. **Append-only logs** — `docs/data/intel_sweep_log.jsonl`,
+   `fpl_calibration_log.jsonl`, and `price_history.jsonl` (added 13 Sep 2026,
+   written by `price_history.py`) must never shrink. If the local copy has
    fewer lines than origin's, local is stale and committing it would delete
    history nothing downstream can reconstruct: a missing entry is
    indistinguishable from one that was never written.
+   `price_history.jsonl` carries the same last-writer-wins risk this
+   section already warns about, which is exactly why `price_history.py`'s
+   own docstring says to run it locally via cron/launchd, never as a
+   Cowork/cloud scheduled skill.
 
 It then **fast-forwards only when the tree already matches `origin/main`
 byte for byte** — the case where there is provably nothing to lose. Anything
