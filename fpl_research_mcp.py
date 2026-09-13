@@ -59,7 +59,8 @@ mcp = _Server(
     instructions=(
         "Read-only Fantasy Premier League research. Use xgi_delta for buy/sell "
         "signals, fixture_difficulty for fixture runs, injury_report for "
-        "availability, and get_deadline for gameweek timing and chip windows."
+        "availability, price_movers for a heuristic price-change read, and "
+        "get_deadline for gameweek timing and chip windows."
     ),
 )
 
@@ -1431,6 +1432,110 @@ def xgi_delta(
         f"{table(sells)}\n\n"
         f"Cross-reference the buy list against fixture_difficulty before acting."
     )
+
+
+# -------------------------------------------------------------- price movers --
+@mcp.tool(
+    description=(
+        "HEURISTIC approximation of the FPL site's price-rise/fall predictor - "
+        "NOT that predictor. FPL's real threshold algorithm is undocumented "
+        "and not exposed anywhere in the API, so nothing built on public data "
+        "can reproduce it exactly; treat this as directional momentum, not a "
+        "countdown to an exact change. Ranks players by net transfers this "
+        "gameweek (transfers_in_event - transfers_out_event) scaled against "
+        "each player's OWN ownership base (selected_by_percent x total_players), "
+        "since a heavily-owned player needs far more net transfers than a "
+        "rarely-owned one to move £0.1m - raw transfer counts alone rank "
+        "template players first regardless of momentum. transfers_in_event/"
+        "out_event accumulate from the last deadline, not from midnight, so a "
+        "player can show heavy net-in from three days ago with no momentum "
+        "today. The ALREADY CHANGED table is different in kind: cost_change_event "
+        "is FACT reported by the API, confirming a player's price already moved "
+        "today - not a prediction. Cross-check against a live tracker (e.g. "
+        "LiveFPL) before transferring on this signal alone."
+    )
+)
+def price_movers(min_ownership: float = 0.5, limit: int = 15) -> str:
+    teams, _ = _maps()
+    b = _boot()
+    total_players = b.get("total_players") or 0
+
+    already: list[dict] = []
+    ranked: list[dict] = []
+    for el in b["elements"]:
+        own_pct = _f(el.get("selected_by_percent"))
+        owners = round(own_pct / 100 * total_players) if total_players else 0
+        net = el.get("transfers_in_event", 0) - el.get("transfers_out_event", 0)
+        chg_today = el.get("cost_change_event", 0)
+        chg_season = el.get("cost_change_start", 0)
+        row = {
+            "name": el["web_name"],
+            "team": teams[el["team"]]["short_name"],
+            "pos": POS.get(el["element_type"], "?"),
+            "price": _price(el),
+            "own": own_pct,
+            "net": net,
+            "chg_today": chg_today,
+            "chg_season": chg_season,
+            "status": el.get("status", "a"),
+        }
+        if chg_today != 0:
+            already.append(row)
+        if own_pct >= min_ownership and owners > 0:
+            ranked.append({**row, "pressure": net / owners * 100})
+
+    def flag(r: dict) -> str:
+        return "" if r["status"] == "a" else STATUS.get(r["status"], r["status"])
+
+    lines = ["PRICE MOVERS - heuristic approximation, see caveats at the bottom", ""]
+
+    if already:
+        already.sort(key=lambda r: (-abs(r["chg_today"]), r["name"]))
+        head = f"{'Player':<16}{'Tm':<5}{'Pos':<5}{'Price':<8}{'Today':>7}{'Season':>8}  Flag"
+        lines += [
+            "ALREADY CHANGED TODAY (fact, from the API - not a prediction)",
+            head,
+            "-" * len(head),
+        ]
+        for r in already[:limit]:
+            lines.append(
+                f"{r['name'][:15]:<16}{r['team']:<5}{r['pos']:<5}{r['price']:<8}"
+                f"{r['chg_today'] / 10:>+7.1f}{r['chg_season'] / 10:>+8.1f}  {flag(r)}"
+            )
+        lines.append("")
+    else:
+        lines += ["No prices have moved yet today.", ""]
+
+    def table(rs: list[dict]) -> str:
+        head = (
+            f"{'Player':<16}{'Tm':<5}{'Pos':<5}{'Price':<8}"
+            f"{'Own%':>7}{'NetTrf':>9}{'Pressure':>10}  Flag"
+        )
+        out = [head, "-" * len(head)]
+        for r in rs:
+            out.append(
+                f"{r['name'][:15]:<16}{r['team']:<5}{r['pos']:<5}{r['price']:<8}"
+                f"{r['own']:>7.1f}{r['net']:>+9,}{r['pressure']:>+9.2f}%  {flag(r)}"
+            )
+        return "\n".join(out)
+
+    rising = sorted(ranked, key=lambda r: -r["pressure"])[:limit]
+    falling = sorted(ranked, key=lambda r: r["pressure"])[:limit]
+
+    lines += [
+        f"RISING momentum (min {min_ownership}% owned; net transfers as % of that player's own owners)",
+        table(rising) if rising else "No candidates matched the ownership floor.",
+        "",
+        "FALLING momentum",
+        table(falling) if falling else "No candidates matched the ownership floor.",
+        "",
+        "Pressure = net transfers this GW / current owners, as a %. Bigger "
+        "magnitude = more momentum relative to that player's own base, not a "
+        "guaranteed move. FPL's real threshold is unpublished; this does not "
+        "reproduce it and should not be the sole basis for a transfer made to "
+        "dodge or catch a price change.",
+    ]
+    return "\n".join(lines)
 
 
 # ------------------------------------------------------------------ fixtures --

@@ -154,6 +154,57 @@ check("orders by points", out.index("Thiago") < out.index("Watkins"), out)
 seed()
 check("ownership filter", "Thiago" not in m.analyze_players(position="FWD", max_ownership=15.0))
 
+print("\n== price_movers ==")
+PM_ELEMENTS = [
+    # small ownership base, big net-in relative to its own owners -> should
+    # top the RISING table even though its raw net transfer count is smaller
+    # than Template's.
+    {"id": 101, "web_name": "Riser", "team": 1, "element_type": 4, "now_cost": 55,
+     "status": "a", "selected_by_percent": "1.0",
+     "transfers_in_event": 800, "transfers_out_event": 300,
+     "cost_change_event": 0, "cost_change_start": 1},
+    # already fell £0.1m today (fact, not prediction) and still bleeding.
+    {"id": 102, "web_name": "Faller", "team": 14, "element_type": 3, "now_cost": 60,
+     "status": "a", "selected_by_percent": "2.0",
+     "transfers_in_event": 100, "transfers_out_event": 900,
+     "cost_change_event": -1, "cost_change_start": -2},
+    # huge ownership base -> bigger RAW net transfers than Riser (1000 vs 500)
+    # but tiny relative pressure (2.5% vs 50%). Must NOT outrank Riser.
+    {"id": 103, "web_name": "Template", "team": 15, "element_type": 3, "now_cost": 120,
+     "status": "a", "selected_by_percent": "40.0",
+     "transfers_in_event": 5000, "transfers_out_event": 4000,
+     "cost_change_event": 0, "cost_change_start": 0},
+    # below the default ownership floor -> excluded from both ranked tables.
+    {"id": 104, "web_name": "Ghost", "team": 7, "element_type": 2, "now_cost": 40,
+     "status": "a", "selected_by_percent": "0.1",
+     "transfers_in_event": 50, "transfers_out_event": 0,
+     "cost_change_event": 0, "cost_change_start": 0},
+]
+m._cache.clear()
+m._cache["/bootstrap-static/"] = (time.time(), {
+    "teams": TEAMS, "elements": PM_ELEMENTS, "events": EVENTS,
+    "total_players": 100000,
+})
+out = m.price_movers(min_ownership=0.5, limit=10)
+already_sec = out.split("RISING momentum")[0]
+rising_sec = out.split("RISING momentum")[1].split("FALLING momentum")[0]
+falling_sec = out.split("FALLING momentum")[1]
+check("already-changed table lists Faller", "Faller" in already_sec, already_sec)
+check("Faller's today-delta shown as -0.1", "-0.1" in already_sec, already_sec)
+check("Riser (small base, high relative pressure) in rising table", "Riser" in rising_sec, rising_sec)
+check("Riser's pressure computed as +50.00%", "+50.00%" in out, out)
+check("Faller's pressure computed as -40.00%", "-40.00%" in out, out)
+check("normalization ranks Riser above Template despite lower raw net transfers",
+      out.index("Riser") < out.index("Template"), out)
+check("Faller (net outflow) lands in falling table", "Faller" in falling_sec, falling_sec)
+check("sub-floor ownership excluded from both ranked tables",
+      "Ghost" not in rising_sec and "Ghost" not in falling_sec, out)
+seed_flat = dict(m._cache["/bootstrap-static/"][1])
+seed_flat["elements"] = [dict(e, cost_change_event=0) for e in PM_ELEMENTS]
+m._cache["/bootstrap-static/"] = (time.time(), seed_flat)
+check("reports no movement when nothing changed today",
+      "No prices have moved yet today." in m.price_movers(), m.price_movers())
+
 print("\n== escalation_check ==")
 # Baseline: GW1 next, GW2 has an ARS double and a LIV blank -> NEXT-gameweek warning.
 seed()
