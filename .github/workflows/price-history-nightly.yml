@@ -1,0 +1,115 @@
+# Nightly FPL price-history snapshot — one append-only row per player,
+# every night, forever, into price_history.jsonl.
+#
+# WHY GITHUB ACTIONS, NOT A LOCAL CRON. price_history.py was originally
+# built (13 Sep 2026) to run locally via cron/launchd, specifically to
+# avoid routing through Cowork: safe_git_commit.sh commits from a scratch
+# clone and does a whole-file, last-writer-wins push (see
+# docs/agents/sync.md), which would silently corrupt an append-only log
+# the moment two runs overlapped. Sylvan doesn't want a dependency on his
+# own Mac being open every night, though, so the job moves here instead —
+# safe for the SAME reason fpl-weekly-refresh.yml already gives for
+# putting the dashboard rebuild here rather than in Cowork (see that
+# workflow's own header): an Actions runner does a FRESH checkout every
+# run and pushes with ordinary git, not through the scratch-clone /
+# whole-file-copy path safe_git_commit.sh exists to work around. The
+# failure mode that reasoning warns about is specific to Cowork's
+# connected-folder mount, not to "runs unattended" in general — a plain
+# GitHub Actions workflow was never the thing being avoided.
+#
+# price_history.jsonl still gets MORE care here than fpl-weekly-refresh.yml
+# gives docs/ or prediction_tracker.json, because those are DERIVED and
+# regenerable if a push is ever lost, and this is the one place a night's
+# transfer-flow numbers get recorded at all — a missed night can never be
+# reconstructed after the fact. So the commit step below retries a
+# rejected push (fetch + rebase + retry, bounded) instead of just failing
+# outright the way that workflow's push does.
+#
+# IF YOU ALSO SET UP price_history.py's documented local cron/launchd
+# entry: don't run both. Two writers appending the same night won't
+# corrupt anything (worst case a duplicate day, not data loss — this
+# script's own dedupe check makes even that unlikely), but there's no
+# reason to run the job twice. Pick one; this workflow is the recommended
+# one specifically because it doesn't depend on the Mac being on.
+#
+# TRIGGER TIMING. FPL's price changes land once daily, historically around
+# 01:30 GMT/BST — loosely, not to the minute, and it drifts. 06:00 UTC is
+# comfortably after that in either DST state. Cron is UTC and this does not
+# DST-adjust, same choice fpl-weekly-refresh.yml already made for its own
+# cron line, for the same reason: a fixed UTC time, not a guarantee of the
+# same local clock time every day.
+name: Nightly price history snapshot
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: price-history-nightly
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: pip install httpx
+
+      # Deliberately run WITHOUT --commit — price_history.py's own git
+      # integration is for a local, single-writer run. Here the workflow
+      # owns git end to end (below) so it can add the retry-on-race logic
+      # a bare `git commit && git push` doesn't have.
+      - name: Fetch and append today's snapshot
+        run: python3 price_history.py
+
+      - name: Commit and push (retries on a race with another writer)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Scoped on purpose, never `git add -A` — same reasoning as
+          # fpl-weekly-refresh.yml's own commit step: this job should never
+          # be able to commit anything it didn't itself just write.
+          git add price_history.jsonl
+
+          if git diff --cached --quiet; then
+            echo "Nothing to commit — price_history.py must have skipped (today already logged, or fetched 0 players)."
+            exit 0
+          fi
+
+          TODAY=$(date -u +%F)
+          git commit -m "Price history: log ${TODAY}"
+
+          # A rejected push here means another writer landed a commit on
+          # main between checkout and push. Rebasing is safe specifically
+          # BECAUSE this commit only ever touches price_history.jsonl by
+          # pure line-appends at end-of-file — the one shape of change git
+          # can always reapply cleanly against unrelated upstream commits,
+          # and even against another same-night append (git's context-based
+          # 3-way merge sees two non-overlapping insertions at the same
+          # point, not a real conflict).
+          for attempt in 1 2 3; do
+            if git push; then
+              echo "Pushed on attempt ${attempt}."
+              exit 0
+            fi
+            echo "Push rejected (attempt ${attempt}/3) — origin/main moved. Fetching and rebasing before retrying..."
+            git fetch origin main
+            git rebase origin/main
+          done
+
+          echo "::error::Push failed after 3 attempts. Tonight's row is committed only on this ephemeral runner and will be lost when it terminates — check for a genuinely conflicting concurrent writer to price_history.jsonl."
+          exit 1

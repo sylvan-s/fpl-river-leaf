@@ -23,6 +23,7 @@ if the GW10 bake-off justifies it.
 | B1 price momentum screen (league-wide) | built 13 Sep 2026 | `price_movers()` (fpl-research MCP), see §0 |
 | B1 price momentum screen (squad + watchlist) | built 13 Sep 2026 | `price_watch()` (fpl-research MCP), see §0 |
 | B1 sell-price fix in the optimiser | built 13 Sep 2026 | `optimise_squad._sell_price()`, see §0 |
+| B1 nightly price-history log, scheduled | built + scheduled 13 Sep 2026 | `price_history.py`, `.github/workflows/price-history-nightly.yml`, see §0 |
 
 **The xP model replaced hand-picked coefficients.** The first selection scorer used
 `xGI/90 × 8` and `(1.6 − xGC/90) × 6` — numbers that appear nowhere in FPL's rules.
@@ -326,14 +327,20 @@ Four pieces, three done:
   only pays out half the rise, rounded down. This is the TIMING mechanics the
   section below argues price should stay confined to; it was a correctness gap
   in that mechanics, not a new ranking signal.
+- **The nightly snapshot log is built AND scheduled**: `price_history.py`
+  (built 13 Sep 2026) appends one row per player per night to
+  `price_history.jsonl`, run by `.github/workflows/price-history-nightly.yml`
+  (added 13 Sep 2026) — GitHub Actions, not a local cron and not Cowork, so
+  there is no dependency on Sylvan's Mac being on and no
+  `safe_git_commit.sh` last-writer-wins risk (see that workflow's own header,
+  and `price_history.py`'s docstring, for why Actions is safe here in a way
+  a Cowork scheduled skill would not be).
 - **Not yet built:** a calibrated threshold (the momentum score behind both
   tools above is unnormalized against actual observed price-change history)
   and the transfer-timing check that would turn "is this player moving" into
   "should I act tonight or wait for Friday" — see the Friday-vs-early-action
-  discussion this prompted, 13 Sep 2026 chat. Needs the nightly snapshot log
-  (`price_history.py`, built 13 Sep 2026, appending to `price_history.jsonl`
-  — not yet scheduled, see that script's own docstring for the cron/launchd
-  setup) to accumulate a few weeks of data first.
+  discussion this prompted, 13 Sep 2026 chat. Needs a few weeks of the
+  snapshot log above to accumulate first.
 
 ### Sizing first — this is a second-order effect
 

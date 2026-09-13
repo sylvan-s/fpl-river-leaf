@@ -12,36 +12,51 @@ answer the question price_movers can't: given today's pressure reading, how
 often does a price actually move by tomorrow? Until then it is pure
 data-gathering - it does not rank, predict, or recommend anything itself.
 
-WHY A SEPARATE SCRIPT, NOT A SCHEDULED CLOUD SKILL. This file is append-only
-- the append-only guard is deliberately as important as the data itself (see
+WHY NOT A SCHEDULED CLOUD SKILL (still true). This file is append-only - the
+append-only guard is deliberately as important as the data itself (see
 preflight.sh and docs/agents/sync.md). Cowork commits through
 safe_git_commit.sh, which copies whole files over a fresh clone and pushes -
-"last-writer-wins, no merge" by that script's own documented admission. Two
-concurrent cloud runs (or a cloud run racing a local one) would silently
-drop a night's rows with no error, the exact failure mode the append-only
-guard exists to catch AFTER the fact but cannot prevent. Run this locally
-instead - cron or launchd on this Mac, plain git commit, no scratch-clone
-race - so the file is never written to from more than one place.
+"last-writer-wins, no merge" by that script's own documented admission. A
+Cowork-scheduled run of this script would risk silently dropping a night's
+rows with no error, the exact failure mode the append-only guard exists to
+catch AFTER the fact but cannot prevent. This script must never be wired
+into a Cowork scheduled skill for that reason.
 
-USAGE
-    python3 price_history.py             fetch, append today's rows
-    python3 price_history.py --force     append even if today is already logged
-    python3 price_history.py --commit    also `git add price_history.jsonl &&
-                                          git commit` (never pushes - wire a
-                                          `git push` into your own cron
-                                          entry, deliberately not into this
-                                          script, so a push is something you
-                                          chose when you set up the job, not
-                                          something buried in code that runs
-                                          unattended every night)
+SCHEDULING - GitHub Actions (recommended, added 13 Sep 2026). See
+.github/workflows/price-history-nightly.yml, which runs this script
+nightly with NO dependency on any machine being on. This is safe in a way
+a Cowork skill is not: an Actions runner does a fresh checkout and pushes
+with ordinary git, not through safe_git_commit.sh's scratch-clone path -
+same reasoning that workflow's own header gives, and the same reasoning
+fpl-weekly-refresh.yml already established for the dashboard rebuild. That
+workflow also retries a rejected push (fetch + rebase) rather than just
+failing, since a missed night here can never be reconstructed later. This
+is the recommended way to run this script - nothing further to set up.
 
-SCHEDULING. Not wired up by this change - set it up once, outside git, e.g.:
+SCHEDULING - local cron/launchd (alternative, not required). Still works
+if you'd rather not depend on GitHub Actions, e.g.:
     crontab -e
     # run at 02:15 UK time, after FPL's ~01:30 GMT price update has landed
     15 2 * * * cd /Users/sylvansitkey/Projects/FPL && \\
         /usr/bin/python3 price_history.py --commit >> price_history.log 2>&1
 (Confirm the python3 on PATH has httpx installed - the `base` conda env on
-this Mac does; fpl-mcp does not.)
+this Mac does; fpl-mcp does not.) DO NOT run this alongside the GitHub
+Actions workflow - two writers appending the same night won't corrupt
+anything (this script's own dedupe check makes even a duplicate run
+harmless), but there's no reason to run the job twice. Pick one.
+
+USAGE
+    python3 price_history.py             fetch, append today's rows
+    python3 price_history.py --force     append even if today is already logged
+    python3 price_history.py --commit    also `git add price_history.jsonl &&
+                                          git commit` (never pushes - see
+                                          the local-cron note above for why;
+                                          the GitHub Actions workflow above
+                                          does NOT use this flag, it runs
+                                          the script bare and owns the git
+                                          add/commit/push itself so it can
+                                          add retry-on-race logic a bare
+                                          commit-then-push doesn't have)
 
 READ-ONLY against FPL. Same GET-only, no-credentials design as
 fpl_research_mcp.py - see that file's own docstring for the reasoning.

@@ -71,9 +71,17 @@ overwritten origin's GW1–3 prediction record with a local GW1–2 copy.
    history nothing downstream can reconstruct: a missing entry is
    indistinguishable from one that was never written.
    `price_history.jsonl` carries the same last-writer-wins risk this
-   section already warns about, which is exactly why `price_history.py`'s
-   own docstring says to run it locally via cron/launchd, never as a
-   Cowork/cloud scheduled skill.
+   section already warns about, which is exactly why `price_history.py`
+   must never be wired into a Cowork/cloud scheduled SKILL (that path goes
+   through `safe_git_commit.sh`). It IS scheduled, since 13 Sep 2026, via
+   `.github/workflows/price-history-nightly.yml` — a plain GitHub Actions
+   workflow, not a Cowork skill, so none of that risk applies: an Actions
+   runner does a fresh checkout and pushes with ordinary git, the same
+   reasoning `fpl-weekly-refresh.yml` already established for the dashboard
+   rebuild. That workflow also retries a rejected push (fetch + rebase)
+   rather than failing outright, since a missed night here can never be
+   reconstructed after the fact — see the workflow's own header for why
+   that retry is safe for a pure-append file.
 
 It then **fast-forwards only when the tree already matches `origin/main`
 byte for byte** — the case where there is provably nothing to lose. Anything
