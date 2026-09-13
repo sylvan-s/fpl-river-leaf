@@ -205,6 +205,72 @@ m._cache["/bootstrap-static/"] = (time.time(), seed_flat)
 check("reports no movement when nothing changed today",
       "No prices have moved yet today." in m.price_movers(), m.price_movers())
 
+print("\n== price_watch ==")
+import squad_state as _sqs
+
+
+class _FakeState:
+    def __init__(self, names):
+        self.names = names
+
+
+_real_squad_load = _sqs.load
+# price_watch reads squad_state.load() locally inside the function; since
+# squad_state is already in sys.modules by now, the function's own
+# `import squad_state` binds this same patched module object.
+_sqs.load = lambda *a, **kw: _FakeState(["Faller", "Template"])
+m._cache.clear()
+m._cache["/bootstrap-static/"] = (time.time(), {
+    "teams": TEAMS, "elements": PM_ELEMENTS, "events": EVENTS,
+    "total_players": 100000,
+})
+try:
+    # Faller is owned AND (mistakenly) re-listed on the watchlist - must be
+    # deduped to squad only, with a NOTE, not shown twice or double-counted.
+    # threshold=2.0 (not the tool's 5.0 default) so Template's mild +2.5%
+    # rise clears it - needed to exercise the ownership-trade-off note below
+    # without disturbing Faller/Riser/Ghost's already-decisive numbers.
+    out = m.price_watch(watchlist="Riser,Ghost,Faller", threshold=2.0)
+    summary = out.splitlines()[0]
+    squad_sec = out.split("SQUAD (")[1].split("WATCHLIST")[0]
+    watch_sec = out.split("WATCHLIST (")[1] if "WATCHLIST (" in out else ""
+    check("summary line: 1 squad player at fall risk (Faller)",
+          "1 squad player(s) at fall risk" in summary, summary)
+    check("summary line: 2 watchlist targets at rise risk (Riser, Ghost)",
+          "2 watchlist target(s) at rise risk" in summary, summary)
+    check("summary line: 1 already moved today (Faller)",
+          "1 already moved today" in summary, summary)
+    check("owned-and-watchlisted name deduped with a NOTE, not double-counted",
+          "NOTE:" in out and "Faller" in out.split("NOTE:")[1].split("\n")[0], out)
+    check("Faller (falling, already moved) is marked a fall risk",
+          "!Faller" in squad_sec, squad_sec)
+    check("Faller sorted BEFORE Template (fall-risk-first ordering)",
+          squad_sec.index("Faller") < squad_sec.index("Template"), squad_sec)
+    check("Template (mild rise, not a risk) present but unmarked",
+          " Template" in squad_sec and "!Template" not in squad_sec, squad_sec)
+    check("watchlist table has no squad members in it (Faller excluded)",
+          "Faller" not in watch_sec, watch_sec)
+    check("Riser marked as a rise risk in the watchlist table", "!Riser" in watch_sec, watch_sec)
+    check("Ghost marked as a rise risk too (no ownership floor in price_watch, "
+          "unlike price_movers - the point is nothing is hidden)",
+          "!Ghost" in watch_sec, watch_sec)
+    check("ownership trade-off note fires for Template (owned, rising, unflagged)",
+          "OWNERSHIP TRADE-OFF" in out and "Template" in out.split("OWNERSHIP TRADE-OFF")[1].split("\n")[0],
+          out)
+
+    # No watchlist supplied at all -> squad-only mode, with the explicit hint.
+    out2 = m.price_watch()
+    check("empty watchlist falls back to a clear 'none supplied' message",
+          'WATCHLIST: none supplied' in out2, out2)
+
+    # An unresolvable name (typo, or not in the live pool at all) is
+    # reported as a WARNING, not a crash.
+    out3 = m.price_watch(watchlist="NotARealPlayerXYZ")
+    check("unresolvable watchlist name surfaces a WARNING, doesn't crash",
+          "WARNING" in out3 and "NotARealPlayerXYZ" in out3, out3)
+finally:
+    _sqs.load = _real_squad_load
+
 print("\n== escalation_check ==")
 # Baseline: GW1 next, GW2 has an ARS double and a LIV blank -> NEXT-gameweek warning.
 seed()

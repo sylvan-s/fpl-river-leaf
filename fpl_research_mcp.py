@@ -59,8 +59,10 @@ mcp = _Server(
     instructions=(
         "Read-only Fantasy Premier League research. Use xgi_delta for buy/sell "
         "signals, fixture_difficulty for fixture runs, injury_report for "
-        "availability, price_movers for a heuristic price-change read, and "
-        "get_deadline for gameweek timing and chip windows."
+        "availability, price_movers for a heuristic league-wide price-change "
+        "read, price_watch for the same question scoped to your own squad "
+        "plus a watchlist, and get_deadline for gameweek timing and chip "
+        "windows."
     ),
 )
 
@@ -1435,6 +1437,35 @@ def xgi_delta(
 
 
 # -------------------------------------------------------------- price movers --
+def _price_row(el: dict, teams: dict, total_players: int) -> dict:
+    """One player's price/flow snapshot - the momentum math shared by every
+    price-related tool (price_movers, price_watch), so a change to the
+    formula or its caveats only ever needs making once. pressure=0.0 for a
+    player with no computable owner base (own_pct 0 or total_players
+    missing) rather than raising - callers that rank on pressure already
+    filter those out themselves (price_movers' min_ownership floor)."""
+    own_pct = _f(el.get("selected_by_percent"))
+    owners = round(own_pct / 100 * total_players) if total_players else 0
+    net = el.get("transfers_in_event", 0) - el.get("transfers_out_event", 0)
+    return {
+        "name": el["web_name"],
+        "team": teams[el["team"]]["short_name"],
+        "pos": POS.get(el["element_type"], "?"),
+        "price": _price(el),
+        "own": own_pct,
+        "owners": owners,
+        "net": net,
+        "chg_today": el.get("cost_change_event", 0),
+        "chg_season": el.get("cost_change_start", 0),
+        "status": el.get("status", "a"),
+        "pressure": (net / owners * 100) if owners > 0 else 0.0,
+    }
+
+
+def _price_flag(r: dict) -> str:
+    return "" if r["status"] == "a" else STATUS.get(r["status"], r["status"])
+
+
 @mcp.tool(
     description=(
         "HEURISTIC approximation of the FPL site's price-rise/fall predictor - "
@@ -1452,7 +1483,9 @@ def xgi_delta(
         "today. The ALREADY CHANGED table is different in kind: cost_change_event "
         "is FACT reported by the API, confirming a player's price already moved "
         "today - not a prediction. Cross-check against a live tracker (e.g. "
-        "LiveFPL) before transferring on this signal alone."
+        "LiveFPL) before transferring on this signal alone. For a SQUAD-scoped "
+        "version of this same question (does anything I own or I'm targeting "
+        "move tonight, not the whole league), use price_watch instead."
     )
 )
 def price_movers(min_ownership: float = 0.5, limit: int = 15) -> str:
@@ -1463,30 +1496,13 @@ def price_movers(min_ownership: float = 0.5, limit: int = 15) -> str:
     already: list[dict] = []
     ranked: list[dict] = []
     for el in b["elements"]:
-        own_pct = _f(el.get("selected_by_percent"))
-        owners = round(own_pct / 100 * total_players) if total_players else 0
-        net = el.get("transfers_in_event", 0) - el.get("transfers_out_event", 0)
-        chg_today = el.get("cost_change_event", 0)
-        chg_season = el.get("cost_change_start", 0)
-        row = {
-            "name": el["web_name"],
-            "team": teams[el["team"]]["short_name"],
-            "pos": POS.get(el["element_type"], "?"),
-            "price": _price(el),
-            "own": own_pct,
-            "net": net,
-            "chg_today": chg_today,
-            "chg_season": chg_season,
-            "status": el.get("status", "a"),
-        }
-        if chg_today != 0:
+        row = _price_row(el, teams, total_players)
+        if row["chg_today"] != 0:
             already.append(row)
-        if own_pct >= min_ownership and owners > 0:
-            ranked.append({**row, "pressure": net / owners * 100})
+        if row["own"] >= min_ownership and row["owners"] > 0:
+            ranked.append(row)
 
-    def flag(r: dict) -> str:
-        return "" if r["status"] == "a" else STATUS.get(r["status"], r["status"])
-
+    flag = _price_flag  # local alias, kept short since it's used in two hot loops below
     lines = ["PRICE MOVERS - heuristic approximation, see caveats at the bottom", ""]
 
     if already:
@@ -1535,6 +1551,138 @@ def price_movers(min_ownership: float = 0.5, limit: int = 15) -> str:
         "reproduce it and should not be the sole basis for a transfer made to "
         "dodge or catch a price change.",
     ]
+    return "\n".join(lines)
+
+
+# -------------------------------------------------------------- price watch --
+@mcp.tool(
+    description=(
+        "SQUAD-SCOPED price exposure check - the daily question 'does "
+        "anything I own or I'm targeting move tonight', not price_movers' "
+        "whole-league screen. Reads the owned squad straight from "
+        "squad.json via squad_state.py (the single source of truth) and "
+        "joins it with an optional comma-separated watchlist of transfer "
+        "targets you supply. This tool does NOT generate the watchlist "
+        "itself - no price in the rankings, no team-value optimiser "
+        "(METHODOLOGY_ALTERNATIVES.md section 0's design rule): use "
+        "xgi_delta/analyze_players/optimise_squad.py to decide WHO to "
+        "target, then pass those names here to check WHEN. Same heuristic "
+        "momentum math as price_movers, scoped to just these two lists - "
+        "squad players sorted by fall risk first (selling later costs "
+        "value), watchlist players sorted by rise risk first (buying later "
+        "costs budget). threshold only decides what the one-line summary "
+        "counts as 'at risk' (for pasting onto an Ops board/card); the full "
+        "pressure number is always shown for every player regardless, so "
+        "nothing is hidden behind that cutoff. Same caveats as price_movers: "
+        "FPL's real threshold is undocumented, this is directional momentum "
+        "only, and transfers_in_event/out_event accumulate from the last "
+        "deadline, not from midnight."
+    )
+)
+def price_watch(watchlist: str = "", threshold: float = 5.0) -> str:
+    import squad_state
+    st = squad_state.load()
+    squad_names = set(st.names)
+    watch_all = {n.strip() for n in watchlist.split(",") if n.strip()}
+    overlap = squad_names & watch_all
+    watch_names = watch_all - squad_names  # an already-owned name is reported
+                                            # once, as squad, not double-listed
+
+    teams, _ = _maps()
+    b = _boot()
+    total_players = b.get("total_players") or 0
+    by_name = {el["web_name"]: el for el in b["elements"]}
+
+    def rows_for(names):
+        found, missing = [], []
+        for n in sorted(names):
+            el = by_name.get(n)
+            (found if el is not None else missing).append(
+                _price_row(el, teams, total_players) if el is not None else n)
+        return found, missing
+
+    squad_rows, squad_missing = rows_for(squad_names)
+    watch_rows, watch_missing = rows_for(watch_names)
+    squad_rows.sort(key=lambda r: r["pressure"])       # most negative (falling) first
+    watch_rows.sort(key=lambda r: -r["pressure"])      # most positive (rising) first
+
+    def at_fall_risk(r):
+        return r["pressure"] <= -threshold or r["chg_today"] < 0
+
+    def at_rise_risk(r):
+        return r["pressure"] >= threshold or r["chg_today"] > 0
+
+    falling_n = sum(1 for r in squad_rows if at_fall_risk(r))
+    rising_n = sum(1 for r in watch_rows if at_rise_risk(r))
+    already_n = sum(1 for r in squad_rows + watch_rows if r["chg_today"] != 0)
+
+    lines = [
+        f"PRICE WATCH: {falling_n} squad player(s) at fall risk, "
+        f"{rising_n} watchlist target(s) at rise risk, "
+        f"{already_n} already moved today.",
+        "",
+    ]
+    if squad_missing:
+        lines.append(f"WARNING: squad player(s) not found in the pool "
+                      f"(name mismatch vs squad.json?): {squad_missing}")
+    if watch_missing:
+        lines.append(f"WARNING: watchlist player(s) not found in the pool "
+                      f"(check spelling): {watch_missing}")
+    if overlap:
+        lines.append(f"NOTE: {sorted(overlap)} already owned - reported as "
+                      f"squad below, not watchlist (that would double-count).")
+    if squad_missing or watch_missing or overlap:
+        lines.append("")
+
+    flag = _price_flag
+
+    def table(rs, risk_fn):
+        head = (
+            f" {'Player':<15}{'Tm':<5}{'Pos':<5}{'Price':<8}"
+            f"{'Own%':>7}{'NetTrf':>9}{'Pressure':>10}{'Today':>7}  Flag"
+        )
+        out = [head, "-" * len(head)]
+        for r in rs:
+            mark = "!" if risk_fn(r) else " "
+            out.append(
+                f"{mark}{r['name'][:14]:<15}{r['team']:<5}{r['pos']:<5}{r['price']:<8}"
+                f"{r['own']:>7.1f}{r['net']:>+9,}{r['pressure']:>+9.2f}%"
+                f"{r['chg_today'] / 10:>+7.1f}  {flag(r)}"
+            )
+        return "\n".join(out)
+
+    lines.append(f"SQUAD ({len(squad_rows)} players, sorted fall-risk first - "
+                 f"'!' = pressure <= -{threshold:.0f}% or already fell today)")
+    lines.append(table(squad_rows, at_fall_risk) if squad_rows
+                 else "  (no squad players resolved)")
+    lines.append("")
+
+    if watch_rows:
+        lines.append(f"WATCHLIST ({len(watch_rows)} players, sorted rise-risk "
+                     f"first - '!' = pressure >= +{threshold:.0f}% or already "
+                     f"rose today)")
+        lines.append(table(watch_rows, at_rise_risk))
+    else:
+        lines.append("WATCHLIST: none supplied. Pass "
+                     "watchlist=\"Name1,Name2\" to check transfer targets too.")
+    lines.append("")
+
+    rising_owned = [r["name"] for r in squad_rows if r["pressure"] >= threshold]
+    if rising_owned:
+        lines.append(
+            f"OWNERSHIP TRADE-OFF: {rising_owned} rising too - good for team "
+            f"value, but rising ownership works against differential rank "
+            f"(same P(haul) x (1-ownership) logic as captaincy_odds' DiffUp). "
+            f"Not counted as a risk above - a rise on a player you already own "
+            f"costs nothing to wait on, unlike a fall or a watchlist rise."
+        )
+    lines.append(
+        "TIMING ONLY, NEVER RANKING (SELECTION_FRAMEWORK.md Tier 5): a fall "
+        "flag means act sooner on a sale ALREADY justified by the model, not "
+        "a reason to sell by itself; a watchlist rise flag means the same for "
+        "a buy already decided. Same undocumented-threshold caveat as "
+        "price_movers throughout."
+    )
     return "\n".join(lines)
 
 

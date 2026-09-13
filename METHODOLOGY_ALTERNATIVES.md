@@ -20,7 +20,8 @@ if the GW10 bake-off justifies it.
 | **xP from FPL's scoring table** | built 9 Aug 2026 | `build_squad.py:expected_points()` |
 | **Exact ILP optimiser** | built 9 Aug 2026 | `optimise_squad.py` |
 | **xP validated against FPL's own official xP** | checked 11 Aug 2026 | see below |
-| B1 price momentum screen | built 13 Sep 2026 | `price_movers()` (fpl-research MCP), see §0 |
+| B1 price momentum screen (league-wide) | built 13 Sep 2026 | `price_movers()` (fpl-research MCP), see §0 |
+| B1 price momentum screen (squad + watchlist) | built 13 Sep 2026 | `price_watch()` (fpl-research MCP), see §0 |
 | B1 sell-price fix in the optimiser | built 13 Sep 2026 | `optimise_squad._sell_price()`, see §0 |
 
 **The xP model replaced hand-picked coefficients.** The first selection scorer used
@@ -301,30 +302,38 @@ system. Not adopted; recorded for evaluation.
 
 ## 0. Price forecasting — logged Sat 8 Aug 2026. BUILD DECISION AT GW3.
 
-**Status: partially built, 13 Sep 2026, GW4 — later than the GW3 target but for
+**Status: mostly built, 13 Sep 2026, GW4 — later than the GW3 target but for
 the reason the "why GW3" section below anticipated (needed real flow data).**
-Two of the three pieces below exist now:
+Four pieces, three done:
 
-- **The `price_watch` tool this section proposed** is built as `price_movers()`
-  in the `fpl-research` MCP server — ranks by net transfers scaled against each
-  player's own ownership base, exactly the "threshold scales with how widely
-  owned" design below. Deliberately labelled a heuristic approximation, not a
-  reproduction of FPL's real (still undocumented) threshold — the "CHECK FIRST"
-  item below was checked and found nothing exposed.
+- **`price_movers()`** (fpl-research MCP server) — the whole-league version:
+  ranks every player by net transfers scaled against their own ownership
+  base, exactly the "threshold scales with how widely owned" design below.
+  Deliberately labelled a heuristic approximation, not a reproduction of
+  FPL's real (still undocumented) threshold — the "CHECK FIRST" item below
+  was checked and found nothing exposed.
+- **`price_watch(watchlist=...)`** (same MCP server) — the tool this section
+  actually proposed, narrower than `price_movers` on purpose: scoped to just
+  the owned squad (read from `squad.json` via `squad_state.py`) plus a
+  caller-supplied watchlist, answering only the two timing questions this
+  section names — squad players sorted by fall risk first, watchlist targets
+  by rise risk first, plus the ownership-trade-off note. No price in the
+  rankings, no team-value optimiser — the watchlist itself still has to come
+  from `xgi_delta`/`analyze_players`/`optimise_squad.py`, exactly as scoped.
 - **The optimiser's sell-price bug is fixed** (`optimise_squad._sell_price()`):
   `optimise_transfers()` previously treated an owned player's full current price
   as recoverable budget, which overstates proceeds on any risen player — FPL
   only pays out half the rise, rounded down. This is the TIMING mechanics the
   section below argues price should stay confined to; it was a correctness gap
   in that mechanics, not a new ranking signal.
-- **Not yet built:** a calibrated threshold (the momentum score is unnormalized
-  against actual observed price-change history) and the transfer-timing check
-  that would turn "is this player moving" into "should I act tonight or wait
-  for Friday" — see the Friday-vs-early-action discussion this prompted,
-  13 Sep 2026 chat. Needs the nightly snapshot log (`price_history.py`,
-  built 13 Sep 2026, appending to `price_history.jsonl` — not yet scheduled,
-  see that script's own docstring for the cron/launchd setup) to accumulate
-  a few weeks of data first.
+- **Not yet built:** a calibrated threshold (the momentum score behind both
+  tools above is unnormalized against actual observed price-change history)
+  and the transfer-timing check that would turn "is this player moving" into
+  "should I act tonight or wait for Friday" — see the Friday-vs-early-action
+  discussion this prompted, 13 Sep 2026 chat. Needs the nightly snapshot log
+  (`price_history.py`, built 13 Sep 2026, appending to `price_history.jsonl`
+  — not yet scheduled, see that script's own docstring for the cron/launchd
+  setup) to accumulate a few weeks of data first.
 
 ### Sizing first — this is a second-order effect
 
