@@ -3,22 +3,23 @@
   "gws": [
     1,
     2,
-    3
+    3,
+    4
   ],
   "positive": {
-    "appearance": 23.3333,
-    "goal_involvement": 18.0,
-    "clean_sheets": 9.6667,
-    "defensive_contribution": 3.3333,
-    "saves": 0.3333,
-    "bonus": 5.6667
+    "appearance": 23.5,
+    "goal_involvement": 21.25,
+    "clean_sheets": 11.5,
+    "defensive_contribution": 3.5,
+    "saves": 0.25,
+    "bonus": 8.25
   },
   "deductions": {
-    "goals_conceded": -0.6667,
-    "yellow_cards": -2.0,
+    "goals_conceded": -0.5,
+    "yellow_cards": -2.25,
     "red_cards": 0.0,
-    "own_goals": -0.6667,
-    "penalties_missed": -1.3333
+    "own_goals": -0.5,
+    "penalties_missed": -1.0
   },
-  "fetched_utc": "2026-09-08T16:32:03+00:00"
+  "fetched_utc": "2026-09-15T16:48:33+00:00"
 }
