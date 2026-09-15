@@ -718,6 +718,53 @@ its easiest fixtures first. Biggest team shifts:
 optimiser run sees the stamp mismatch and refreshes the window. Commits
 `0895b0e` (weighting), live on the VM runner the same evening.
 
+### Tue 15 Sep 2026 — methodology fix, not a transfer — injured and low-chance doubtful players excluded automatically
+
+**Found in the GW5 scenario run.** The shrunk-estimator run with the quarantine
+overlay recommended **Hinshelwood** (BHA, £5.9m, 81% starts, xP_adj 5.00). FPL
+flags him injured: status `i`, 0% chance, ankle, back 10 Oct. That morning's
+live-status fix (Watkins) excluded only `u` (left the league) and `n` (not
+available). Injuries were left to `build_squad.UNAVAILABLE`, a hand-maintained
+list nobody had updated. So every answer the optimiser gave needed a hand
+check against `injury_report`, and a cloud session with no one to do that
+check would have passed him through.
+
+**The rule now** (`build_squad.LIVE_STATUS_EXCLUDE`, `is_available()`):
+
+| FPL status | treatment |
+|---|---|
+| `u` unavailable, `n` not available | excluded (unchanged) |
+| `i` injured | **excluded**, for the whole window, even if the return date falls inside it: a partial-window injury is a hold, not a buy |
+| `d` doubtful, chance below 50% (the 0/25% bands) | **excluded** (`DOUBTFUL_MIN_CHANCE = 50`) |
+| `d` doubtful at 50/75%, or no chance given | selectable, printed as **STATUS DOUBTFUL** |
+| `s` suspended | selectable, printed as STATUS SUSPENDED (unchanged; add long bans to `UNAVAILABLE`) |
+
+The hand list still applies on top, for bans and cautions the live flag
+doesn't carry. Every exclusion prints FPL's news text on stderr, never silently.
+
+**Effect on the pool, live data 15 Sep.** 32 more players now fail gate 3:
+29 flagged `i` and 3 flagged `d` at 25% (Gruev, J.Ramsey, Maatsen). 27 of them
+were not on the hand list. The ones that could actually be picked: Hinshelwood
+(81% starts), Amad (75%), Burn and Wieffer (62%). The rest were already held
+back by the start-rate gates.
+
+**Weekly recommendation unchanged, and the owned squad is unaffected.** On the
+same data (shrunk, 40/30/20/10 window, quarantine off), old and new rules give
+identical answers: Virgil -> O'Reilly +1.37 free, and Schade + Virgil ->
+O'Reilly + O.Dango +2.54 at −4. The rebuild XI scores 58.83 either way; its
+bench differs only by a solver tie between available players. The value of
+the change is the quarantine-on answer that had named Hinshelwood, and every
+future week in which an injured player rates well. **Shaw** (owned, bench) is
+`d` 75% and stays selectable, listed under STATUS DOUBTFUL.
+
+**Knock-ons, same commit (`53ffb11`).**
+- `load()` now tags a contaminated mover `contaminated=True` even when
+  `--allow-contaminated` admits him.
+- The VM runner returns any recommendation that names an `i`/`u`/`n`, gate-3
+  or contaminated player as `ERROR_FLAGGED_PLAYER`, not as advice. A `d`/`s`
+  player comes with a warning.
+- Tests in `test_live_status.py` cover the injured, 25% and 75% cases end to end.
+
 ### Mon 7 Sep 2026 — methodology fix, not a transfer — the club port reaches the dashboard
 
 **Asked for a one-line change; it was a no-op, and that was the finding.**
