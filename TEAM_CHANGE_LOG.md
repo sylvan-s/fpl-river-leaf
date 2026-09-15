@@ -673,6 +673,51 @@ share rises; the differential case depends entirely on him playing.
 
 ## CHANGE HISTORY (newest first)
 
+### Tue 15 Sep 2026 — strategy change, not a transfer — fixture window weighted towards the next gameweek
+
+**Sylvan's call.** The optimiser's `--fixtures` objective (xP_adj over a 4-GW
+window) now weights gameweeks **40 / 30 / 20 / 10**, next GW first. Until today
+every fixture in the window counted equally, so a GW8 fixture moved this
+week's transfer as much as GW5's. Weighting the window towards the gameweek
+the transfer is actually made for is a strategy preference, not a correction.
+
+**What changed.** `fixture_difficulty` (the one place opponent multipliers are
+averaged) takes `gw_weights` and computes a weighted mean over fixtures.
+`constants.FIXTURE_GW_WEIGHTS` holds the optimiser's weights, and they are
+stamped into `fixture_window.json` as `gw_weights`. A window without that
+stamp, or with different weights, is stale: the Mac auto-refreshes it and the
+VM runner refuses until `refresh_fixture_window` is called. The per-fixture
+opponent model is untouched, so `captaincy_odds` still agrees fixture by
+fixture, and the `fixture_difficulty` research tool stays equal-weighted unless
+asked. A double takes its gameweek's weight twice. A blank's weight drops out
+and the rest renormalise, exactly as the equal mean already treated blanks.
+
+**Effect, GW5-8, same live data both ways** (shrunk, intel ON, quarantine
+OFF, no Haaland, max 2 attackers/club):
+
+| | equal | 40/30/20/10 |
+|---|---|---|
+| current XI xP/90 | 56.00 | 56.27 |
+| 1 FT: Virgil -> O'Reilly | +1.40, +7.0 net over 5 GW | +1.37, +6.8 net |
+| 2 FT at −4: Schade, Virgil -> O'Reilly, O.Dango | +2.40, +8.0 net | +2.54, +8.7 net |
+| rebuild XI xP/90 | 58.81 | 58.83 |
+
+**The weekly recommendation is unchanged.** The rebuild swaps João Pedro and
+Sadiki for Gibbs-White and Igor Jesus: Forest's attack rises 1.03 -> 1.12 with
+its easiest fixtures first. Biggest team shifts:
+
+| team | ATT x | DEF x | why |
+|---|---|---|---|
+| EVE | 0.96 -> 1.09 | 0.98 -> 0.81 | best fixtures come first |
+| NEW | 1.17 -> 1.18 | 0.72 -> 0.62 | same |
+| FUL | 1.10 -> 1.07 | 0.70 -> 0.83 | good run back-loaded |
+| SUN | 0.95 -> 0.91 | 1.29 -> 1.39 | hardest fixtures first |
+| ARS | 0.98 -> 0.96 | 1.09 -> 1.18 | same; worse for Raya/Gabriel short-term |
+
+**To revert or retune:** edit `constants.FIXTURE_GW_WEIGHTS`. The next
+optimiser run sees the stamp mismatch and refreshes the window. Commits
+`0895b0e` (weighting), live on the VM runner the same evening.
+
 ### Mon 7 Sep 2026 — methodology fix, not a transfer — the club port reaches the dashboard
 
 **Asked for a one-line change; it was a no-op, and that was the finding.**
