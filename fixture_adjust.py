@@ -41,7 +41,7 @@ optimiser if they disagree.
 Transcribing them by hand is exactly the kind of silent error this project has
 already been bitten by twice.
 """
-import importlib.util, os, sys
+import importlib.util, os, subprocess, sys
 
 import scoring
 
@@ -162,6 +162,111 @@ def check_stale(current_gw):
     if stamp is None:
         return True
     return stamp["generated_for_gw"] != current_gw
+
+
+def _mcp_python():
+    """The interpreter that actually runs fpl_research_mcp.py - NOT sys.executable.
+
+    install_fpl_mcp.sh's own comment explains why this matters: "conda puts
+    its own (often old) interpreter first on PATH", so it deliberately builds
+    a dedicated `fpl-mcp` conda env rather than trusting whatever `python3`
+    resolves to. The base env `optimise_squad.py` typically runs under does
+    NOT have the `mcp`/`httpx` packages installed, so a naive sys.executable
+    subprocess call fails with ModuleNotFoundError every time (confirmed
+    15 Sep 2026 while wiring this up).
+
+    Rather than re-deriving install_fpl_mcp.sh's candidate-path search a
+    second time, read the one place that already records which interpreter
+    was actually chosen: claude_desktop_config.json's own resolved `command`
+    for the fpl-research server - the same file diagnose_fpl_mcp.sh treats as
+    authoritative. Falls back to sys.executable if that config is missing,
+    unreadable, or the path it names no longer exists (e.g. a machine that
+    never ran the installer, or has `mcp` on the default interpreter already).
+    """
+    import json
+    cfg_path = os.path.expanduser(
+        "~/Library/Application Support/Claude/claude_desktop_config.json")
+    try:
+        with open(cfg_path, encoding="utf-8") as fh:
+            cfg = json.load(fh)
+        cmd = cfg["mcpServers"]["fpl-research"]["command"]
+        if os.path.isfile(cmd):
+            return cmd
+    except Exception:
+        pass
+    return sys.executable
+
+
+def refresh_if_stale(verbose=True):
+    """Auto-refresh fixture_window.json if it's stale or missing.
+
+    ADDED 15 Sep 2026, at Sylvan's request - `check_stale()` above existed but
+    nothing ever called it automatically, so a window left un-refreshed after
+    a gameweek passed would silently optimise for fixtures already played
+    (see the module docstring - this was documented as a manual-discipline
+    problem, not a code one, until now).
+
+    current_gw comes from build_squad.py's current_live_gw() - the SAME
+    bootstrap-static fetch load() already makes for prices/clubs/status, not
+    a second network call, and NOT fixture_window.json's own stamp (that
+    would be circular - checking the file against itself). None means that
+    fetch hasn't run or failed this process; staleness can't be judged, so
+    this is a no-op rather than a guess.
+
+    Refresh itself shells out to fpl_research_mcp.py's real fixture_difficulty
+    tool via subprocess (the --fixture-difficulty CLI escape hatch), the exact
+    same source --update already expects on stdin - reusing parse_fixture_output()
+    and save_window() rather than recomputing anything here, for the same
+    "this file and captaincy_odds can never disagree" reason the module
+    docstring gives for pasting the numbers in rather than deriving them.
+    subprocess, not an in-process import: importing that file directly would
+    instantiate its live MCP server object in THIS process (see scoring.py's
+    PRIORS_DISPERSION comment) - a subprocess runs the one function and exits.
+
+    Best-effort and non-fatal: any failure (no network, mcp/httpx missing,
+    timeout, a short/garbled parse) prints a loud warning to stderr and
+    leaves whatever window already exists in place, exactly like
+    _fetch_current_season()'s own degrade-not-crash behaviour. Returns True
+    only on a successful refresh.
+    """
+    live_gw = bs.current_live_gw()
+    if live_gw is None:
+        if verbose:
+            print("  FIXTURE WINDOW: live gameweek unknown this run (bootstrap "
+                  "fetch unavailable) - staleness not checked.", file=sys.stderr)
+        return False
+    if not check_stale(live_gw):
+        return False
+    _fx, _prov, stamp = active_window()
+    was = f"generated for GW{stamp['generated_for_gw']}" if stamp else "no window on disk"
+    if verbose:
+        print(f"  FIXTURE WINDOW STALE ({was}, live is GW{live_gw}) - "
+              f"auto-refreshing...", file=sys.stderr)
+    try:
+        result = subprocess.run(
+            [_mcp_python(), os.path.join(HERE, "fpl_research_mcp.py"),
+             "--fixture-difficulty", "--next-n", str(HORIZON)],
+            capture_output=True, text=True, timeout=30, check=True)
+        fx = parse_fixture_output(result.stdout)
+        if len(fx) < 20:
+            raise ValueError(f"parsed only {len(fx)} teams from the subprocess "
+                              f"output, expected 20")
+    except Exception as exc:
+        detail = str(exc)
+        stderr = getattr(exc, "stderr", None)
+        if stderr:
+            detail += f" — stderr: {stderr.strip().splitlines()[-1]}"
+        if verbose:
+            print(f"  FIXTURE WINDOW AUTO-REFRESH FAILED ({detail}) - continuing "
+                  f"with the stale window ({was}). Refresh by hand: "
+                  f"python3 fixture_adjust.py --update --gw {live_gw} < window.txt",
+                  file=sys.stderr)
+        return False
+    save_window(fx, live_gw, HORIZON)
+    if verbose:
+        print(f"  FIXTURE WINDOW REFRESHED -> GW{live_gw}-{live_gw + HORIZON - 1}",
+              file=sys.stderr)
+    return True
 
 
 def adjust(pool, fixtures=None, scale_workload=SCALE_WORKLOAD, empirical=None):

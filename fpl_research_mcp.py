@@ -3694,6 +3694,22 @@ if __name__ == "__main__":
                 sort = sys.argv[i + 1]
         print(defender_screen(min_minutes=900, limit=25, accurate=acc, sort_by=sort))
         sys.exit(0)
+    if "--fixture-difficulty" in sys.argv:
+        # Escape hatch for fixture_adjust.py's refresh_if_stale() - called via
+        # subprocess, not an in-process import, so this file's module-load
+        # side effects (mcp = FastMCP(...), httpx) never touch the optimiser's
+        # own process. See fixture_adjust.py's module docstring ("WHERE THE
+        # MULTIPLIERS COME FROM") for why the numbers are fetched from here
+        # rather than recomputed there - this file and captaincy_odds must
+        # never disagree about how hard a fixture is.
+        next_n = 4
+        if "--next-n" in sys.argv:
+            next_n = int(sys.argv[sys.argv.index("--next-n") + 1])
+        sort = "attack"
+        if "--sort-by" in sys.argv:
+            sort = sys.argv[sys.argv.index("--sort-by") + 1]
+        print(fixture_difficulty(next_n, sort))
+        sys.exit(0)
     if "--selftest" in sys.argv:
         print(escalation_check(), "\n")
         print(get_deadline(), "\n")

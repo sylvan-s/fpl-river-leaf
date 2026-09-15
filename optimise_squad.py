@@ -581,6 +581,7 @@ def _fixture_scale(pool):
     import importlib.util as _il
     _sp = _il.spec_from_file_location("fa", os.path.join(HERE, "fixture_adjust.py"))
     fa = _il.module_from_spec(_sp); _sp.loader.exec_module(fa)
+    fa.refresh_if_stale()
     fa.adjust(pool)
     for r in pool:
         r["score"] = r["xp_adj"]
@@ -799,6 +800,7 @@ def main():
         import importlib.util as _il
         _sp = _il.spec_from_file_location("fa", os.path.join(HERE, "fixture_adjust.py"))
         fa = _il.module_from_spec(_sp); _sp.loader.exec_module(fa)
+        fa.refresh_if_stale()
         fa.adjust(pool)
         for r in pool:
             r["score"] = r["xp_adj"]

@@ -321,10 +321,34 @@ _current_cache = None
 # {element_id: SHORT_CODE} from the same bootstrap-static call. Populated by
 # _fetch_current_season(); {} when that fetch fails. See load()'s CLUB comment.
 _live_clubs_cache = None
+# The live gameweek id, from the SAME bootstrap-static call above - added
+# 15 Sep 2026 so callers who need "what gameweek is it right now"
+# (fixture_adjust.py's staleness check) don't have to make a second network
+# round-trip, and don't have to import fpl_research_mcp.py's get_deadline()
+# to get it (see load()'s CLUB comment / scoring.py's PRIORS_DISPERSION
+# comment for why that file is never imported in-process). Mirrors
+# fpl_research_mcp.py's _next_event() fallback chain (is_next, then
+# is_current, then the first not-finished event) as a hand-maintained copy,
+# same discipline as PRIORS_DISPERSION/estimate_k_priors in scoring.py -
+# is_next is deliberately tried FIRST: it is the gameweek transfers are being
+# planned for (matches get_deadline()'s answer), not whichever gameweek's
+# matches happen to be mid-kickoff, which is what is_current alone would give
+# right up until deadline day and would misdate the fixture window by one GW
+# for most of the week. None when the fetch hasn't run yet or failed.
+_live_gw_cache = None
+
+
+def current_live_gw():
+    """The live gameweek id, from the same bootstrap-static fetch _fetch_current_season()
+    already makes. Returns None if that fetch hasn't happened yet this process or failed -
+    callers must treat None as "unknown", never as gameweek 0/None-is-falsy-so-stale.
+    """
+    _fetch_current_season()
+    return _live_gw_cache
 
 
 def _fetch_current_season():
-    global _current_cache, _live_clubs_cache
+    global _current_cache, _live_clubs_cache, _live_gw_cache
     if _current_cache is not None:
         return _current_cache
     import urllib.request
@@ -335,6 +359,11 @@ def _fetch_current_season():
         with urllib.request.urlopen(req, timeout=15) as resp:
             data = json.loads(resp.read().decode("utf-8"))
         _current_cache = {str(e["id"]): e for e in data.get("elements", [])}
+        _events = data.get("events", [])
+        _live_gw_cache = (
+            next((ev["id"] for ev in _events if ev.get("is_next")), None)
+            or next((ev["id"] for ev in _events if ev.get("is_current")), None)
+            or next((ev["id"] for ev in _events if not ev.get("finished")), None))
         _code = {t["id"]: t["short_name"] for t in data.get("teams", [])}
         _live_clubs_cache = {str(e["id"]): _code[e["team"]]
                              for e in data.get("elements", [])
@@ -346,10 +375,13 @@ def _fetch_current_season():
               f"does every CLUB - so anyone transferred since 8 Aug 2026 is "
               f"scored on his OLD club's fixtures this run - and no live STATUS "
               f"flag excludes anyone either. Treat a fixture-"
-              f"adjusted run under this warning as unreliable for movers.",
+              f"adjusted run under this warning as unreliable for movers. Also: "
+              f"current_live_gw() returns None, so fixture_adjust.py's staleness "
+              f"check cannot run this call and will not auto-refresh the window.",
               file=sys.stderr)
         _current_cache = {}
         _live_clubs_cache = {}
+        _live_gw_cache = None
     return _current_cache
 
 
