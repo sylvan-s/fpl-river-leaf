@@ -3716,4 +3716,16 @@ if __name__ == "__main__":
         print(fixture_difficulty(4), "\n")
         print(injury_report()[:1500])
         sys.exit(0)
+    if "--http" in sys.argv:
+        # Remote transport for cloud MCP clients (e.g. claude.ai connectors),
+        # which cannot spawn a local stdio process. Binds to 127.0.0.1 only -
+        # a reverse proxy (Caddy) terminates TLS and forwards with the Host
+        # header rewritten to match, so FastMCP's DNS-rebinding protection
+        # (which allowlists only localhost) still applies correctly.
+        port = 8765
+        if "--port" in sys.argv:
+            port = int(sys.argv[sys.argv.index("--port") + 1])
+        mcp.settings.port = port
+        mcp.run(transport="streamable-http")
+        sys.exit(0)
     mcp.run()
