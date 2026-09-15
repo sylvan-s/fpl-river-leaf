@@ -3677,6 +3677,25 @@ def _snapshot_priors() -> str:
     )
 
 
+# --- VM runner tools ------------------------------------------------------------
+# Optimiser, fixture-window refresh, quarantine overlay and repo state for a
+# cloud session with no Mac (vm_runner.py). Registered ONLY when the server's
+# environment sets FPL_RUNNER=1 - the VM's systemd unit does, the Mac's stdio
+# config does not - because repo_sync() fast-forwards the checkout it runs from,
+# which must never be the Mac's working tree (see preflight.sh). These tools run
+# the repo scripts as subprocesses and write only fixture_window.json; this
+# file's own read-only guarantee (no HTTP writes) is unchanged.
+if _os.environ.get("FPL_RUNNER") == "1":
+    import vm_runner as _vm_runner
+
+    def _runner_live_gw():
+        ev = _next_event()
+        return ev["id"] if ev else None
+
+    _vm_runner.register(mcp, live_gw=_runner_live_gw,
+                        fixture_table=lambda n: fixture_difficulty(next_n=n))
+
+
 if __name__ == "__main__":
     if "--snapshot-priors" in sys.argv:
         print(_snapshot_priors())

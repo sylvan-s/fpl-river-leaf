@@ -49,8 +49,15 @@ check("'n' (loan / not available) is unavailable", not bs.is_available(row("X", 
 check("'s' (suspended) is NOT excluded automatically - reported instead",
       bs.is_available(row("X", "s")))
 check("'a' is available", bs.is_available(row("X", "a")))
-check("'i'/'d' unchanged - still left to the hand list",
-      bs.is_available(row("X", "i")) and bs.is_available(row("X", "d")))
+check("'i' (injured) is unavailable - Hinshelwood, GW5 shrunk run",
+      not bs.is_available(row("X", "i")))
+drow = lambda chance: {"name": "X", "status": "d", "chance": chance}
+check("'d' below DOUBTFUL_MIN_CHANCE is unavailable (0% and 25%)",
+      not bs.is_available(drow(0)) and not bs.is_available(drow(25)))
+check("'d' at 50% / 75% stays selectable",
+      bs.is_available(drow(50)) and bs.is_available(drow(75)))
+check("'d' with no chance given stays selectable (reported, not guessed)",
+      bs.is_available(drow(None)))
 check("no live flag (fetch failed) falls back to the hand list alone",
       bs.is_available(row("X", None)))
 hand = next(iter(bs.UNAVAILABLE))
@@ -118,6 +125,28 @@ check(f"hand-list {hname} with live 'a' is still ok=False (override kept)",
       by_name[hname]["ok"] is False)
 check("no 'no live status flags' fallback warning when the fetch worked",
       "no live status flags" not in err)
+
+print("\n== load(): live 'i' and low-chance 'd' exclude, loudly ==")
+INJ = next(pid for pid, p in snap["players"].items()
+           if p["web_name"] == "Raya" and teams.get(p["team"]) == "ARS")
+DBT = next(pid for pid, p in snap["players"].items()
+           if p["web_name"] == "Saka" and teams.get(p["team"]) == "ARS")
+DOK = next(pid for pid, p in snap["players"].items()
+           if p["web_name"] == "Rice" and teams.get(p["team"]) == "ARS")
+by_name, err = run_load(*fake_live({
+    INJ: {"status": "i", "chance_of_playing_next_round": 0, "news": "Stub ankle"},
+    DBT: {"status": "d", "chance_of_playing_next_round": 25, "news": "Stub knock"},
+    DOK: {"status": "d", "chance_of_playing_next_round": 75, "news": "Stub illness"},
+}))
+check("injured 'i' Raya -> ok=False", by_name["Raya"]["ok"] is False)
+check("doubtful 25% Saka -> ok=False", by_name["Saka"]["ok"] is False)
+check("doubtful 75% Rice stays ok=True", by_name["Rice"]["ok"] is True)
+check("STATUS EXCLUDED names the injured player",
+      "Raya (ARS) [i: Stub ankle]" in err, err[-600:])
+check("STATUS EXCLUDED (doubtful) names the 25% player",
+      "STATUS EXCLUDED (doubtful)" in err and "Saka (ARS, 25%)" in err, err[-600:])
+check("STATUS DOUBTFUL reports the selectable 75% player",
+      "STATUS DOUBTFUL" in err and "Rice (ARS, 75%)" in err, err[-600:])
 
 print("\n== load(): bootstrap-static unreachable degrades to the hand list ==")
 by_name, err = run_load({}, {})

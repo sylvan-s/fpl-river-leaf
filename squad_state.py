@@ -162,8 +162,86 @@ def load(path=PATH):
     return validate(SquadState(raw))
 
 
+def sell_price(bought_for: float, current_price: float) -> float:
+    """What FPL actually pays out for selling a player — NOT current_price.
+
+    The real rule: a fall passes through in full, but a rise is only ever
+    HALF banked, rounded down to the nearest £0.1m. A player bought at £5.0m
+    now worth £5.4m (+£0.4m) sells for £5.2m, not £5.4m — the other £0.2m is
+    never realisable. optimise_transfers() used to treat owned players' full
+    current price as spendable budget, which silently overstated how much a
+    sale actually frees up on anyone who has risen (found 13 Sep 2026,
+    prompted by João Pedro/Mbeumo/Thiago/Shaw all drifting off their
+    bought_for price by GW4 — see squad.json's ledger-drift note and
+    TEAM_CHANGE_LOG.md's GW2-4 entries).
+
+    Compares in integer tenths of £1m, not raw floats — prices are always
+    exact multiples of £0.1m, but 5.7 - 5.5 in float64 is
+    0.19999999999999973, and floor-dividing THAT by 2 rounds the wrong way
+    once in a while. Round-tripping through tenths sidesteps it entirely.
+    Moved here from optimise_squad.py 15 Sep 2026 (which aliases it).
+    """
+    bought_tenths = round(bought_for * 10)
+    now_tenths = round(current_price * 10)
+    if now_tenths <= bought_tenths:
+        return now_tenths / 10          # fall (or flat): full downside, no floor
+    profit_tenths = now_tenths - bought_tenths
+    return (bought_tenths + profit_tenths // 2) / 10
+
+
+def live_drift(st, bootstrap):
+    """bought_for vs live now_cost per owned player (roadmap B1's gap), from a
+    bootstrap-static payload. Matched on web name + club; a player it cannot
+    match is listed with now=None, never guessed. squad.json's ledger is
+    bought_for-based by design, so the drift is reported, not reconciled."""
+    teams = {t["id"]: t["short_name"] for t in bootstrap.get("teams", [])}
+    live = {(e["web_name"], teams.get(e["team"])): e for e in bootstrap.get("elements", [])}
+    rows = []
+    for p in st.players:
+        el = live.get((p["name"], p["team"]))
+        now = el["now_cost"] / 10 if el else None
+        bought = float(p["bought_for"])
+        rows.append({"name": p["name"], "team": p["team"], "bought_for": bought,
+                     "ledger_price": p["price"], "now_cost": now,
+                     "sell_price": sell_price(bought, now) if now is not None else None,
+                     "drift": round(now - bought, 1) if now is not None else None,
+                     "status": el.get("status") if el else None,
+                     "chance": el.get("chance_of_playing_next_round") if el else None})
+    matched = [r for r in rows if r["now_cost"] is not None]
+    return {"players": rows,
+            "unmatched": [f"{r['name']}|{r['team']}" for r in rows if r["now_cost"] is None],
+            "live_value": round(sum(r["now_cost"] for r in matched), 1),
+            "sell_value": round(sum(r["sell_price"] for r in matched), 1),
+            "ledger_value": st.value}
+
+
 if __name__ == "__main__":
+    import sys
     st = load()
+    if "--json" in sys.argv:
+        # Validated state as data - the VM runner's squad_state tool. Printed
+        # only after load(), so an invalid squad.json still fails loudly.
+        out = {
+            "updated_utc": st.updated_utc, "gameweek": st.gameweek,
+            "formation": st.formation, "bank": st.bank, "value": st.value,
+            "squad_value_declared": st.raw.get("squad_value"),
+            "captain": st.captain, "vice": st.vice,
+            "xi": st.xi, "bench": st.bench, "chips": st.chips,
+            "chips_remaining": {s: st.chips_remaining(s) for s in ("set1", "set2")},
+        }
+        if "--live" in sys.argv:
+            # Opt-in network read; plain `--json` stays offline like the rest of this file.
+            import urllib.request
+            try:
+                req = urllib.request.Request(
+                    "https://fantasy.premierleague.com/api/bootstrap-static/",
+                    headers={"User-Agent": "fpl-squad-state/1.0"})
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    out["live"] = live_drift(st, json.loads(resp.read().decode("utf-8")))
+            except Exception as exc:
+                out["live"] = {"error": f"bootstrap-static fetch failed: {exc}"}
+        print(json.dumps(out, indent=1, ensure_ascii=False))
+        sys.exit(0)
     print(f"squad.json valid · updated {st.updated_utc} · GW{st.gameweek}")
     print(f"  {st.formation}   value £{st.value:.1f}m   bank £{st.bank:.1f}m   "
           f"total £{st.value + st.bank:.1f}m")

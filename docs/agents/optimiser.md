@@ -77,3 +77,14 @@ Semantics worth knowing before trusting a result — full detail in
 - **Needs `TRELLO_API_KEY` and `TRELLO_TOKEN`** in the environment — the board
   is private. Never commit them; this repo is public. `--quarantine` cannot
   combine with `--no-intel`.
+
+## Running it from a cloud session (VM runner)
+
+When the VM's fpl-research connector has the runner tools (`optimise_transfers`,
+`optimise_scenario`, `optimise_matrix`/`optimise_job`, `refresh_fixture_window`,
+`quarantine_report`, `player_estimates`, `squad_state`, `repo_file`, ...), the
+same pre-run dialogue applies. State the defaults first: estimator shrunk,
+intel ON, quarantine ON, fixtures ON, no Haaland ON, max 2 attackers/club.
+The tools refuse on a stale fixture window (call `refresh_fixture_window`
+first) or a clone that isn't origin's. They return a flagged player as an
+ERROR, never as advice. See `VM_OPTIMISER_TOOLS.md`.

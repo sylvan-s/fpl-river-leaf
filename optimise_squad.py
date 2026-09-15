@@ -208,6 +208,23 @@ MAX_ATT_PER_CLUB_DEFAULT = 2     # cap on MID+FWD owned from one club; None = of
 # against that would mean anything.
 ROLE_RIVALS_DEFAULT = []
 
+# Structured copy of what this run printed, written by --json PATH. The text
+# output stays the record a human reads; this exists so the VM runner
+# (vm_runner.py) can return the same answer as data without scraping stdout.
+# Filled by transfer_mode() / main() - never read back by anything here.
+RESULT = {}
+
+
+def _pj(r, sell=None):
+    """One pool row as plain JSON - the fields a caller needs to vet a name."""
+    out = {k: r.get(k) for k in ("name", "team", "pos", "price", "stp", "score",
+                                 "status", "chance", "ok", "contaminated")}
+    out["quarantine"] = sorted({e["field"] for e in r.get("intel_applied", [])
+                                if e.get("source") == "quarantine"})
+    if sell is not None:
+        out["sell_price"] = sell
+    return out
+
 
 def _apply_role_rivals(prob, own, P, role_rivals):
     """own[i] + own[j] + ... <= 1 for each rival group actually present in P.
@@ -255,30 +272,12 @@ BANK = _STATE.bank
 BOUGHT_FOR = {p["name"]: float(p["bought_for"]) for p in _STATE.players}
 
 
-def _sell_price(bought_for: float, current_price: float) -> float:
-    """What FPL actually pays out for selling a player — NOT current_price.
-
-    The real rule: a fall passes through in full, but a rise is only ever
-    HALF banked, rounded down to the nearest £0.1m. A player bought at £5.0m
-    now worth £5.4m (+£0.4m) sells for £5.2m, not £5.4m — the other £0.2m is
-    never realisable. optimise_transfers() used to treat owned players' full
-    current price as spendable budget, which silently overstated how much a
-    sale actually frees up on anyone who has risen (found 13 Sep 2026,
-    prompted by João Pedro/Mbeumo/Thiago/Shaw all drifting off their
-    bought_for price by GW4 — see squad.json's ledger-drift note and
-    TEAM_CHANGE_LOG.md's GW2-4 entries).
-
-    Compares in integer tenths of £1m, not raw floats — prices are always
-    exact multiples of £0.1m, but 5.7 - 5.5 in float64 is
-    0.19999999999999973, and floor-dividing THAT by 2 rounds the wrong way
-    once in a while. Round-tripping through tenths sidesteps it entirely.
-    """
-    bought_tenths = round(bought_for * 10)
-    now_tenths = round(current_price * 10)
-    if now_tenths <= bought_tenths:
-        return now_tenths / 10          # fall (or flat): full downside, no floor
-    profit_tenths = now_tenths - bought_tenths
-    return (bought_tenths + profit_tenths // 2) / 10
+# What FPL actually pays out for selling a player — NOT current_price: a fall
+# passes through in full, a rise is only half banked. Lives in squad_state.py
+# since 15 Sep 2026 so `squad_state.py --json --live` can report realisable
+# sell value without importing this file (and PuLP); see its docstring for the
+# rule and the 13 Sep 2026 bug it fixed.
+_sell_price = squad_state.sell_price
 
 
 def optimise(pool, allow_haaland=False, max_att_per_club=MAX_ATT_PER_CLUB_DEFAULT,
@@ -525,6 +524,10 @@ def transfer_mode(pool, n, allow_haaland, max_att_per_club=MAX_ATT_PER_CLUB_DEFA
         sys.exit("current squad is infeasible under the base constraints — check CURRENT_SQUAD")
     xi0 = sum(r["score"] for r in res0[0])
     print(f"current squad   XI xP/90 {xi0:.2f}   bank £{BANK:.1f}m\n")
+    owned_rows = {r["name"]: r for r in res0[0] + res0[1]}
+    RESULT.update(mode="transfers", current_xi_xp=round(xi0, 4), bank=BANK,
+                  free_transfers=free_transfers, transfers=[],
+                  pinned={"in": [list(p) for p in pin_in], "out": [list(p) for p in pin_out]})
 
     if max_att_per_club is not None:
         club_b, breach = _max_attackers_from_one_club(res0[0] + res0[1])
@@ -557,11 +560,22 @@ def transfer_mode(pool, n, allow_haaland, max_att_per_club=MAX_ATT_PER_CLUB_DEFA
         if not res:
             print(f"  {k} transfer(s): infeasible"
                   + (f" — {max_att_per_club}/club cap cannot be met in {k} move(s)"
-                     if max_att_per_club is not None else "")); continue
+                     if max_att_per_club is not None else ""))
+            RESULT["transfers"].append({"k": k, "verdict": "INFEASIBLE"})
+            continue
         xi, bench, hits = res
         gain = sum(r["score"] for r in xi) - xi0
         out = sorted(owned - {r["name"] for r in xi + bench})
         inn = sorted({r["name"] for r in xi + bench} - owned)
+        new_rows = {r["name"]: r for r in xi + bench}
+        sells = {n: _sell_price(BOUGHT_FOR.get(n, owned_rows[n]["price"]),
+                                owned_rows[n]["price"]) for n in out}
+        rec = {"k": k, "gain_xp90": round(gain, 4), "hits": hits,
+               "out": [_pj(owned_rows[n], sells[n]) for n in out],
+               "in": [_pj(new_rows[n]) for n in inn],
+               "bank_after": round(BANK + sum(sells.values())
+                                   - sum(new_rows[n]["price"] for n in inn), 1)}
+        RESULT["transfers"].append(rec)
 
         # MIN_GAIN guards against the epsilon bench tiebreak surfacing as a
         # "transfer". A swap worth 0.00 xP is not a recommendation - it is the
@@ -572,16 +586,67 @@ def transfer_mode(pool, n, allow_haaland, max_att_per_club=MAX_ATT_PER_CLUB_DEFA
             if inn:
                 print(f"      (solver is indifferent between {out} and {inn};"
                       f" a tie, not an upgrade)")
+            rec["verdict"] = "HOLD"
             continue
 
         print(f"  {k} transfer(s): +{gain:.2f} xP/90"
               + (f"  (hit −{hits})" if hits else "  (free)"))
         print(f"      OUT {out}  ->  IN {inn}")
+        rec.update(verdict="MOVE", net_5gw=round(gain * 5 - hits, 2),
+                   breakeven_gws=round(hits / gain, 2) if hits else 0.0)
         if hits:
             be = hits / gain
             print(f"      breakeven after {be:.1f} gameweeks held — "
                   f"{'worth it' if be <= 5 else 'NOT worth the hit on a normal hold'}")
         print(f"      over a 5-GW hold: {gain*5 - hits:+.1f} pts net")
+        print(f"      bank after: £{rec['bank_after']:.1f}m")
+
+    _price_transfer_preferences(pool, owned, n, allow_haaland, max_att_per_club,
+                                free_transfers, role_rivals, pin_in, pin_out)
+
+
+def _price_transfer_preferences(pool, owned, n, allow_haaland, max_att_per_club,
+                                free_transfers, role_rivals, pin_in, pin_out):
+    """PRICE OF THE PREFERENCE for transfer mode - rebuild mode's two blocks
+    in main() had no transfer-mode equivalent, so the weekly run never said
+    what the standing preferences cost. Each axis is relaxed alone, holding
+    the other fixed, at the largest move count asked for: the best XI xP/90
+    reachable in up to n transfers with the preference held vs relaxed."""
+    def best(ah, cap):
+        res = optimise_transfers(pool, owned, BANK, n, ah, cap,
+                                 free_transfers=free_transfers, role_rivals=role_rivals,
+                                 pin_in=pin_in, pin_out=pin_out)
+        return None if not res else (sum(r["score"] for r in res[0]), res[0] + res[1])
+
+    held = best(allow_haaland, max_att_per_club)
+    costs = {}
+    print(f"\n--- PRICE OF THE PREFERENCES (transfer mode, up to {n} transfer(s)) ---")
+    if held is None:
+        print("  not priced - the held problem is infeasible")
+        RESULT["preference_costs"] = costs
+        return
+    for key, label, active, relaxed_args in (
+            ("no_haaland", "no Haaland", not allow_haaland, (True, max_att_per_club)),
+            ("max_attackers_per_club", f"max {max_att_per_club} attackers/club",
+             max_att_per_club is not None, (allow_haaland, None))):
+        if not active:
+            print(f"  {label:<26}: not active this run")
+            costs[key] = {"active": False}
+            continue
+        relaxed = best(*relaxed_args)
+        if relaxed is None:
+            print(f"  {label:<26}: relaxed problem infeasible - not priced")
+            costs[key] = {"active": True, "cost_xp90": None}
+            continue
+        cost = relaxed[0] - held[0]
+        forgone = sorted({r["name"] for r in relaxed[1]} - {r["name"] for r in held[1]})
+        print(f"  {label:<26}: {cost:.2f} xP/90  (relaxed {relaxed[0]:.2f} vs held "
+              f"{held[0]:.2f})" + (f"  relaxed would own {forgone}"
+                                   if cost > 1e-6 and forgone else ""))
+        costs[key] = {"active": True, "cost_xp90": round(cost, 4),
+                      "relaxed_xp90": round(relaxed[0], 4), "held_xp90": round(held[0], 4),
+                      "relaxed_would_own": forgone}
+    RESULT["preference_costs"] = costs
 
 
 def _fixture_scale(pool):
@@ -751,7 +816,30 @@ def _print_quarantine_status():
     print()
 
 
+def _parse_pins(flag):
+    """--force-in / --force-out "Name:TEAM", repeatable - same syntax as
+    scenario_squad.py, which had these while this file (the weekly tool) did not."""
+    out = []
+    for i, a in enumerate(sys.argv):
+        if a == flag:
+            pname, _, pteam = sys.argv[i + 1].partition(":")
+            if not pteam:
+                sys.exit(f"{flag} entry {sys.argv[i+1]!r} must be Name:TEAM")
+            out.append((pname, pteam))
+    return out
+
+
 def main():
+    """--json PATH writes RESULT after a normal run (single-mode runs only;
+    the --compare-* modes print several answers and leave RESULT partial)."""
+    json_path = sys.argv[sys.argv.index("--json") + 1] if "--json" in sys.argv else None
+    _main()
+    if json_path:
+        with open(json_path, "w", encoding="utf-8") as fh:
+            json.dump(RESULT, fh, indent=1, default=list)
+
+
+def _main():
     global BUDGET
     allow_haaland = "--haaland" in sys.argv
     if "--gate" in sys.argv:
@@ -868,6 +956,16 @@ def main():
                   "A0.2 'Phase 2'.",
     }[estimator]
     print(f"ESTIMATOR: {est_note}\n")
+    RESULT["meta"] = {
+        "estimator": estimator, "intel": use_intel,
+        "quarantine": bool(use_intel and bs.ia.overlay_active()),
+        "quarantine_entries": len(bs.ia.overlay_entries()) if use_intel else 0,
+        "allow_contaminated": not exclude_contam, "fixtures": "--fixtures" in sys.argv,
+        "live_gw": bs._live_gw_cache, "gate_xi": bs.GATE_XI,
+        "preferences": {"no_haaland": not allow_haaland,
+                        "max_attackers_per_club": max_att_per_club},
+        "role_rivals": [sorted(g) for g in role_rivals],
+    }
     if "--fixtures" in sys.argv:
         # Swap the objective from flat xP to opponent-adjusted xP over the
         # window. Everything else - gates, constraints, bench rule - is
@@ -885,6 +983,10 @@ def main():
         print(f"OBJECTIVE: xP_adj over {fa.window_label()} "
               f"(opponent-adjusted; workload scaling "
               f"{'on' if fa.SCALE_WORKLOAD else 'off'})")
+        RESULT["meta"]["window"] = {"label": fa.window_label(),
+                                    "generated_for_gw": fa.window_gws()[0],
+                                    "horizon": fa.window_gws()[1]}
+        RESULT["meta"]["live_gw"] = bs._live_gw_cache
     att_note = ("" if max_att_per_club is None
                 else f" · max {max_att_per_club} attackers/club")
     print(f"pool {len(pool)} players · gates: {bs.MIN_MINUTES}+ mins · "
@@ -897,12 +999,20 @@ def main():
                            if "--free-transfers" in sys.argv else 1)
         print("=== TRANSFER MODE — best moves from the CURRENT squad ===")
         transfer_mode(pool, n, allow_haaland, max_att_per_club, free_transfers=free_transfers,
-                      role_rivals=role_rivals)
+                      role_rivals=role_rivals, pin_in=_parse_pins("--force-in"),
+                      pin_out=_parse_pins("--force-out"))
         return
 
+    if "--force-in" in sys.argv or "--force-out" in sys.argv:
+        sys.exit("--force-in/--force-out need --transfers N (they pin a move FROM "
+                 "the current squad; rebuild mode has no squad to pin against)")
     xi, bench, obj = optimise(pool, allow_haaland, max_att_per_club, role_rivals=role_rivals)
     print("=== OPTIMAL (ILP)" + ("" if allow_haaland else " — WITH THE NO-HAALAND PREFERENCE APPLIED") + " ===")
     show(xi, bench, obj)
+    RESULT.update(mode="rebuild", xi=[_pj(r) for r in xi], bench=[_pj(r) for r in bench],
+                  xi_xp=round(sum(r["score"] for r in xi), 4),
+                  squad_cost=round(sum(r["price"] for r in xi + bench), 1),
+                  preference_costs={})
 
     # PRICE THE PREFERENCE. Excluding Haaland is a Tier 5 preference under
     # SELECTION_FRAMEWORK.md, not a finding. A preference is entirely legitimate
@@ -921,6 +1031,7 @@ def main():
               + ("  (includes Haaland)" if any(r["name"] == "Haaland" for r in fxi) else ""))
         print(f"  with no-Haaland held  : {held:.2f} xP/90")
         print(f"  COST OF THE PREFERENCE: {cost:.2f} xP/90  (~{cost*38:.0f} pts/season)")
+        RESULT["preference_costs"]["no_haaland"] = {"active": True, "cost_xp90": round(cost, 4)}
         if cost < 0.30:
             print(f"  -> Small enough to be inside model error. The preference is"
                   f" effectively free.")
@@ -947,6 +1058,8 @@ def main():
                  if m > max_att_per_club else ""))
         print(f"  with the cap held          : {held2:.2f} xP/90")
         print(f"  COST OF THE PREFERENCE     : {cost2:.2f} xP/90  (~{cost2*38:.0f} pts/season)")
+        RESULT["preference_costs"]["max_attackers_per_club"] = {"active": True,
+                                                                "cost_xp90": round(cost2, 4)}
         if cost2 < 0.30:
             print(f"  -> Small enough to be inside model error. The preference is"
                   f" effectively free.")

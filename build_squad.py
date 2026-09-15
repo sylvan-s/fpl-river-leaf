@@ -213,8 +213,19 @@ UNAVAILABLE = {
 #                      window. So load() prints each one with FPL's "Suspended
 #                      until" text; add him to UNAVAILABLE when it covers the
 #                      window.
-#   'i' / 'd'        - unchanged: injuries still go through UNAVAILABLE by hand.
-LIVE_STATUS_EXCLUDE = {"u": "unavailable", "n": "not available"}
+#   'i' injured      - EXCLUDED since 15 Sep 2026. Left to the hand list until
+#                      then, which nobody updated in time: the GW5 shrunk run
+#                      recommended Hinshelwood (status 'i', chance 0, ankle,
+#                      back 10 Oct). Excluded for the whole window even when
+#                      the return date lands inside it - a partial-window
+#                      injury is a hold, not a buy.
+#   'd' doubtful     - EXCLUDED when FPL's chance_of_playing_next_round is
+#                      below DOUBTFUL_MIN_CHANCE (i.e. the 0/25% bands); at
+#                      50/75% he stays selectable and load() reports him as
+#                      STATUS DOUBTFUL, like 's' above. A missing chance on a
+#                      'd' is treated as selectable-but-reported, never guessed.
+LIVE_STATUS_EXCLUDE = {"u": "unavailable", "n": "not available", "i": "injured"}
+DOUBTFUL_MIN_CHANCE = 50
 
 
 def is_available(r):
@@ -223,7 +234,15 @@ def is_available(r):
     `r["status"]` is None when bootstrap-static was unreachable or didn't list
     the player, which leaves the hand list as the only check (load() says so).
     """
-    return r["name"] not in UNAVAILABLE and r.get("status") not in LIVE_STATUS_EXCLUDE
+    if r["name"] in UNAVAILABLE or r.get("status") in LIVE_STATUS_EXCLUDE:
+        return False
+    return not _doubtful_out(r)
+
+
+def _doubtful_out(r):
+    """'d' with a live chance below DOUBTFUL_MIN_CHANCE - see LIVE_STATUS_EXCLUDE."""
+    chance = r.get("chance")
+    return r.get("status") == "d" and chance is not None and chance < DOUBTFUL_MIN_CHANCE
 
 POS = {1: "GKP", 2: "DEF", 3: "MID", 4: "FWD"}
 
@@ -426,7 +445,10 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
     teams = {int(k): v for k, v in snap["teams"].items()}
     last16 = {} if season_starts else _load_last16()
     xbonus_map, _bonus_k = _bonus_shrinkage(snap["players"], teams) if use_bonus else ({}, None)
-    contam = _contaminated() if use_contam_filter else {}
+    # Read even when the filter is off, so an admitted mover still carries
+    # r["contaminated"] = True - callers (the VM runner) refuse to return a
+    # recommendation that names one.
+    contam = _contaminated()
     # Fetched UNCONDITIONALLY, not gated by estimator - price is a live fact,
     # not a modelled rate, so it stays current in "prior" mode too. Added
     # 3 Sep 2026 after this pool's frozen `now_cost` (last refreshed 8 Aug
@@ -484,6 +506,7 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
         team = live_clubs.get(pid, team_prior)
         if team != team_prior:
             club_fixed.append((name, team_prior, team))
+        is_contam = False
         if contam:
             hit_dest = next((dest for w, dest in contam.items()
                               if w.lower() in name.lower() or name.lower() in w.lower()), "MISS")
@@ -492,7 +515,8 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
             # fence entry and must not be excluded. `dest is None` means the
             # fence line couldn't be parsed — exclude on surname alone rather
             # than silently admit an unverifiable case.
-            if hit_dest != "MISS" and (hit_dest is None or hit_dest == team):
+            is_contam = hit_dest != "MISS" and (hit_dest is None or hit_dest == team)
+            if is_contam and use_contam_filter:
                 excluded.append(f"{name} ({team})")
                 continue
         n90 = m / 90.0
@@ -520,6 +544,10 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
                  # Live FPL status flag, None if the fetch failed - see
                  # LIVE_STATUS_EXCLUDE / is_available().
                  status=current.get(pid, {}).get("status"),
+                 # FPL's chance_of_playing_next_round (0-100), None when unset
+                 # or the fetch failed - read by is_available() for 'd' rows.
+                 chance=current.get(pid, {}).get("chance_of_playing_next_round"),
+                 contaminated=is_contam,
                  starts=p.get("starts", 0) or 0, stp=stp, stp_season=stp_season,
                  stp_src=stp_src,
                  xgi90=xgi/n90, delta=ga - xgi, cbit90=(cbi+tk)/n90,
@@ -638,11 +666,26 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
         suspended = sorted((r for r in out if r["status"] == "s"), key=lambda r: r["name"])
         if status_out:
             print(f"  STATUS EXCLUDED — {len(status_out)} player(s) FPL flags as "
-                  f"unavailable ('u') or not available ('n'), set ok=False whatever "
-                  f"their rates say: "
+                  f"unavailable ('u'), not available ('n') or injured ('i'), set "
+                  f"ok=False whatever their rates say: "
                   + ", ".join(f"{r['name']} ({r['team']}){_news(r)}" for r in status_out)
                   + ". A club here may be stale: FPL keeps a player who left the "
                     "league on his old club.", file=sys.stderr)
+        doubtful = sorted((r for r in out if r["status"] == "d"), key=lambda r: r["name"])
+        d_out = [r for r in doubtful if _doubtful_out(r)]
+        d_in = [r for r in doubtful if not _doubtful_out(r)]
+        if d_out:
+            print(f"  STATUS EXCLUDED (doubtful) — {len(d_out)} player(s) flagged 'd' "
+                  f"with chance of playing below {DOUBTFUL_MIN_CHANCE}%, set ok=False: "
+                  + ", ".join(f"{r['name']} ({r['team']}, {r['chance']}%){_news(r)}"
+                              for r in d_out) + ".", file=sys.stderr)
+        if d_in:
+            print(f"  STATUS DOUBTFUL — {len(d_in)} player(s) flagged 'd' at "
+                  f"{DOUBTFUL_MIN_CHANCE}%+ (or no chance given), still SELECTABLE: "
+                  + ", ".join(f"{r['name']} ({r['team']}, {r['chance']}%){_news(r)}"
+                              for r in d_in)
+                  + ". Check each before acting on a recommendation that names him.",
+                  file=sys.stderr)
         if suspended:
             print(f"  STATUS SUSPENDED — {len(suspended)} player(s) FPL flags as "
                   f"suspended ('s'), still SELECTABLE - not excluded automatically: "

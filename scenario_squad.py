@@ -328,6 +328,27 @@ def main():
         print("=== SCENARIO — best 15 from scratch (£100m), under this what-if ===")
         xi, bench, obj = opt.optimise(pool, allow_haaland, role_rivals=role_rivals)
         opt.show(xi, bench, obj)
+        opt.RESULT.update(mode="rebuild", xi=[opt._pj(r) for r in xi],
+                          bench=[opt._pj(r) for r in bench],
+                          xi_xp=round(sum(r["score"] for r in xi), 4))
+
+    if "--json" in sys.argv:
+        # Same shape as optimise_squad.py --json, plus the scenario audit - the
+        # VM runner returns it with the HYPOTHETICAL flag intact.
+        import json
+        opt.RESULT.update(
+            hypothetical=True,
+            meta={"estimator": estimator, "base_intel": use_base_intel,
+                  "allow_contaminated": not exclude_contam,
+                  "fixtures": "--fixtures" in sys.argv, "live_gw": bs._live_gw_cache,
+                  "window": fa.window_label() if "--fixtures" in sys.argv else None,
+                  "preferences": {"no_haaland": not allow_haaland,
+                                  "max_attackers_per_club": opt.MAX_ATT_PER_CLUB_DEFAULT}},
+            scenario={"applied": [dict(e, clamp=c) for e, c in applied],
+                      "unmatched": unmatched, "data_fixes": corr_audit,
+                      "caution_exclusions": excl_audit})
+        with open(sys.argv[sys.argv.index("--json") + 1], "w", encoding="utf-8") as fh:
+            json.dump(opt.RESULT, fh, indent=1, default=list)
 
 
 if __name__ == "__main__":
