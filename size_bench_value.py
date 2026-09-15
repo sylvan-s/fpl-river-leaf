@@ -165,7 +165,8 @@ def main():
         fa.adjust(pool)
         for r in pool:
             r["score"] = r["xp_adj"]
-        label = f"xP_adj over GW1-{fa.HORIZON}"
+        # The window's own stamp - fixture_adjust.window_label() - not "GW1-4".
+        label = f"xP_adj over {fa.window_label()}"
 
     owned = set(opt.CURRENT_SQUAD)
     res = opt.optimise_transfers(pool, owned, opt.BANK, 0, allow_haaland=False)

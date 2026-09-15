@@ -450,6 +450,10 @@ def render(tool, sync, stamp, live_gw, run, extra_top=(), quarantine_requested=N
     if run["returncode"] != 0:
         errors.insert(0, f"script exited {run['returncode']} - output below is not a result.")
     stderr = run["stderr"]
+    if "QUARANTINE UNAVAILABLE" in stderr:
+        errors.insert(0, "quarantine=True but Trello could not be read, so nothing was run. "
+                         "Put TRELLO_API_KEY/TRELLO_TOKEN in /etc/fpl-mcp/runner.env on the "
+                         "VM, or pass quarantine=False for an explicitly fence-only comparison.")
     if "LIVE FETCH:" in stderr:
         errors.insert(0, "LIVE FETCH FAILED - prices, clubs, status and raw/shrunk rates fell "
                          "back to the frozen snapshot. Do not act on this run.")
@@ -561,9 +565,13 @@ def get_job(job_id):
             return json.loads(json.dumps(_jobs[job_id], default=list))
     try:
         with open(_job_path(os.path.basename(job_id)), encoding="utf-8") as fh:
-            return json.load(fh)
+            job = json.load(fh)
     except (OSError, ValueError):
         return None
+    if job.get("state") == "running":
+        # On disk but not in this process: the server restarted mid-job.
+        job["state"] = "interrupted (server restarted) - re-run optimise_matrix"
+    return job
 
 
 def matrix_cells(estimators, overlays, transfers, extra_rows):
@@ -666,7 +674,7 @@ def start_matrix(cells, context, scenario_rows=None, free_transfers=None):
 
 
 def matrix_table(job):
-    rows = [f"{'estimator':<9}{'overlay':<11}{'T':<3}{'verdict':<22}{'gain':>6}  "
+    rows = [f"{'est.':<9}{'overlay':<11}{'T':<3}{'verdict':<22}{'gain':>6}  "
             f"{'5-GW net':>8}  {'bank':>5}  move / notes"]
     for c in job["cells"]:
         if c.get("state") != "done":
