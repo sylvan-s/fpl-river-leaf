@@ -588,6 +588,12 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
     # applies ON TOP of the now-estimated baseline, not the other way round -
     # unchanged whichever estimator ran above.
     out = []
+    if use_intel and ia.overlay_active():
+        # Trello quarantine overlay (optimise_squad.py --quarantine). Resolved
+        # HERE because Trello uses full names and the only trustworthy name
+        # list is these rows, clubs already corrected to live.
+        for w in ia.resolve_overlay(rows):
+            print(f"  {w}", file=sys.stderr)
     for r in rows:
         if use_intel:
             for e in ia.apply(r):
@@ -655,7 +661,7 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
         # failure this project has been bitten by before (see module docstring
         # of intel_adjust.py).
         for e in ia.load_adjustments():
-            if (e["player"], e["team"]) not in matched:
+            if (e["player"], e["team"]) not in matched and not ia.overlay_suppressed(e):
                 print(f"  INTEL WARNING: {e['player']}|{e['team']} "
                       f"({e['field']}) matched no player in the pool - check "
                       f"spelling/team code, or he may be below the {MIN_MINUTES}"

@@ -173,8 +173,82 @@ def _stale_warn(entry):
               file=sys.stderr)
 
 
+# QUARANTINE OVERLAY — see trello_quarantine.py for the why. None means off, and
+# off must mean byte-for-byte the fence-only behaviour, so every hook below is
+# a no-op until set_overlay() is called. Held in memory for one process only;
+# nothing here ever writes ROLE_INTEL.md.
+_OVERLAY = None
+_OVERLAY_SUPPRESSED = set()   # (player, team, field) fence rows displaced this run
+
+
+_RESOLVER = None
+_RESOLVED = False
+
+
+def set_overlay(entries, resolver=None):
+    """Install approved-on-Trello entries for this run. Call before build_squad.load().
+
+    `resolver(entries, rows) -> warnings` maps Trello full names onto pool
+    names (trello_quarantine.resolve). It needs the real pool rows, so it runs
+    lazily from build_squad.load() via resolve_overlay(), once per process.
+    """
+    global _OVERLAY, _RESOLVER, _RESOLVED
+    _OVERLAY = list(entries)
+    _RESOLVER, _RESOLVED = resolver, False
+    _OVERLAY_SUPPRESSED.clear()
+
+
+def resolve_overlay(rows):
+    """Resolve overlay names against pool rows. Returns warnings the first time, [] after."""
+    global _RESOLVED
+    if _OVERLAY is None or _RESOLVED:
+        return []
+    _RESOLVED = True
+    if _RESOLVER is None:
+        for e in _OVERLAY:
+            e.setdefault("resolved", True)
+        return []
+    return _RESOLVER(_OVERLAY, rows)
+
+
+def overlay_active():
+    return _OVERLAY is not None
+
+
+def overlay_entries():
+    return list(_OVERLAY or [])
+
+
+def _in_window(e, gw):
+    if e.get("gws") is None:
+        return True
+    return gw is not None and e["gws"][0] <= gw <= e["gws"][1]
+
+
+def overlay_suppressed(e):
+    """True if this FENCE entry was displaced by the overlay (so not firing is expected)."""
+    return (e["player"], e["team"], e["field"]) in _OVERLAY_SUPPRESSED
+
+
 def entries_for(name, team):
-    return [e for e in load_adjustments() if e["player"] == name and e["team"] == team]
+    fence = [e for e in load_adjustments() if e["player"] == name and e["team"] == team]
+    if not _OVERLAY:
+        return fence
+    gw = _current_gw()
+    ov = [e for e in _OVERLAY if e.get("resolved") and e["player"] == name
+          and e["team"] == team and _in_window(e, gw)]
+    if not ov:
+        return fence
+    # REPLACE, NEVER STACK: an in-window overlay decision on a field displaces
+    # every fence entry for that field. A ticked item stays ticked after the
+    # Friday review promotes it, so stacking would double-apply it (x1.20
+    # becoming x1.44). A Remove displaces and contributes nothing.
+    touched = {e["field"] for e in ov}
+    for f in touched:
+        if any(e["field"] == f for e in fence):
+            _OVERLAY_SUPPRESSED.add((name, team, f))
+    return ([e for e in fence if e["field"] not in touched]
+            + [e for e in ov if e["action"] == "set"])
 
 
 def apply(r):

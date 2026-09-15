@@ -485,11 +485,19 @@ def show(xi, bench, obj):
           f"bench avg starts {sum(r['stp'] for r in bench)/len(bench)*100:.0f}%\n")
     for r in sorted(xi, key=lambda r: (order.index(r["pos"]), -r["score"])):
         print(f"  {r['name'][:14]:<15}{r['pos']:<5}{r['team']:<5}£{r['price']:<5.1f}"
-              f"{r['stp']*100:>4.0f}%   xP {r['score']:>5.2f}")
+              f"{r['stp']*100:>4.0f}%   xP {r['score']:>5.2f}{_q_mark(r)}")
     print("  --- bench ---")
     for r in sorted(bench, key=lambda r: order.index(r["pos"])):
         print(f"  {r['name'][:14]:<15}{r['pos']:<5}{r['team']:<5}£{r['price']:<5.1f}"
-              f"{r['stp']*100:>4.0f}%   xP {r['score']:>5.2f}")
+              f"{r['stp']*100:>4.0f}%   xP {r['score']:>5.2f}{_q_mark(r)}")
+
+
+def _q_mark(r):
+    """' (quarantine: stp)' when a Trello-overlay entry touched this row - so a
+    scenario result never differs from Friday's fence without saying why."""
+    fields = sorted({e["field"] for e in r.get("intel_applied", [])
+                     if e.get("source") == "quarantine"})
+    return f"   (quarantine: {', '.join(fields)})" if fields else ""
 
 
 def transfer_mode(pool, n, allow_haaland, max_att_per_club=MAX_ATT_PER_CLUB_DEFAULT,
@@ -692,6 +700,57 @@ def compare_shrink(allow_haaland, season_starts, use_fixtures, n_transfers,
                         max_att_per_club, estimators=("prior", "shrunk"))
 
 
+def _load_tq():
+    _sp = importlib.util.spec_from_file_location("tq", os.path.join(HERE, "trello_quarantine.py"))
+    mod = importlib.util.module_from_spec(_sp)
+    _sp.loader.exec_module(mod)
+    return mod
+
+
+def _install_quarantine(allow_fallback):
+    """Fetch + parse the board and install the overlay on build_squad's OWN
+    intel_adjust instance (bs.ia) - importlib gives every loader a separate
+    module object, so installing it anywhere else would silently do nothing."""
+    tq = _load_tq()
+    try:
+        board = tq.fetch_board()
+    except tq.QuarantineUnavailable as e:
+        if not allow_fallback:
+            sys.exit(f"QUARANTINE UNAVAILABLE: {e}\n"
+                     f"Refusing to run fence-only while --quarantine is set - the "
+                     f"output would look like an overlay answer and not be one. "
+                     f"Pass --allow-fence-only-fallback to run fence-only anyway.")
+        print("=" * 70)
+        print("QUARANTINE REQUESTED BUT NOT APPLIED (--allow-fence-only-fallback)")
+        print(f"  {e}")
+        print("Everything below is FENCE-ONLY, identical to a run without --quarantine.")
+        print("=" * 70 + "\n")
+        return
+    entries, warnings = tq.parse_board(board, bs.ia.MULT_FIELDS, bs.ia.SET_FIELDS)
+    for w in warnings:
+        print(f"  {w}", file=sys.stderr)
+    bs.ia.set_overlay(entries, resolver=tq.resolve)
+    print("=" * 70)
+    print(f"QUARANTINE OVERLAY ACTIVE (--quarantine) - {len(entries)} ticked Trello "
+          f"decision(s) read live, layered on ROLE_INTEL.md for THIS RUN ONLY.")
+    print("Nothing is written anywhere. Rows it touches are marked (quarantine).")
+    print("=" * 70 + "\n")
+
+
+def _print_quarantine_status():
+    tq = _load_tq()
+    fence, gw = bs.ia.load_adjustments(), bs.ia._current_gw()
+    entries = bs.ia.overlay_entries()
+    if not entries:
+        print("QUARANTINE: nothing ticked - this run is identical to fence-only.\n")
+        return
+    print(f"QUARANTINE vs fence, target GW{gw}:")
+    for e in entries:
+        print(f"  {e['player'][:14]:<15}{e['team']:<5}{e['field']:<8}"
+              f"{tq._effect_str(e):<12}GWs {e['gws_raw']:<6}{tq.status(e, fence, gw)}")
+    print()
+
+
 def main():
     global BUDGET
     allow_haaland = "--haaland" in sys.argv
@@ -722,6 +781,21 @@ def main():
                     sys.exit(f"--role-rivals entry {entry!r} must be Name:TEAM")
                 group.add((pname, pteam))
             role_rivals.append(group)
+
+    # TRELLO QUARANTINE OVERLAY - see trello_quarantine.py. Handled before
+    # every dispatch below so the compare modes see the same overlay too.
+    if "--quarantine-report" in sys.argv:
+        tq = _load_tq()
+        try:
+            tq.report(bs.ia, bs)
+        except tq.QuarantineUnavailable as e:
+            sys.exit(f"QUARANTINE UNAVAILABLE: {e}")
+        return
+    if "--quarantine" in sys.argv:
+        if "--no-intel" in sys.argv:
+            sys.exit("--quarantine layers ticked Trello decisions ON TOP of the "
+                     "ROLE_INTEL fence; it cannot combine with --no-intel.")
+        _install_quarantine("--allow-fence-only-fallback" in sys.argv)
 
     if "--compare-intel" in sys.argv:
         n_transfers = (int(sys.argv[sys.argv.index("--transfers") + 1])
@@ -779,6 +853,8 @@ def main():
     if use_intel:
         print("INTEL: ROLE_INTEL.md `adjustments` fence is ACTIVE (default since "
               "13 Aug 2026 - pass --no-intel to disable)\n")
+        if bs.ia.overlay_active():
+            _print_quarantine_status()
     else:
         print("INTEL: DISABLED (--no-intel) - stp/xg90/etc. are the raw, "
               "ROLE_INTEL-blind numbers\n")
