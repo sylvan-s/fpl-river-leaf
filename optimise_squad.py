@@ -980,12 +980,13 @@ def _main():
             r["score"] = r["xp_adj"]
         # The window's own stamp, not a hardcoded "GW1" — see
         # fixture_adjust.window_label().
-        print(f"OBJECTIVE: xP_adj over {fa.window_label()} "
+        print(f"OBJECTIVE: xP_adj over {fa.window_label()}, {fa.weights_label()} "
               f"(opponent-adjusted; workload scaling "
               f"{'on' if fa.SCALE_WORKLOAD else 'off'})")
         RESULT["meta"]["window"] = {"label": fa.window_label(),
                                     "generated_for_gw": fa.window_gws()[0],
-                                    "horizon": fa.window_gws()[1]}
+                                    "horizon": fa.window_gws()[1],
+                                    "gw_weights": (fa.active_window()[2] or {}).get("gw_weights")}
         RESULT["meta"]["live_gw"] = bs._live_gw_cache
     att_note = ("" if max_att_per_club is None
                 else f" · max {max_att_per_club} attackers/club")

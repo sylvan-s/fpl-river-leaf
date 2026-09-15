@@ -22,3 +22,16 @@ MAX_PER_CLUB = 3
 XI_SIZE = 11
 SQUAD_SHAPE = {"GKP": 2, "DEF": 5, "MID": 5, "FWD": 3}
 FORMATION = {"GKP": (1, 1), "DEF": (3, 5), "MID": (2, 5), "FWD": (1, 3)}
+
+# Fixture-window gameweek weights for the optimiser's xP_adj objective, next
+# GW first (15 Sep 2026, Sylvan): the next gameweek counts 40%, then 30/20/10.
+# Was an equal mean over the window. Applied where fixture_difficulty averages
+# per-fixture factors, and stamped into fixture_window.json - a window built
+# with any other weights is treated as stale (fixture_adjust.check_stale).
+# Length must equal fixture_adjust.HORIZON.
+FIXTURE_GW_WEIGHTS = (0.4, 0.3, 0.2, 0.1)
+
+
+def gw_weights_arg(weights=FIXTURE_GW_WEIGHTS):
+    """The weights as fixture_difficulty's gw_weights string, e.g. "0.4,0.3,0.2,0.1"."""
+    return ",".join(f"{w:g}" for w in weights)

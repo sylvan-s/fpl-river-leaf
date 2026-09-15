@@ -46,6 +46,8 @@ import threading
 import time
 import uuid
 
+import constants
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 PY = sys.executable
 BRANCH = "main"
@@ -194,13 +196,14 @@ def window_stamp(repo=None):
         with open(os.path.join(repo or HERE, "fixture_window.json"), encoding="utf-8") as fh:
             w = json.load(fh)
         return {"generated_for_gw": w.get("generated_for_gw"), "horizon": w.get("horizon"),
-                "generated_utc": w.get("generated_utc")}
+                "gw_weights": w.get("gw_weights"), "generated_utc": w.get("generated_utc")}
     except Exception as e:
         return {"generated_for_gw": None, "error": str(e)}
 
 
-def window_problem(stamp, live_gw):
+def window_problem(stamp, live_gw, weights=None):
     """None when the window is usable; otherwise the reason to refuse."""
+    want = list(constants.FIXTURE_GW_WEIGHTS if weights is None else weights)
     if live_gw is None:
         return "live gameweek unknown (bootstrap-static unreachable) - cannot judge the window."
     if stamp.get("generated_for_gw") is None:
@@ -208,6 +211,10 @@ def window_problem(stamp, live_gw):
     if stamp["generated_for_gw"] != live_gw:
         return (f"fixture window is stamped GW{stamp['generated_for_gw']} but the live GW is "
                 f"GW{live_gw} - call refresh_fixture_window() first.")
+    got = stamp.get("gw_weights")
+    if not got or len(got) != len(want) or any(abs(a - b) > 1e-9 for a, b in zip(got, want)):
+        return (f"fixture window was built with GW weights {got or 'equal'}, the optimiser "
+                f"uses {want} - call refresh_fixture_window() first.")
     return None
 
 
@@ -218,8 +225,11 @@ def alarms(stderr):
 
 def header(tool, sync, stamp, live_gw, settings=None):
     h = stamp.get("horizon") or 4
+    wts = stamp.get("gw_weights")
     win = (f"GW{stamp['generated_for_gw']}-{stamp['generated_for_gw'] + h - 1} "
-           f"(stamped GW{stamp['generated_for_gw']}, {stamp.get('generated_utc')})"
+           f"(stamped GW{stamp['generated_for_gw']}, GW weights "
+           f"{'/'.join(f'{x * 100:g}' for x in wts) if wts else 'equal'}, "
+           f"{stamp.get('generated_utc')})"
            if stamp.get("generated_for_gw") else "NO WINDOW")
     lines = [f"=== {tool} · fpl-research VM runner ===",
              f"repo HEAD {(sync.get('head') or '?')[:7]} · origin/{BRANCH} "

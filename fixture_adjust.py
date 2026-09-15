@@ -40,9 +40,22 @@ optimiser if they disagree.
 --update PARSES the tool output rather than asking anyone to retype 40 numbers.
 Transcribing them by hand is exactly the kind of silent error this project has
 already been bitten by twice.
+
+GAMEWEEK WEIGHTING (15 Sep 2026). The window's multipliers are a WEIGHTED mean
+of per-fixture factors: the next GW 40%, then 30 / 20 / 10
+(constants.FIXTURE_GW_WEIGHTS). Before, every fixture in the window counted
+equally, so a GW8 fixture moved this week's transfer as much as GW5's. The
+weights are applied in fixture_difficulty (gw_weights=) and stamped into
+fixture_window.json as `gw_weights`. A window with no stamp, or a different
+one, counts as STALE, so the next run refreshes it rather than optimising on
+the old equal mean. A double takes its gameweek's weight twice. A blank's
+weight drops out and the rest renormalise, as the equal mean already did.
+Paste a table generated with the weights, e.g.
+`fpl_research_mcp.py --fixture-difficulty --gw-weights 0.4,0.3,0.2,0.1`.
 """
 import importlib.util, os, subprocess, sys
 
+import constants
 import scoring
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -69,9 +82,42 @@ def parse_fixture_output(text):
     return out
 
 
-def save_window(fixtures, gw, horizon):
+def parse_gw_weights(text):
+    """The weights a fixture_difficulty table was built with, from its
+    "GW weights: 0.4,0.3,0.2,0.1" line. None for "equal", or for a table from
+    before the line existed (which was equal too)."""
+    for line in text.splitlines():
+        if line.strip().startswith("GW weights:"):
+            val = line.split(":", 1)[1].strip()
+            if val == "equal":
+                return None
+            try:
+                return tuple(float(w) for w in val.split(","))
+            except ValueError:
+                return None
+    return None
+
+
+def weights_match(stamp, weights=None):
+    """True if the window was built with the optimiser's gameweek weights."""
+    want = constants.FIXTURE_GW_WEIGHTS if weights is None else weights
+    got = (stamp or {}).get("gw_weights")
+    return (got is not None and len(got) == len(want)
+            and all(abs(a - b) < 1e-9 for a, b in zip(got, want)))
+
+
+def weights_label(stamp=None):
+    """e.g. "GW weights 40/30/20/10", from the stamp in force."""
+    if stamp is None:
+        stamp = active_window()[2]
+    w = (stamp or {}).get("gw_weights")
+    return ("GW weights " + "/".join(f"{x * 100:g}" for x in w)) if w else "equal GW weights"
+
+
+def save_window(fixtures, gw, horizon, gw_weights=None):
     import json, datetime as dt
     payload = {"generated_for_gw": gw, "horizon": horizon,
+               "gw_weights": list(gw_weights) if gw_weights else None,
                "generated_utc": dt.datetime.now(dt.timezone.utc).isoformat()[:19],
                "teams": {k: list(v) for k, v in fixtures.items()}}
     with open(WINDOW_PATH, "w", encoding="utf-8") as fh:
@@ -107,6 +153,8 @@ FIXTURES = {
     "IPS": (1.00, 1.07, 4), "CHE": (0.91, 0.93, 4), "SUN": (0.90, 0.85, 4),
     "AVL": (0.90, 0.99, 4), "COV": (0.88, 1.23, 4),
 }
+assert len(constants.FIXTURE_GW_WEIGHTS) == HORIZON, \
+    "constants.FIXTURE_GW_WEIGHTS needs one weight per gameweek in the horizon"
 
 # Scale the defensive-workload terms by opponent attack strength?
 # A defender facing a potent side makes MORE clearances, blocks and
@@ -120,7 +168,8 @@ def active_window():
     fx, stamp = load_window()
     if fx:
         return fx, (f"fixture_window.json · generated for GW{stamp['generated_for_gw']}"
-                    f" · horizon {stamp['horizon']} · {stamp['generated_utc']}"), stamp
+                    f" · horizon {stamp['horizon']} · {weights_label(stamp)}"
+                    f" · {stamp['generated_utc']}"), stamp
     return FIXTURES, ("BUILT-IN FALLBACK (GW1-4, 9 Aug 2026) — no "
                       "fixture_window.json found, run --update"), None
 
@@ -157,11 +206,12 @@ def window_label():
 
 
 def check_stale(current_gw):
-    """True if the stored window is for a different gameweek. Cheap tripwire."""
+    """True if the stored window is for a different gameweek, or was built with
+    other gameweek weights than constants.FIXTURE_GW_WEIGHTS. Cheap tripwire."""
     _fx, _prov, stamp = active_window()
     if stamp is None:
         return True
-    return stamp["generated_for_gw"] != current_gw
+    return stamp["generated_for_gw"] != current_gw or not weights_match(stamp)
 
 
 def _mcp_python():
@@ -238,19 +288,26 @@ def refresh_if_stale(verbose=True):
     if not check_stale(live_gw):
         return False
     _fx, _prov, stamp = active_window()
-    was = f"generated for GW{stamp['generated_for_gw']}" if stamp else "no window on disk"
+    was = (f"generated for GW{stamp['generated_for_gw']}, {weights_label(stamp)}"
+           if stamp else "no window on disk")
+    want = constants.FIXTURE_GW_WEIGHTS
     if verbose:
-        print(f"  FIXTURE WINDOW STALE ({was}, live is GW{live_gw}) - "
-              f"auto-refreshing...", file=sys.stderr)
+        print(f"  FIXTURE WINDOW STALE ({was}; want GW{live_gw} with "
+              f"{weights_label({'gw_weights': want})}) - auto-refreshing...", file=sys.stderr)
     try:
         result = subprocess.run(
             [_mcp_python(), os.path.join(HERE, "fpl_research_mcp.py"),
-             "--fixture-difficulty", "--next-n", str(HORIZON)],
+             "--fixture-difficulty", "--next-n", str(HORIZON),
+             "--gw-weights", constants.gw_weights_arg()],
             capture_output=True, text=True, timeout=30, check=True)
         fx = parse_fixture_output(result.stdout)
         if len(fx) < 20:
             raise ValueError(f"parsed only {len(fx)} teams from the subprocess "
                               f"output, expected 20")
+        got = parse_gw_weights(result.stdout)
+        if not weights_match({"gw_weights": got}):
+            # An older server that ignores --gw-weights would print an equal mean.
+            raise ValueError(f"table came back with weights {got}, expected {want}")
     except Exception as exc:
         detail = str(exc)
         stderr = getattr(exc, "stderr", None)
@@ -262,9 +319,10 @@ def refresh_if_stale(verbose=True):
                   f"python3 fixture_adjust.py --update --gw {live_gw} < window.txt",
                   file=sys.stderr)
         return False
-    save_window(fx, live_gw, HORIZON)
+    save_window(fx, live_gw, HORIZON, want)
     if verbose:
-        print(f"  FIXTURE WINDOW REFRESHED -> GW{live_gw}-{live_gw + HORIZON - 1}",
+        print(f"  FIXTURE WINDOW REFRESHED -> GW{live_gw}-{live_gw + HORIZON - 1}, "
+              f"{weights_label({'gw_weights': want})}",
               file=sys.stderr)
     return True
 
@@ -307,9 +365,17 @@ def main():
             sys.exit(f"parsed only {len(fx)} teams — expected 20. "
                      f"Paste the whole fixture_difficulty table.")
         games = {g for _a, _d, g in fx.values()}
-        w = save_window(fx, gw, HORIZON)
+        weights = parse_gw_weights(text)
+        w = save_window(fx, gw, HORIZON, weights)
         print(f"window saved: {len(fx)} teams, generated for GW{gw}, "
-              f"horizon {HORIZON}")
+              f"horizon {HORIZON}, {weights_label(w)}")
+        if not weights_match(w):
+            print(f"  WARNING: the pasted table was not built with the optimiser's "
+                  f"{weights_label({'gw_weights': constants.FIXTURE_GW_WEIGHTS})}, "
+                  f"so the next optimiser run will treat this window as stale and "
+                  f"auto-refresh it. Paste output from: fpl_research_mcp.py "
+                  f"--fixture-difficulty --gw-weights {constants.gw_weights_arg()}",
+                  file=sys.stderr)
         print(f"  fixtures per team in window: {sorted(games)}"
               + ("  (uneven — a double or blank is in range)" if len(games) > 1 else ""))
         best_att = max(fx.items(), key=lambda kv: kv[1][0])

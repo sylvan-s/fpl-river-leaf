@@ -88,3 +88,13 @@ intel ON, quarantine ON, fixtures ON, no Haaland ON, max 2 attackers/club.
 The tools refuse on a stale fixture window (call `refresh_fixture_window`
 first) or a clone that isn't origin's. They return a flagged player as an
 ERROR, never as advice. See `VM_OPTIMISER_TOOLS.md`.
+
+## Fixture-window gameweek weighting
+
+`--fixtures` scores on xP_adj over a 4-GW window whose opponent multipliers are
+a weighted mean, next GW first: 40 / 30 / 20 / 10 (`constants.FIXTURE_GW_WEIGHTS`,
+15 Sep 2026; previously equal). The weights are stamped into
+`fixture_window.json`. A window without them, or with different ones, is stale
+and gets auto-refreshed (the VM runner refuses and asks for
+`refresh_fixture_window`). The `fixture_difficulty` research tool stays
+equal-weighted unless given `gw_weights`.

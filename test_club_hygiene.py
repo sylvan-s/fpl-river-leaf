@@ -94,5 +94,46 @@ finally:
 check("the committed fixture_window.json still parses",
       fa.window_gws()[0] is not None, "no stamp found")
 
+print("\n== fixture_adjust: gameweek weights are stamped and enforced ==")
+import json  # noqa: E402
+import constants  # noqa: E402
+check("optimiser weights are 40/30/20/10, one per horizon GW",
+      constants.FIXTURE_GW_WEIGHTS == (0.4, 0.3, 0.2, 0.1)
+      and len(constants.FIXTURE_GW_WEIGHTS) == fa.HORIZON)
+check("parses the weights line from a fixture_difficulty table",
+      fa.parse_gw_weights("FIXTURE RUNS, GW5-8\nGW weights: 0.4,0.3,0.2,0.1\nTOT 1 1 4")
+      == (0.4, 0.3, 0.2, 0.1))
+check("'equal' and a pre-weights table both parse as None",
+      fa.parse_gw_weights("GW weights: equal") is None
+      and fa.parse_gw_weights("FIXTURE RUNS, GW5-8\nTOT 1.0 1.0 4") is None)
+check("weights_match: exact stamp matches",
+      fa.weights_match({"gw_weights": [0.4, 0.3, 0.2, 0.1]}))
+check("weights_match: unstamped (old equal-mean) window does not",
+      not fa.weights_match({"generated_for_gw": 5}))
+check("weights label reads as percentages",
+      fa.weights_label({"gw_weights": [0.4, 0.3, 0.2, 0.1]}) == "GW weights 40/30/20/10")
+
+_real_active = fa.active_window
+try:
+    fa.active_window = lambda: ({}, "stub", {"generated_for_gw": 5, "horizon": 4})
+    check("right GW but no weights stamp -> stale (forces a weighted refresh)",
+          fa.check_stale(5) is True)
+    fa.active_window = lambda: ({}, "stub", {"generated_for_gw": 5, "horizon": 4,
+                                             "gw_weights": [0.4, 0.3, 0.2, 0.1]})
+    check("right GW and right weights -> fresh", fa.check_stale(5) is False)
+    check("weighted window for the wrong GW -> stale", fa.check_stale(6) is True)
+finally:
+    fa.active_window = _real_active
+
+_saved = fa.WINDOW_PATH
+_tmpdir = __import__("tempfile").mkdtemp()
+fa.WINDOW_PATH = os.path.join(_tmpdir, "fixture_window.json")
+try:
+    w = fa.save_window({"TOT": (1.1, 0.9, 4)}, 5, 4, constants.FIXTURE_GW_WEIGHTS)
+    check("save_window stamps gw_weights", w["gw_weights"] == [0.4, 0.3, 0.2, 0.1]
+          and json.load(open(fa.WINDOW_PATH))["gw_weights"] == [0.4, 0.3, 0.2, 0.1])
+finally:
+    fa.WINDOW_PATH = _saved
+
 print("\n" + ("ALL TESTS PASSED" if not FAILS else f"{len(FAILS)} FAILURE(S): {FAILS}"))
 sys.exit(1 if FAILS else 0)

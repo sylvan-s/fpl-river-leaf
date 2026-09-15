@@ -1695,16 +1695,31 @@ def price_watch(watchlist: str = "", threshold: float = 5.0) -> str:
         "attackers and bad for your defenders at the same time. Instead this "
         "derives opponent strength from xG (same model as captaincy_odds and "
         "fixture_outlook, so they cannot contradict each other) and reports two "
-        "columns. Also flags doubles and blanks. sort_by: 'attack' or 'defence'."
+        "columns. Also flags doubles and blanks. sort_by: 'attack' or 'defence'. "
+        "gw_weights: optional comma-separated weight per gameweek, next GW first "
+        "(e.g. '0.4,0.3,0.2,0.1', the optimiser's weighting); empty = equal."
     )
 )
-def fixture_difficulty(next_n: int = 4, sort_by: str = "attack") -> str:
+def fixture_difficulty(next_n: int = 4, sort_by: str = "attack", gw_weights: str = "") -> str:
     teams, _ = _maps()
     ev = _next_event()
     if not ev:
         return "No upcoming gameweek."
     start = ev["id"]
     window = set(range(start, start + next_n))
+    # gw_weights "0.4,0.3,0.2,0.1": weight per gameweek, next GW first. Empty =
+    # equal mean (the research default). The optimiser's window passes
+    # constants.FIXTURE_GW_WEIGHTS - see fixture_adjust.py. Per-fixture factors
+    # are unchanged either way, so captaincy_odds still agrees fixture by fixture.
+    weights = None
+    if gw_weights.strip():
+        try:
+            weights = [float(w) for w in gw_weights.split(",")]
+        except ValueError:
+            return f"gw_weights must be comma-separated numbers, got {gw_weights!r}"
+        if len(weights) != next_n or any(w < 0 for w in weights) or sum(weights) <= 0:
+            return (f"gw_weights needs {next_n} non-negative values (one per gameweek, "
+                    f"next GW first), got {gw_weights!r}")
 
     per_gw: dict[int, dict[int, int]] = {t: {} for t in teams}
     for f in _get("/fixtures/?future=1", ttl=3600):
@@ -1720,8 +1735,14 @@ def fixture_difficulty(next_n: int = 4, sort_by: str = "attack") -> str:
         fxs = _window_factors(tid, start, next_n, teams)
         if not fxs:
             continue
-        att = sum(f["def_factor"] for f in fxs) / len(fxs)   # your attack multiplier
-        dfn = sum(f["att_factor"] for f in fxs) / len(fxs)   # your goals-conceded multiplier
+        # Weighted mean over FIXTURES: a double takes its gameweek's weight twice,
+        # a blank's weight drops out and the rest renormalise - the same blank
+        # and double treatment the equal mean always had.
+        w = [weights[f["event"] - start] if weights else 1.0 for f in fxs]
+        if sum(w) <= 0:
+            w = [1.0] * len(fxs)
+        att = sum(wi * f["def_factor"] for wi, f in zip(w, fxs)) / sum(w)   # your attack multiplier
+        dfn = sum(wi * f["att_factor"] for wi, f in zip(w, fxs)) / sum(w)   # your goals-conceded multiplier
         rows.append({
             "team": teams[tid]["short_name"], "att": att, "dfn": dfn, "n": len(fxs),
             "doubles": [gw for gw, c in per_gw[tid].items() if c > 1],
@@ -1736,6 +1757,8 @@ def fixture_difficulty(next_n: int = 4, sort_by: str = "attack") -> str:
 
     lines = [
         f"FIXTURE RUNS, GW{start}-{start + next_n - 1}  (sorted by {sort_by})",
+        # Machine-read by fixture_adjust.parse_gw_weights() - keep the prefix.
+        "GW weights: " + (",".join(f"{w:g}" for w in weights) if weights else "equal"),
         "ATT x = multiplier on your ATTACKERS' output   - HIGHER is better",
         "DEF x = multiplier on the goals you CONCEDE    - LOWER is better",
         "",
@@ -3692,8 +3715,11 @@ if _os.environ.get("FPL_RUNNER") == "1":
         ev = _next_event()
         return ev["id"] if ev else None
 
+    import constants as _constants
+
     _vm_runner.register(mcp, live_gw=_runner_live_gw,
-                        fixture_table=lambda n: fixture_difficulty(next_n=n))
+                        fixture_table=lambda n: fixture_difficulty(
+                            next_n=n, gw_weights=_constants.gw_weights_arg()))
 
 
 if __name__ == "__main__":
@@ -3727,7 +3753,10 @@ if __name__ == "__main__":
         sort = "attack"
         if "--sort-by" in sys.argv:
             sort = sys.argv[sys.argv.index("--sort-by") + 1]
-        print(fixture_difficulty(next_n, sort))
+        weights = ""
+        if "--gw-weights" in sys.argv:
+            weights = sys.argv[sys.argv.index("--gw-weights") + 1]
+        print(fixture_difficulty(next_n, sort, weights))
         sys.exit(0)
     if "--selftest" in sys.argv:
         print(escalation_check(), "\n")

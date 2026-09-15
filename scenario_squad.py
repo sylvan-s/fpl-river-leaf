@@ -315,7 +315,8 @@ def main():
         # fix landed in optimise_squad.py only, so this path kept printing
         # "GW1-4" off a window correctly stamped for GW5 — exactly the
         # failure window_label() was written to stop.
-        print(f"objective: xP_adj (opponent-adjusted, {fa.window_label()} window)\n")
+        print(f"objective: xP_adj (opponent-adjusted, {fa.window_label()} window, "
+              f"{fa.weights_label()})\n")
 
     if "--transfers" in sys.argv:
         n = int(sys.argv[sys.argv.index("--transfers") + 1])

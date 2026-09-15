@@ -124,9 +124,15 @@ check("force_in in rebuild mode refused",
 check("bad estimator refused", raises(vr.optimiser_args, estimator="vibes") is not None)
 
 print("\n== window stamp ==")
-check("matching stamp is fine", vr.window_problem({"generated_for_gw": 5}, 5) is None)
+W = [0.4, 0.3, 0.2, 0.1]
+check("matching GW and weights is fine",
+      vr.window_problem({"generated_for_gw": 5, "gw_weights": W}, 5) is None)
 check("stale stamp refused", "refresh_fixture_window" in
-      (vr.window_problem({"generated_for_gw": 4}, 5) or ""))
+      (vr.window_problem({"generated_for_gw": 4, "gw_weights": W}, 5) or ""))
+check("right GW but old equal-mean window refused",
+      "GW weights" in (vr.window_problem({"generated_for_gw": 5}, 5) or ""))
+check("right GW but different weights refused",
+      vr.window_problem({"generated_for_gw": 5, "gw_weights": [0.25] * 4}, 5) is not None)
 check("unknown live GW refused", vr.window_problem({"generated_for_gw": 5}, None) is not None)
 check("missing window refused", vr.window_problem({"generated_for_gw": None}, 5) is not None)
 

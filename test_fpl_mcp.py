@@ -125,6 +125,42 @@ check("labels the directions explicitly",
 check("names the best run for each position",
       "Best run for ATTACKERS" in out and "Best run for DEFENDERS" in out, out)
 check("states it no longer uses FDR", "NOT" in out and "FDR" in out, out)
+
+print("\n== fixture_difficulty gw_weights (optimiser weighting, 15 Sep 2026) ==")
+seed()
+_real_wf = m._window_factors
+_start = m._next_event()["id"]
+_tids = sorted(m._maps()[0])
+_blank_tid = _tids[0]
+
+
+def _stub_wf(tid, start, n, teams):
+    # Next GW: easy for attackers (1.5x) and defenders (0.5x); GW+1 the reverse.
+    # The first team blanks the next GW, so only its GW+1 fixture counts.
+    fx = [{"event": start + 1, "def_factor": 0.5, "att_factor": 1.5, "known": True}]
+    if tid != _blank_tid:
+        fx.insert(0, {"event": start, "def_factor": 1.5, "att_factor": 0.5, "known": True})
+    return fx
+
+
+m._window_factors = _stub_wf
+try:
+    eq = m.fixture_difficulty(next_n=2)
+    wt = m.fixture_difficulty(next_n=2, gw_weights="0.75,0.25")
+    check("default is the equal mean, and says so", "GW weights: equal" in eq
+          and "    1.00    1.00" in eq, eq)
+    check("weighted mean: 0.75*1.5 + 0.25*0.5 = 1.25 ATT, 0.75 DEF",
+          "GW weights: 0.75,0.25" in wt and "    1.25    0.75" in wt, wt)
+    _blank = m._maps()[0][_blank_tid]["short_name"]
+    check("a blank's weight drops out and the rest renormalise (0.50 / 1.50)",
+          any(ln.startswith(_blank) and "    0.50    1.50" in ln for ln in wt.splitlines()), wt)
+    check("wrong number of weights is refused, not guessed",
+          "needs 2" in m.fixture_difficulty(next_n=2, gw_weights="0.4,0.3,0.3"))
+    check("non-numeric weights refused",
+          "comma-separated" in m.fixture_difficulty(next_n=2, gw_weights="a,b"))
+finally:
+    m._window_factors = _real_wf
+
 # FDR must be gone from the source entirely - one model, no contradictions
 _src = open(m.__file__).read()
 check("FDR fields unreferenced anywhere in the server",
