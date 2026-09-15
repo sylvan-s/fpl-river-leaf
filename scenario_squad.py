@@ -147,7 +147,10 @@ def apply_scenario(pool, rows):
 
     for r in pool:
         if id(r) in touched:
-            r["ok"] = r["name"] not in bs.UNAVAILABLE
+            # bs.is_available, not the bare hand list - recomputing from
+            # UNAVAILABLE alone re-admitted anyone load() had excluded on his
+            # live status flag (Watkins, 15 Sep 2026).
+            r["ok"] = bs.is_available(r)
             r["score"] = bs.scoring.expected_points(r, empirical=bs.USE_EMPIRICAL_DC)
     return applied, unmatched
 

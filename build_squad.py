@@ -33,6 +33,9 @@ degrade to the frozen snapshot (with a warning) if it is unreachable.
     one when this was fixed. Rows also keep `team_prior`, the snapshot club,
     because prior-season lookups (last16_starts.json, the gameweek archive)
     are still keyed by it. See the "CLUB" comment in load().
+    STATUS (15 Sep 2026) - a stale availability is a player who cannot play.
+    FPL's live `status` flag now feeds gate 3 alongside the hand-kept
+    UNAVAILABLE list; see LIVE_STATUS_EXCLUDE for which flags exclude and why.
 
 GATE 2 CHANGED 9 Aug 2026 — starts% is now measured over the LAST 16 GAMEWEEKS
 of 2025/26 (GW23-38), not the full 38-GW season. Sylvan's point: a lot changes
@@ -176,11 +179,51 @@ CBIT_THRESH, CBIRT_THRESH = 10.0, 12.0
 
 # gate 3 - unavailable right now. Verified against injury_report / status flags.
 # Update before every run; a stale list silently re-admits a banned player.
+# Since 15 Sep 2026 this is an ADDITIONAL override on top of the live status
+# flag (LIVE_STATUS_EXCLUDE below), not the only availability check - it still
+# carries the injuries and bans the live flag doesn't exclude automatically.
 UNAVAILABLE = {
     "Fofana", "Andersen", "Saliba", "J.Timber", "Gomez", "Bradley", "Mitoma",
     "Baleba", "Christie", "Onana", "Garner", "Gudmundsson", "Butland",
     "Milosavljević", "Kroupi.Jr",
 }
+
+# gate 3, LIVE - FPL's own `status` flag from bootstrap-static. ADDED 15 Sep
+# 2026: Watkins left for Al-Hilal, but a player who leaves the Premier League
+# stays in bootstrap-static with status 'u' and his OLD club, so neither the
+# live CLUB pass nor this hand list caught him - he scored 4.89 xP, ok=True,
+# with nothing but a since-removed ROLE_INTEL row ever holding him out. Same
+# class of failure as the Sarr trap: a status assumed to flow into the
+# optimiser that never did.
+#
+# Decided per flag, deliberately not "anything but 'a'":
+#   'u' unavailable  - EXCLUDED. Left the club/league; no return this horizon.
+#   'n' not available - EXCLUDED. FPL uses it mainly for loans out, so no return
+#                      this horizon either. It is occasionally a short absence
+#                      instead (e.g. ineligible vs parent club), which is why
+#                      load() prints FPL's `news` text next to every exclusion.
+#   's' suspended    - NOT excluded automatically. A ban ends, and this pool is
+#                      scored over a multi-GW window (GW5-8 on 15 Sep 2026), so
+#                      a short ban zeroing him for the whole horizon would
+#                      overstate it - GLOSSARY.md's "hold signal, not a blank
+#                      signal" point. (Strictly, that note is about yellow-card
+#                      RISK; a ban being served does blank those GWs -
+#                      GLOSSARY's BANNED row.) Bans are NOT reliably short:
+#                      on 15 Sep 2026 Foden's ran to 17 Oct, past the whole
+#                      window. So load() prints each one with FPL's "Suspended
+#                      until" text; add him to UNAVAILABLE when it covers the
+#                      window.
+#   'i' / 'd'        - unchanged: injuries still go through UNAVAILABLE by hand.
+LIVE_STATUS_EXCLUDE = {"u": "unavailable", "n": "not available"}
+
+
+def is_available(r):
+    """Gate 3 for one pool row: the hand list AND the live status flag.
+
+    `r["status"]` is None when bootstrap-static was unreachable or didn't list
+    the player, which leaves the hand list as the only check (load() says so).
+    """
+    return r["name"] not in UNAVAILABLE and r.get("status") not in LIVE_STATUS_EXCLUDE
 
 POS = {1: "GKP", 2: "DEF", 3: "MID", 4: "FWD"}
 
@@ -301,7 +344,8 @@ def _fetch_current_season():
               f"rates fall back to prior-only for every player this run, every "
               f"price falls back to the frozen 8 Aug pre-season snapshot, and so "
               f"does every CLUB - so anyone transferred since 8 Aug 2026 is "
-              f"scored on his OLD club's fixtures this run. Treat a fixture-"
+              f"scored on his OLD club's fixtures this run - and no live STATUS "
+              f"flag excludes anyone either. Treat a fixture-"
               f"adjusted run under this warning as unreliable for movers.",
               file=sys.stderr)
         _current_cache = {}
@@ -391,6 +435,7 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
     live_clubs = _live_clubs_cache or {}
     stale_price_n = 0
     club_fixed = []
+    live_news = {}   # {id(row): FPL `news` text} for flagged rows, for the STATUS report
     excluded = []
     matched = set()
     # PASS A - baseline rows (prior-season / last16 / bonus), no intel yet.
@@ -440,6 +485,9 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
         price = (live_cost if live_cost is not None else (p.get("now_cost") or 0)) / 10
         r = dict(name=name, pos=POS[p["element_type"]],
                  team=team, team_prior=team_prior, price=price,
+                 # Live FPL status flag, None if the fetch failed - see
+                 # LIVE_STATUS_EXCLUDE / is_available().
+                 status=current.get(pid, {}).get("status"),
                  starts=p.get("starts", 0) or 0, stp=stp, stp_season=stp_season,
                  stp_src=stp_src,
                  xgi90=xgi/n90, delta=ga - xgi, cbit90=(cbi+tk)/n90,
@@ -457,6 +505,8 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
                  bonus_k=_bonus_k)
         if needs_live:
             r["_cur"] = _current_rates(current.get(pid, {}))
+        if r["status"] not in (None, "a"):
+            live_news[id(r)] = (current[pid].get("news") or "").strip()
         rows.append(r)
 
     # Between passes: derive one k per metric from the WHOLE population's
@@ -511,7 +561,7 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
             for e in ia.apply(r):
                 matched.add((e["player"], e["team"]))
         r["p_cs"] = math.exp(-max(r["xgc90"], 0.05)) if CS[r["pos"]] else 0.0
-        r["ok"] = r["name"] not in UNAVAILABLE
+        r["ok"] = is_available(r)
         r["score"] = scoring.expected_points(r, empirical=use_empirical_dc)
         out.append(r)
     if needs_live and not current:
@@ -538,6 +588,35 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
         print(f"  CLUB: no live club map this run (bootstrap-static unreachable) "
               f"— every club is the frozen 8 Aug snapshot's, so any post-deadline "
               f"mover is scored on his OLD club's fixtures.", file=sys.stderr)
+    if current:
+        # Reported, never silent - the CLUB CORRECTED rule again. Printed even
+        # for a player the hand list already covers, so the two can be seen
+        # to agree.
+        def _news(r):
+            n = live_news.get(id(r))
+            return f" [{r['status']}: {n}]" if n else f" [{r['status']}]"
+        status_out = sorted((r for r in out if r["status"] in LIVE_STATUS_EXCLUDE),
+                            key=lambda r: r["name"])
+        suspended = sorted((r for r in out if r["status"] == "s"), key=lambda r: r["name"])
+        if status_out:
+            print(f"  STATUS EXCLUDED — {len(status_out)} player(s) FPL flags as "
+                  f"unavailable ('u') or not available ('n'), set ok=False whatever "
+                  f"their rates say: "
+                  + ", ".join(f"{r['name']} ({r['team']}){_news(r)}" for r in status_out)
+                  + ". A club here may be stale: FPL keeps a player who left the "
+                    "league on his old club.", file=sys.stderr)
+        if suspended:
+            print(f"  STATUS SUSPENDED — {len(suspended)} player(s) FPL flags as "
+                  f"suspended ('s'), still SELECTABLE - not excluded automatically: "
+                  + ", ".join(f"{r['name']} ({r['team']}){_news(r)}" for r in suspended)
+                  + ". Check each end date against the scoring window and add "
+                    "anyone it covers to UNAVAILABLE in build_squad.py.",
+                  file=sys.stderr)
+    else:
+        print(f"  STATUS: no live status flags this run (bootstrap-static "
+              f"unreachable) — availability is the hand-maintained UNAVAILABLE "
+              f"list ONLY, so a player who has left the league since it was last "
+              f"updated (Watkins, 15 Sep 2026) can still be picked.", file=sys.stderr)
     if use_intel:
         # UNMATCHED IS A BUG, NOT A NO-OP. A typo'd name/team in the fence
         # would otherwise adjust nothing and say nothing - the exact silent
