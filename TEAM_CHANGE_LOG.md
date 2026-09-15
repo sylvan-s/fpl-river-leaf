@@ -718,6 +718,80 @@ its easiest fixtures first. Biggest team shifts:
 optimiser run sees the stamp mismatch and refreshes the window. Commits
 `0895b0e` (weighting), live on the VM runner the same evening.
 
+### Tue 15 Sep 2026 — tooling, not a transfer — the optimiser runs in the cloud, with no Mac
+
+**The gap.** The GW5 scenario run needed the Mac open for everything that
+mattered: `squad.json` and the ROLE_INTEL fences came off a folder mount, the
+fixture-window refresh and both optimisers (`optimise_squad.py`,
+`scenario_squad.py`) ran as Mac shell commands with PuLP installed ad hoc, the
+live bootstrap came from a browser download served offline, and the ticked
+Trello quarantine items were hand-transcribed into a scenario file. The VM
+connector exposed the 21 research tools only. Plan and full task list in
+`VM_OPTIMISER_TOOLS.md`.
+
+**Now on the VM** (`vm_runner.py`, registered by `fpl_research_mcp.py` only
+when `FPL_RUNNER=1`, which the VM's systemd drop-in sets and the Mac never
+does — so `repo_sync`'s `git pull` can never run against the Mac's working
+tree, where `preflight.sh`'s per-file rules apply):
+
+| tool | does |
+|---|---|
+| `repo_sync` | fetch + ff-only pull; runs before every other tool |
+| `refresh_fixture_window` | `fixture_difficulty` -> `fixture_adjust.py --update`, stamped; removes the paste-the-table step |
+| `optimise_transfers` | `optimise_squad.py`, transfer or wildcard/rebuild mode |
+| `optimise_scenario` | `scenario_squad.py` with the 9-field rows passed inline |
+| `optimise_matrix` / `optimise_job` | the estimator x overlay x transfers grid, run in the background (12 runs in ~3s) and polled |
+| `quarantine_report`, `intel_report` | `--quarantine-report`, `intel_adjust.py --report` |
+| `player_estimates` | prior/raw/shrunk x intel on/off per player — the ad-hoc GW5 dump script, made permanent |
+| `squad_state` | validated `squad.json` plus live price drift |
+| `repo_file`, `bench_value` | allow-listed repo text; `size_bench_value.py` with its unit-trap note |
+
+**The rules they encode.** Defaults are the weekly configuration (shrunk,
+intel ON, quarantine ON, fixtures ON, no Haaland, max 2 attackers/club); a
+call that departs from it says so. Every response carries repo HEAD, window
+stamp and weights, live GW, the settings, both preference costs, the
+LIVE FETCH / PRICE / CLUB / STATUS / CONTAMINATED stderr lines verbatim, the
+script text and structured JSON. A recommendation naming a flagged or
+contaminated player comes back as an error, not a footnote (see the injury
+entry below). Ties stay HOLD — the tool never re-solves one. `quarantine=True`
+with Trello unreachable **fails**, rather than quietly returning a fence-only
+answer that would look like an overlay answer.
+
+**The VM is a runner, not the record.** It never commits, pushes, or writes
+`squad.json`, `TEAM_CHANGE_LOG.md` or `ROLE_INTEL.md` — Friday's review on the
+Mac still owns all three. It writes only `fixture_window.json` and the
+`docs/data` snapshots the research tools already wrote. If origin changes one
+of those under it, its copy is backed up to `~/.fpl-mcp/runner-backup/` and
+reset to origin's. Any other dirty file, or a clone ahead of origin, and every
+tool refuses. A window stamped for the wrong gameweek, or built with the wrong
+weights, is refused too.
+
+**Supporting changes.** `optimise_squad.py` gained `--json` (structured result
+alongside the unchanged text), `--force-in/--force-out` (`scenario_squad.py`
+had them; the weekly tool silently ignored them), a bank-after line, and a
+PRICE OF THE PREFERENCES block in transfer mode, which had never priced either
+preference. `_sell_price` moved to `squad_state.sell_price` so
+`squad_state.py --json --live` can report realisable sell value without PuLP —
+it shows the squad selling for **£98.2m** against the ledger's £98.7m, so
+£0.5m of stated value is not spendable (roadmap B1 again).
+`size_bench_value.py` had the hardcoded `GW1-4` label fixed elsewhere on
+7 Sep. New `test_vm_runner.py`; all suites pass on both machines.
+
+**Deployment.** Oracle VM, PuLP 3.3.2 with CBC installed in the service venv
+(aarch64). Cron fast-forwards the clone every 15 minutes and restarts
+`fpl-mcp-http` when the server's own code changed, so tool definitions never
+lag the scripts they run. Commits `53ffb11`, `98135a5`.
+
+**OUTSTANDING — Trello credentials.** `/etc/fpl-mcp/runner.env` (root, 0600)
+is in place with placeholders; Sylvan fills in `TRELLO_API_KEY` /
+`TRELLO_TOKEN` (read-only token is enough) and restarts the service. Until
+then the default `optimise_transfers` and `quarantine_report` refuse, since
+quarantine is on by default. Not yet built, deliberately: the phase-2 write
+tools (`record_decision`, `publish_dashboard`, `save_scenario`), so nothing in
+the cloud can change the team or the record. Also open: where the VM's
+`docs/data` snapshots should live — today they stay on the VM and never reach
+the public page.
+
 ### Tue 15 Sep 2026 — methodology fix, not a transfer — injured and low-chance doubtful players excluded automatically
 
 **Found in the GW5 scenario run.** The shrunk-estimator run with the quarantine
