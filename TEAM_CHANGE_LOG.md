@@ -782,11 +782,21 @@ it shows the squad selling for **£98.2m** against the ledger's £98.7m, so
 `fpl-mcp-http` when the server's own code changed, so tool definitions never
 lag the scripts they run. Commits `53ffb11`, `98135a5`.
 
-**OUTSTANDING — Trello credentials.** `/etc/fpl-mcp/runner.env` (root, 0600)
-is in place with placeholders; Sylvan fills in `TRELLO_API_KEY` /
-`TRELLO_TOKEN` (read-only token is enough) and restarts the service. Until
-then the default `optimise_transfers` and `quarantine_report` refuse, since
-quarantine is on by default. Not yet built, deliberately: the phase-2 write
+**Trello credentials — done 16 Sep 2026.** `/etc/fpl-mcp/runner.env` (root,
+0600, loaded by the unit's `EnvironmentFile=`). The old key was rejected by
+Trello outright (`invalid key`, before the token was even considered — a
+Power-Up key that no longer exists), so a fresh Power-Up API key and a
+read-only token were generated and installed; the overlay now reads the board
+live from the VM. Note the current token format is 76 chars, not 64.
+**The overlay changes the GW5 answer**, which is the whole reason it exists:
+fence-only says `Virgil -> O'Reilly` (+1.37), while the overlay's ticked
+O'Reilly stp 0.65 drops him below the 75% XI gate and the answer becomes
+`Virgil -> Mukiele` (+0.71 free; at −4, `Schade + Virgil -> Gibbs-White +
+Mukiele`). Seven ticked items read, three of which change the model: O'Reilly
+stp 0.75 -> 0.65 and Mosquera stp 0.85 -> 0.50 (both CHANGE the fence), O.Dango
+stp 0.50 (NEW). The Villa squad-wide card's Watkins/Martinez lines are skipped
+as unparseable and Ruggeri is dropped as unmatched — both reported loudly, on
+every run, rather than guessed. Not yet built, deliberately: the phase-2 write
 tools (`record_decision`, `publish_dashboard`, `save_scenario`), so nothing in
 the cloud can change the team or the record. Also open: where the VM's
 `docs/data` snapshots should live — today they stay on the VM and never reach
