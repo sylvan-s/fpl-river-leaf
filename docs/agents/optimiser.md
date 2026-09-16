@@ -119,3 +119,12 @@ per team match (`--stp-estimator shrunk`, roadmap A0.2). It decides the 75% XI /
 anyone's score. A ROLE_INTEL `set stp` still overrides it. `--stp-estimator
 prior` restores the frozen rate; `--compare-stp` shows both. When stating the
 defaults before a run, say start rate is shrunk.
+
+## Start-weighted objective — `--start-weighted`, OFF by default (A0.5, 16 Sep 2026)
+
+Scores stp × xP per GAMEWEEK instead of xP/90, with a 50% XI floor in place
+of the 75% gate. Numbers are xP/GW and are NOT comparable with xP/90 figures,
+so always say which objective a quoted number came from. `--compare-start-weighted`
+shows both answers. Its 5-GW net and breakeven lines are the unit-consistent ones
+for judging a −4 hit. Not the weekly default until decided, at the latest at
+the GW10 backtest.

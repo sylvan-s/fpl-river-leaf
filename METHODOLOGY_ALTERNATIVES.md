@@ -1224,7 +1224,51 @@ entered once per season, not a scraper, and belongs in `ROLE_INTEL.md` as a date
 block alongside `setpieces` and `contaminated`. **Do it last, and only if the
 cheaper layers have proved their worth.**
 
-#### A0.5 Start-weighted XI objective — NOT BUILT. Gate: build behind a flag now, decide at GW10
+#### A0.5 Start-weighted XI objective — BUILT 16 Sep 2026 behind `--start-weighted` (off by default). Decide at GW10
+
+**BUILT 16 Sep 2026, commit `22cfd77`, the same day A0.2 went live (its
+precondition).** `--start-weighted` on `optimise_squad.py` / `scenario_squad.py`,
+`--compare-start-weighted`, `start_weighted=` on the VM runner. As designed below:
+
+- score = stp × xP_adj (xP per GAMEWEEK); the per-90 value is kept as
+  `score_per90`, never overwritten. Every printed figure and the JSON `unit`
+  switch to xP/GW.
+- The XI gate becomes a floor, `START_WEIGHTED_XI_FLOOR = 0.50` (the "~40–50%"
+  below), because the multiplier now does the availability discounting. The
+  bench gate stays at 60% for BUYS; an owned player already below it stays
+  ownable, or holding the current squad could become infeasible.
+- Weighting runs after intel, the quarantine overlay and fixtures, so a
+  `set stp` and the opponent adjustment are both in the weighted score.
+
+**GW5, weekly configuration (shrunk per-90 + shrunk start rate, intel +
+quarantine ON, 40/30/20/10 window):**
+
+| objective | free transfer | 2 transfers at −4 |
+|---|---|---|
+| xP/90, 75% gate (default) | Virgil -> Calafiori +1.80 (5-GW net +9.0) | Schade, Virgil -> Calafiori, Tavernier (+10.3) |
+| start-weighted xP/GW | **Van de Ven -> Calafiori +0.95 (+4.7)** | Schade, Van de Ven -> Calafiori, Tavernier (+5.4) |
+
+The difference is the exact case this item was logged for: Virgil starts 100%
+and Van de Ven 78%, and the per-90 objective cannot see it. Same buy, different
+sale.
+
+**A unit fix that matters for hits.** The transfer report's "5-GW net" and
+"breakeven" subtract a −4 hit, which is points per gameweek, from a gain that
+is only in those units when start-weighted. Under per-90 they overstate the
+gain by whatever share of 90s the XI does not actually play, so +9.0 vs +4.7
+above is mostly that, not a different opinion of the move. Hit decisions should
+read the start-weighted numbers.
+
+**Still open:** stp is P(start), and it multiplies all of xP, so a sub
+appearance scores nothing and a start is treated as a full 90. Both are
+second-order next to the gate cliff this removes. A0.6 (autosub bench value)
+is now unblocked, since it needs exactly this per-GW objective.
+
+**Kill criterion, unchanged:** GW10 `predictive_backtest`. If start-weighted
+ranking does not beat per-90 out of sample, delete `--start-weighted`; do not
+keep both objectives indefinitely. If it is flipped on before then, date the
+switch in TEAM_CHANGE_LOG.md, because historic xP/90 figures stop being comparable.
+
 
 *Logged Sun 9 Aug 2026. This is the layer A0.1–A0.4 were always feeding, and it
 was missing: the estimates improve P(start), but **nothing multiplies P(start)
