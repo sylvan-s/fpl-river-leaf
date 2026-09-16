@@ -94,9 +94,9 @@ Semantics worth knowing before trusting a result — full detail in
 When the VM's fpl-research connector has the runner tools (`optimise_transfers`,
 `optimise_scenario`, `optimise_matrix`/`optimise_job`, `refresh_fixture_window`,
 `quarantine_report`, `player_estimates`, `squad_state`, `repo_file`, ...), the
-same pre-run dialogue applies. State the defaults first: estimator shrunk,
-start rate shrunk, intel ON, quarantine ON, fixtures ON, Haaland allowed, max 2
-attackers/club.
+same pre-run dialogue applies. State the defaults first: objective
+start-weighted xP/GW, estimator shrunk, start rate shrunk, intel ON, quarantine
+ON, fixtures ON, Haaland allowed, max 2 attackers/club.
 The tools refuse on a stale fixture window (call `refresh_fixture_window`
 first) or a clone that isn't origin's. They return a flagged player as an
 ERROR, never as advice. See `VM_OPTIMISER_TOOLS.md`.
@@ -120,11 +120,12 @@ anyone's score. A ROLE_INTEL `set stp` still overrides it. `--stp-estimator
 prior` restores the frozen rate; `--compare-stp` shows both. When stating the
 defaults before a run, say start rate is shrunk.
 
-## Start-weighted objective — `--start-weighted`, OFF by default (A0.5, 16 Sep 2026)
+## Start-weighted objective — THE DEFAULT since 16 Sep 2026 (A0.5, GW5)
 
-Scores stp × xP per GAMEWEEK instead of xP/90, with a 50% XI floor in place
-of the 75% gate. Numbers are xP/GW and are NOT comparable with xP/90 figures,
-so always say which objective a quoted number came from. `--compare-start-weighted`
-shows both answers. Its 5-GW net and breakeven lines are the unit-consistent ones
-for judging a −4 hit. Not the weekly default until decided, at the latest at
-the GW10 backtest.
+Scores stp × xP per GAMEWEEK instead of xP/90, with a 50% XI floor in place of
+the 75% gate. Every figure is xP/GW and is NOT comparable with the xP/90
+figures logged before 16 Sep 2026, so always say which objective a quoted
+number came from. `--per90` (or `start_weighted=False` on the VM runner) gives
+the old objective; `--compare-start-weighted` shows both. Its 5-GW net and
+breakeven lines are the unit-consistent ones for judging a −4 hit. When stating
+the defaults before a run, include "objective start-weighted xP/GW".

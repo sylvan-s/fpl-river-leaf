@@ -679,6 +679,53 @@ share rises; the differential case depends entirely on him playing.
 
 ## CHANGE HISTORY (newest first)
 
+### Wed 16 Sep 2026 — methodology change, not a transfer — the optimiser now maximises points per GAMEWEEK (A0.5 live for GW5)
+
+**UNIT SWITCH — READ BEFORE COMPARING ANY NUMBER.** From today every optimiser
+figure is **xP/GW** (start rate × expected points). Every xP/90 figure earlier
+in this log, including the start-rate entry below, is on a different scale and
+is **not comparable**. The optimiser prints `OBJECTIVE UNIT` on every run, and
+the VM runner's header names the objective.
+
+**Sylvan's call: on for the GW5 deadline**, ahead of the roadmap's GW10 gate,
+the same day A0.2 (live start rates, its precondition) went live.
+`optimise_squad.START_WEIGHTED_DEFAULT = True`; `--per90` restores the old
+objective.
+
+**Why.** The optimiser maximised xP/90 and used start rate only as a hard 75%
+gate, so a 76% and a 98% starter with equal xP/90 scored identically, and 74.9%
+vs 75.1% differed by everything. Start rate now multiplies the score. The XI
+gate drops to a 50% floor, which only excludes non-players, because the
+multiplier does the discounting. The bench gate stays at 60% for buys.
+
+**Effect on the GW5 answer** (weekly configuration, Trello quarantine ON):
+
+| objective | free transfer | 2 transfers at −4 |
+|---|---|---|
+| xP/90, 75% gate (before) | Virgil -> Calafiori, +1.80 xP/90 | Schade, Virgil -> Calafiori, Tavernier |
+| **start-weighted (now)** | **Van de Ven -> Calafiori, +0.95 xP/GW**, bank after £0.5m | Schade, Van de Ven -> Calafiori, Tavernier, +1.88 xP/GW, 5-GW net +5.4 |
+
+Same buy, different sale. Virgil starts 100%, Van de Ven 78%, and the per-90
+objective could not see the difference.
+
+**Hits read differently now.** The report's "5-GW net" and "breakeven" subtract
+a −4 hit, which is points per gameweek, so they were only unit-consistent once
+the gain is per gameweek too. Under per-90 the free move read +9.0 over five
+gameweeks; start-weighted it is +4.7. Most of that gap is the per-90 figure
+counting 90s the XI does not play. Judge hits on these numbers.
+
+**Also changed, same commit.** The squad page's "best forced transfer" tables
+now choose on the same objective (they chose on xP/90 and only reported xP/GW),
+and allow Haaland, matching the optimiser since this morning.
+
+**Known simplifications.** A start is treated as a full 90, and a substitute
+appearance scores nothing. A0.6 (autosub bench value) is now unblocked.
+
+**Kill criterion:** the GW10 `predictive_backtest` (Tue 10 Nov). If
+start-weighted ranking does not beat per-90 out of sample, set
+`START_WEIGHTED_DEFAULT = False`, delete the flag rather than keep both, and log
+the reversal here.
+
 ### Wed 16 Sep 2026 — methodology change, not a transfer — start rates now use 2026/27 starts (A0.2 live for GW5)
 
 **Sylvan's call: on for the GW5 deadline**, one gameweek ahead of the roadmap's

@@ -641,11 +641,23 @@ def build():
         if missing_e:
             raise SystemExit(f"squad players absent from the {estimator} pool: {missing_e}")
         cur_gw_e = sum(by_e[pl["name"]]["stp"] * by_e[pl["name"]]["score"] for pl in state.xi)
-        xi_e, bench_e, hits_e = opt.optimise_transfers(
-            p, state.name_set, state.bank, n_transfers, allow_haaland=False, force=True)
+        # Chosen on the optimiser's own objective (16 Sep 2026): start-weighted
+        # xP/GW with its 50% XI floor by default, so this panel names the same
+        # move optimise_squad.py does. Before, it chose on xP/90 and only
+        # REPORTED xP/GW, and could disagree with the weekly run. Haaland is
+        # allowed, matching the optimiser's default since the same day.
+        gate_keep = opt.bs.GATE_XI
+        if opt.START_WEIGHTED_DEFAULT:
+            opt.start_weight(p)
+            opt.bs.GATE_XI = opt.START_WEIGHTED_XI_FLOOR
+        try:
+            xi_e, bench_e, hits_e = opt.optimise_transfers(
+                p, state.name_set, state.bank, n_transfers, allow_haaland=True, force=True)
+        finally:
+            opt.bs.GATE_XI = gate_keep
         out_e = sorted(state.name_set - {r["name"] for r in xi_e + bench_e})
         in_e = sorted({r["name"] for r in xi_e + bench_e} - state.name_set)
-        new_gw_e = sum(r["stp"] * r["score"] for r in xi_e)
+        new_gw_e = sum(r["stp"] * r.get("score_per90", r["score"]) for r in xi_e)
         return out_e, in_e, new_gw_e - cur_gw_e, hits_e
 
     # force=True: always return the best swap(s), even if the impact is small

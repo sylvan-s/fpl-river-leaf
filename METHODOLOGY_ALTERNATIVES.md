@@ -1224,10 +1224,12 @@ entered once per season, not a scraper, and belongs in `ROLE_INTEL.md` as a date
 block alongside `setpieces` and `contaminated`. **Do it last, and only if the
 cheaper layers have proved their worth.**
 
-#### A0.5 Start-weighted XI objective — BUILT 16 Sep 2026 behind `--start-weighted` (off by default). Decide at GW10
+#### A0.5 Start-weighted XI objective — LIVE 16 Sep 2026 (GW5), the default objective. Confirm or revert at GW10
 
 **BUILT 16 Sep 2026, commit `22cfd77`, the same day A0.2 went live (its
-precondition).** `--start-weighted` on `optimise_squad.py` / `scenario_squad.py`,
+precondition). DEFAULT FLIPPED ON the same day for the GW5 deadline, Sylvan's
+call, ahead of the GW10 gate — see TEAM_CHANGE_LOG.md 16 Sep 2026. `--per90`
+restores the old objective.** `--start-weighted` on `optimise_squad.py` / `scenario_squad.py`,
 `--compare-start-weighted`, `start_weighted=` on the VM runner. As designed below:
 
 - score = stp × xP_adj (xP per GAMEWEEK); the per-90 value is kept as

@@ -228,7 +228,11 @@ ROLE_RIVALS_DEFAULT = []
 # beat per-90 out of sample, delete it. Unit: every figure becomes xP/GW, so
 # per-90 figures in TEAM_CHANGE_LOG.md are not comparable with it.
 START_WEIGHTED_XI_FLOOR = 0.50
-UNIT = "xP/90"                   # switched to "xP/GW" by --start-weighted
+# ON BY DEFAULT since 16 Sep 2026, for the GW5 deadline (Sylvan's call; the
+# roadmap gate was GW10). --per90 restores the old objective and 75% gate.
+# Revert here if the GW10 backtest says so, and date it in TEAM_CHANGE_LOG.md.
+START_WEIGHTED_DEFAULT = True
+UNIT = "xP/90"                   # set to "xP/GW" by _main() when start-weighted
 
 
 def start_weight(pool):
@@ -1007,8 +1011,9 @@ def _main():
                  "budget is always the sale proceeds plus the bank.")
     if "--gate" in sys.argv:
         bs.GATE_XI = float(sys.argv[sys.argv.index("--gate") + 1])
-    # A0.5 - see START_WEIGHTED_XI_FLOOR. --gate still wins if given.
-    start_weighted = "--start-weighted" in sys.argv
+    # A0.5 - see START_WEIGHTED_XI_FLOOR. --gate still wins if given. Default
+    # on; --per90 opts out; --start-weighted is accepted and changes nothing.
+    start_weighted = START_WEIGHTED_DEFAULT and "--per90" not in sys.argv
     gate_xi_per90 = bs.GATE_XI                    # for --compare-start-weighted
     if start_weighted:
         UNIT = "xP/GW"
@@ -1195,10 +1200,13 @@ def _main():
         RESULT["meta"]["live_gw"] = bs._live_gw_cache
     if start_weighted:
         start_weight(pool)
-        print(f"START-WEIGHTED (A0.5): score = start rate x "
-              f"{'xP_adj' if '--fixtures' in sys.argv else 'xP'}, in xP per GAMEWEEK; XI "
-              f"gate is a {bs.GATE_XI:.0%} floor, bench {bs.GATE_BENCH:.0%}. Not comparable "
-              f"with xP/90 figures.")
+        print(f"OBJECTIVE UNIT: START-WEIGHTED (A0.5, default since 16 Sep 2026) - score = "
+              f"start rate x {'xP_adj' if '--fixtures' in sys.argv else 'xP'}, in xP per "
+              f"GAMEWEEK; XI gate is a {bs.GATE_XI:.0%} floor, bench {bs.GATE_BENCH:.0%}. Not "
+              f"comparable with xP/90 figures; --per90 for the old objective.")
+    else:
+        print("OBJECTIVE UNIT: xP/90 with the 75% XI gate (--per90). Not the default since "
+              "16 Sep 2026.")
     RESULT["meta"]["objective"] = "per_gw" if start_weighted else "per90"
     RESULT["meta"]["unit"] = UNIT
     RESULT["meta"]["gate_xi"] = bs.GATE_XI

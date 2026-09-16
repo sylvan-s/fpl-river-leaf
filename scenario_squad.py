@@ -215,7 +215,7 @@ def main():
     # Haaland allowed by default since 16 Sep 2026 - see optimise_squad.py.
     allow_haaland = "--no-haaland" not in sys.argv
     # A0.5 - same switch as optimise_squad.py: stp x xP per gameweek, XI gate a floor.
-    start_weighted = "--start-weighted" in sys.argv
+    start_weighted = opt.START_WEIGHTED_DEFAULT and "--per90" not in sys.argv
     if start_weighted:
         opt.UNIT = "xP/GW"
         if "--gate" not in sys.argv:

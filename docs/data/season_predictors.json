@@ -298,5 +298,5 @@
   "rates": "build_prediction_tracker.walk_forward, per position; 60+ minute appearances scored",
   "stp": "starts per team match vs build_squad last-16 prior, k = scoring.estimate_k_start (selection's definition since 16 Sep 2026)"
  },
- "updated_utc": "2026-09-16T12:09:49Z"
+ "updated_utc": "2026-09-16T12:39:52Z"
 }

@@ -301,7 +301,7 @@ def optimiser_args(transfers=1, hits=False, estimator="shrunk", intel=True,
                    quarantine=True, fixtures=True, haaland=True,
                    max_attackers_per_club=2, free_transfers=None, gate=None,
                    force_in=(), force_out=(), role_rivals=(), allow_contaminated=False,
-                   budget=None, stp_estimator="shrunk", start_weighted=False):
+                   budget=None, stp_estimator="shrunk", start_weighted=True):
     """optimise_squad.py argv for one configuration. Raises ValueError on a
     combination the script would reject, so the tool can refuse up front.
 
@@ -325,8 +325,7 @@ def optimiser_args(transfers=1, hits=False, estimator="shrunk", intel=True,
         raise ValueError(f"stp_estimator must be prior/shrunk, got {stp_estimator!r}")
     # Always explicit, so a response never depends on the script's own default.
     a = ["optimise_squad.py", "--estimator", estimator, "--stp-estimator", stp_estimator]
-    if start_weighted:
-        a.append("--start-weighted")
+    a.append("--start-weighted" if start_weighted else "--per90")   # always explicit
     if fixtures:
         a.append("--fixtures")
     if not intel:
@@ -819,9 +818,9 @@ def register(mcp, live_gw, fixture_table):
         "HOLD - ties are HOLD, never resolved), 5-GW net, breakeven, bank after, both "
         "preference costs, live-data stderr lines verbatim, the script text and JSON. A "
         "move naming an unavailable or contaminated player is returned as an ERROR. "
-        "start_weighted=True (roadmap A0.5, off by default) scores stp x xP per GAMEWEEK with "
-        "a 50% XI floor instead of xP/90 behind a 75% gate - figures are not comparable "
-        "across the two. "
+        "The objective is START-WEIGHTED by default since 16 Sep 2026 (roadmap A0.5): stp x "
+        "xP per GAMEWEEK with a 50% XI floor; start_weighted=False gives the old xP/90 behind "
+        "a 75% gate - figures are not comparable across the two. "
         "Start rate is shrunk by default (2025/26 last-16 blended with 2026/27 starts per "
         "team match, roadmap A0.2, since GW5); stp_estimator='prior' to compare. It moves "
         "the 75% XI / 60% bench gates, not xP."))
@@ -836,7 +835,7 @@ def register(mcp, live_gw, fixture_table):
                                  allow_contaminated: bool = False,
                                  budget: float | None = None,
                                  stp_estimator: str = "shrunk",
-                                 start_weighted: bool = False) -> str:
+                                 start_weighted: bool = True) -> str:
         def go():
             sync, stamp, live, refused = _pre("optimise_transfers", need_window=fixtures)
             if refused:
@@ -874,7 +873,7 @@ def register(mcp, live_gw, fixture_table):
                                 force_out: list[str] | None = None,
                                 haaland: bool = True, budget: float | None = None,
                                 stp_estimator: str = "shrunk",
-                                start_weighted: bool = False) -> str:
+                                start_weighted: bool = True) -> str:
         def go():
             sync, stamp, live, refused = _pre("optimise_scenario", need_window=fixtures)
             if refused:
@@ -899,8 +898,7 @@ def register(mcp, live_gw, fixture_table):
                              + "\n".join(lines) + "\n")
                 args = ["scenario_squad.py", path, "--estimator", estimator,
                         "--stp-estimator", stp_estimator]
-                if start_weighted:
-                    args.append("--start-weighted")
+                args.append("--start-weighted" if start_weighted else "--per90")
                 if fixtures:
                     args.append("--fixtures")
                 if not base_intel:
