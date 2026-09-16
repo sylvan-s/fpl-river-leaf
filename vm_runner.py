@@ -298,9 +298,10 @@ def _pins(flag, pins):
 
 
 def optimiser_args(transfers=1, hits=False, estimator="shrunk", intel=True,
-                   quarantine=True, fixtures=True, haaland=False,
+                   quarantine=True, fixtures=True, haaland=True,
                    max_attackers_per_club=2, free_transfers=None, gate=None,
-                   force_in=(), force_out=(), role_rivals=(), allow_contaminated=False):
+                   force_in=(), force_out=(), role_rivals=(), allow_contaminated=False,
+                   budget=None):
     """optimise_squad.py argv for one configuration. Raises ValueError on a
     combination the script would reject, so the tool can refuse up front.
 
@@ -313,6 +314,9 @@ def optimiser_args(transfers=1, hits=False, estimator="shrunk", intel=True,
         raise ValueError("quarantine layers ON TOP of the ROLE_INTEL fence; it needs intel=True")
     if transfers is None and (force_in or force_out):
         raise ValueError("force_in/force_out need transfers=N (rebuild mode has no squad to pin)")
+    if budget is not None and transfers is not None:
+        raise ValueError("budget applies to wildcard/rebuild mode (transfers=None) only - "
+                         "transfer mode always spends sale proceeds plus the bank")
     free = 1 if free_transfers is None else int(free_transfers)
     if transfers is not None and not hits and int(transfers) > free:
         raise ValueError(f"transfers={transfers} exceeds free_transfers={free} and hits=False - "
@@ -324,8 +328,10 @@ def optimiser_args(transfers=1, hits=False, estimator="shrunk", intel=True,
         a.append("--no-intel")
     if quarantine:
         a.append("--quarantine")
-    if haaland:
-        a.append("--haaland")
+    if not haaland:
+        a.append("--no-haaland")
+    if budget is not None:
+        a += ["--budget", f"{float(budget):.1f}"]
     if max_attackers_per_club is None:
         a.append("--no-max-attackers-per-club")
     elif int(max_attackers_per_club) != 2:
@@ -795,8 +801,9 @@ def register(mcp, live_gw, fixture_table):
         "VM runner: the weekly transfer optimisation (optimise_squad.py) with no Mac. "
         "Defaults are the weekly configuration: estimator shrunk, ROLE_INTEL intel ON, "
         "Trello quarantine ON (fails loudly if Trello is unreachable), fixture window ON, "
-        "no Haaland, max 2 attackers/club - state these before running. transfers=None "
-        "is wildcard/rebuild mode. force_in/force_out/role_rivals take 'Name:TEAM' "
+        "max 2 attackers/club, Haaland allowed (haaland=False excludes him) - state these "
+        "before running. transfers=None is wildcard/rebuild mode, budgeted at the squad's "
+        "selling value plus the bank (budget=100.0 overrides, for comparison only). force_in/force_out/role_rivals take 'Name:TEAM' "
         "strings (role_rivals: one comma-joined group per string). hits=False refuses "
         "transfers above free_transfers. Refuses if the repo clone is not origin's or "
         "the window stamp is not the live GW. Returns the verdict per move count (MOVE / "
@@ -806,12 +813,13 @@ def register(mcp, live_gw, fixture_table):
     async def optimise_transfers(transfers: int | None = 1, hits: bool = False,
                                  estimator: str = "shrunk", intel: bool = True,
                                  quarantine: bool = True, fixtures: bool = True,
-                                 haaland: bool = False, max_attackers_per_club: int | None = 2,
+                                 haaland: bool = True, max_attackers_per_club: int | None = 2,
                                  free_transfers: int | None = None, gate: float | None = None,
                                  force_in: list[str] | None = None,
                                  force_out: list[str] | None = None,
                                  role_rivals: list[str] | None = None,
-                                 allow_contaminated: bool = False) -> str:
+                                 allow_contaminated: bool = False,
+                                 budget: float | None = None) -> str:
         def go():
             sync, stamp, live, refused = _pre("optimise_transfers", need_window=fixtures)
             if refused:
@@ -819,7 +827,8 @@ def register(mcp, live_gw, fixture_table):
             try:
                 args = optimiser_args(transfers, hits, estimator, intel, quarantine, fixtures,
                                       haaland, max_attackers_per_club, free_transfers, gate,
-                                      force_in, force_out, role_rivals, allow_contaminated)
+                                      force_in, force_out, role_rivals, allow_contaminated,
+                                      budget)
             except ValueError as e:
                 return refusal("optimise_transfers", sync, stamp, live, [str(e)])
             run = run_script(args, want_json=True)
@@ -836,14 +845,17 @@ def register(mcp, live_gw, fixture_table):
         "VM runner: a HYPOTHETICAL what-if (scenario_squad.py) - rows are ROLE_INTEL-shaped "
         "'player|team|field|op|value|gws|confidence|date|why' strings (op set on stp, mult "
         "on xg90/xa90/xgi90/cbit90/cbirt90), stacked on the real fence unless "
-        "base_intel=False. Nothing is written to the repo. transfers=None is rebuild mode. "
+        "base_intel=False. Nothing is written to the repo. transfers=None is rebuild "
+        "(wildcard) mode, budgeted at selling value plus bank unless budget is given. "
+        "Haaland is allowed unless haaland=False. "
         "Output keeps the HYPOTHETICAL banner and the applied/unmatched audit; flagged "
         "players in a result are ERRORS. Same repo/window refusals as optimise_transfers."))
     async def optimise_scenario(rows: list[str], transfers: int | None = 1,
                                 estimator: str = "shrunk", base_intel: bool = True,
                                 fixtures: bool = True, free_transfers: int | None = None,
                                 force_in: list[str] | None = None,
-                                force_out: list[str] | None = None) -> str:
+                                force_out: list[str] | None = None,
+                                haaland: bool = True, budget: float | None = None) -> str:
         def go():
             sync, stamp, live, refused = _pre("optimise_scenario", need_window=fixtures)
             if refused:
@@ -854,6 +866,8 @@ def register(mcp, live_gw, fixture_table):
                     raise ValueError(f"estimator must be prior/raw/shrunk, got {estimator!r}")
                 if transfers is None and (force_in or force_out):
                     raise ValueError("force_in/force_out need transfers=N")
+                if budget is not None and transfers is not None:
+                    raise ValueError("budget applies to rebuild mode (transfers=None) only")
                 pins = _pins("--force-in", force_in) + _pins("--force-out", force_out)
             except ValueError as e:
                 return refusal("optimise_scenario", sync, stamp, live, [str(e)])
@@ -867,6 +881,10 @@ def register(mcp, live_gw, fixture_table):
                     args.append("--fixtures")
                 if not base_intel:
                     args.append("--no-base-intel")
+                if not haaland:
+                    args.append("--no-haaland")
+                if budget is not None:
+                    args += ["--budget", f"{float(budget):.1f}"]
                 if transfers is not None:
                     args += ["--transfers", str(int(transfers))]
                     if free_transfers is not None:
@@ -925,7 +943,7 @@ def register(mcp, live_gw, fixture_table):
             out = [f"=== optimise_job {job['id']} · {job['state']} · {done}/{len(job['cells'])} done ===",
                    f"repo HEAD {str(ctx.get('head'))[:7]} · window {ctx.get('window')} · "
                    f"live GW{ctx.get('live_gw')} · started {job.get('started_utc')}",
-                   "weekly defaults per cell: fixtures ON, no Haaland, max 2 attackers/club, "
+                   "weekly defaults per cell: fixtures ON, Haaland allowed, max 2 attackers/club, "
                    "hits priced", "", matrix_table(job)]
             al = sorted({a for c in job["cells"] for a in c.get("alarms", [])})
             if al:

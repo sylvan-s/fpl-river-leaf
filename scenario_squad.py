@@ -205,14 +205,17 @@ def apply_exclusions(pool, exclusions):
 def main():
     if len(sys.argv) < 2 or sys.argv[1].startswith("--"):
         sys.exit("usage: python3 scenario_squad.py SCENARIO_FILE [--fixtures] "
-                 "[--transfers N] [--no-base-intel] [--haaland]")
+                 "[--transfers N] [--no-base-intel] [--no-haaland] [--budget X]")
     path = sys.argv[1]
     use_base_intel = "--no-base-intel" not in sys.argv
     # Wired 7 Sep 2026 alongside optimise_squad.py, which had the same gap:
     # build_squad's exclusion notice names this flag, so it has to work where
     # the notice is printed.
     exclude_contam = "--allow-contaminated" not in sys.argv
-    allow_haaland = "--haaland" in sys.argv
+    # Haaland allowed by default since 16 Sep 2026 - see optimise_squad.py.
+    allow_haaland = "--no-haaland" not in sys.argv
+    if "--budget" in sys.argv and "--transfers" in sys.argv:
+        sys.exit("--budget applies to wildcard/rebuild mode only")
     estimator = (sys.argv[sys.argv.index("--estimator") + 1]
                  if "--estimator" in sys.argv else "prior")
     if estimator not in bs.ESTIMATOR_CHOICES:
@@ -326,12 +329,18 @@ def main():
         opt.transfer_mode(pool, n, allow_haaland, free_transfers=free_transfers,
                           role_rivals=role_rivals, pin_in=pin_in, pin_out=pin_out)
     else:
-        print("=== SCENARIO — best 15 from scratch (£100m), under this what-if ===")
+        budget_info = opt.set_wildcard_budget(pool)
+        print(f"=== SCENARIO — best 15 on a wildcard (£{opt.BUDGET:.1f}m), under this what-if ===")
         xi, bench, obj = opt.optimise(pool, allow_haaland, role_rivals=role_rivals)
         opt.show(xi, bench, obj)
-        opt.RESULT.update(mode="rebuild", xi=[opt._pj(r) for r in xi],
-                          bench=[opt._pj(r) for r in bench],
-                          xi_xp=round(sum(r["score"] for r in xi), 4))
+        cost = round(sum(opt._tenths(opt._cost(r)) for r in xi + bench) / 10, 1)
+        opt.RESULT.update(mode="rebuild",
+                          xi=[opt._pj(r, opt._cost(r) if opt._is_owned(r) else None) for r in xi],
+                          bench=[opt._pj(r, opt._cost(r) if opt._is_owned(r) else None) for r in bench],
+                          xi_xp=round(sum(r["score"] for r in xi), 4),
+                          squad_cost=cost, budget=budget_info,
+                          bank_after=round(budget_info["value"] - cost, 1),
+                          kept=sorted(r["name"] for r in xi + bench if opt._is_owned(r)))
 
     if "--json" in sys.argv:
         # Same shape as optimise_squad.py --json, plus the scenario audit - the

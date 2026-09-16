@@ -1,16 +1,16 @@
 # Squad optimiser: exogenous preferences and the pre-run dialogue
 
 `optimise_squad.py` is an exact ILP over expected points (see its own
-docstring, "THE FORMULATION"). Two standing choices are layered on top as
+docstring, "THE FORMULATION"). Standing choices are layered on top as
 constraints, not as edits to the underlying model:
 
-| preference                          | default | relax per run                      | disable entirely            |
+| preference                          | default | change per run                      | disable entirely            |
 |--------------------------------------|---------|-------------------------------------|------------------------------|
-| exclude Haaland                      | on      | `--haaland`                         | (same flag)                  |
+| exclude Haaland                      | **off** (since 16 Sep 2026) | `--no-haaland` to exclude him | (default) — `--haaland` is an accepted no-op |
 | max attackers (MID+FWD) per club     | 2       | `--max-attackers-per-club N`        | `--no-max-attackers-per-club`|
 
-Neither is an FPL rule. The real rules — £100m budget, 2-5-5-3 squad shape,
-max 3 players per club — live in `constants.py` and never change. These two
+Neither is an FPL rule. The real rules — £100m starting budget, 2-5-5-3 squad
+shape, max 3 players per club — live in `constants.py` and never change. These
 are Sylvan's standing choices, applied as constraints specifically so their
 cost is measurable rather than silently baked into a result labelled
 "optimal". Every run prints the point cost of holding each one ("PRICE OF
@@ -30,8 +30,9 @@ Whenever a request — from Sylvan directly, or a scheduled skill such as the
 weekly brief — asks to run the optimiser, open with a short statement of the
 active defaults and a choice, before executing anything:
 
-  - exclude Haaland: ON
+  - Haaland: allowed (exclusion is opt-in since 16 Sep 2026)
   - max attackers per club: 2
+  - wildcard/rebuild budget: squad selling value + bank (not £100m)
 
 Ask (via AskUserQuestion in an interactive session) whether to proceed with
 both defaults, or clear/adjust one. Do not run first and ask after — the
@@ -44,6 +45,16 @@ defaults above and state plainly in the output which settings were used
 2 attackers/club" line, and the PRICE OF THE PREFERENCE sections) — never
 change a default silently for a scheduled run just because no one was there
 to confirm it.
+
+## Wildcard budget — selling value plus bank, not £100m
+
+A wildcard is unlimited free transfers, not a fresh start. FPL lets you spend
+what the current fifteen sell for (a fall in full, half of any rise rounded
+down to £0.1m) plus the bank. Rebuild mode (no `--transfers`) therefore budgets
+at `squad_state` selling value + bank, and costs any player it KEEPS at his
+sell price, the same rule transfer mode uses. `--budget 100` reproduces the old
+fresh-£100m answer for comparison only; `--budget` is refused in transfer mode.
+Changed 16 Sep 2026 (GW5: £98.2m + £1.3m = £99.5m, not £100m).
 
 ## Trello quarantine overlay (`--quarantine`) — opt-in, off by default
 
@@ -84,7 +95,7 @@ When the VM's fpl-research connector has the runner tools (`optimise_transfers`,
 `optimise_scenario`, `optimise_matrix`/`optimise_job`, `refresh_fixture_window`,
 `quarantine_report`, `player_estimates`, `squad_state`, `repo_file`, ...), the
 same pre-run dialogue applies. State the defaults first: estimator shrunk,
-intel ON, quarantine ON, fixtures ON, no Haaland ON, max 2 attackers/club.
+intel ON, quarantine ON, fixtures ON, Haaland allowed, max 2 attackers/club.
 The tools refuse on a stale fixture window (call `refresh_fixture_window`
 first) or a clone that isn't origin's. They return a flagged player as an
 ERROR, never as advice. See `VM_OPTIMISER_TOOLS.md`.

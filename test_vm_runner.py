@@ -107,11 +107,19 @@ check("2 transfers with 1 free and hits=False refused",
 a = vr.optimiser_args(transfers=2, free_transfers=2)
 check("2 banked free transfers passes --free-transfers 2",
       a[-2:] == ["--free-transfers", "2"], a)
-a = vr.optimiser_args(transfers=2, hits=True, haaland=True, max_attackers_per_club=None,
+check("Haaland allowed by default: no haaland flag either way",
+      not any("haaland" in x for x in vr.optimiser_args()))
+check("haaland=False passes --no-haaland",
+      "--no-haaland" in vr.optimiser_args(haaland=False))
+check("rebuild budget maps to --budget",
+      vr.optimiser_args(transfers=None, budget=100)[-2:] == ["--budget", "100.0"])
+check("budget with transfers refused",
+      raises(vr.optimiser_args, transfers=1, budget=100) is not None)
+a = vr.optimiser_args(transfers=2, hits=True, haaland=False, max_attackers_per_club=None,
                       gate=0.7, force_in=["O'Reilly:MCI"], force_out=["Virgil:LIV"],
                       role_rivals=[["Enzo:MCI", "O'Reilly:MCI"]], allow_contaminated=True)
 check("every override maps to its flag",
-      all(x in a for x in ("--haaland", "--no-max-attackers-per-club", "--gate",
+      all(x in a for x in ("--no-haaland", "--no-max-attackers-per-club", "--gate",
                            "--allow-contaminated", "--force-in", "O'Reilly:MCI",
                            "--force-out", "Virgil:LIV", "--role-rivals",
                            "Enzo:MCI,O'Reilly:MCI")), a)

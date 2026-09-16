@@ -36,4 +36,4 @@ Single-context layout — `CONTEXT.md` + `docs/adr/` at the repo root, created l
 
 ### Squad optimiser preferences
 
-`optimise_squad.py` holds standing preferences (no Haaland, max attackers per club) as overridable ILP constraints and reports the point cost of each. Before running it, state the active defaults and ask whether to proceed or clear one — see `docs/agents/optimiser.md`.
+`optimise_squad.py` holds standing preferences (max attackers per club; Haaland exclusion is opt-in via `--no-haaland` since 16 Sep 2026) as overridable ILP constraints and reports the point cost of each. Wildcard/rebuild mode budgets at selling value + bank, not £100m. Before running it, state the active defaults and ask whether to proceed or clear one — see `docs/agents/optimiser.md`.

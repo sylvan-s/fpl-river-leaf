@@ -8,19 +8,25 @@ one. This solves the same problem exactly.
 
     pip install pulp          # bundled CBC solver, no other dependency
 
-    python3 optimise_squad.py                  # best 15 from scratch (wildcard / rebuild)
+    python3 optimise_squad.py                  # best 15 on a wildcard (budget = sell value + bank)
+    python3 optimise_squad.py --budget 100     # same, against a fresh £100m (comparison only)
     python3 optimise_squad.py --transfers 1    # best swap FROM the current squad  <-- weekly
     python3 optimise_squad.py --transfers 2 --hits
-    python3 optimise_squad.py --haaland --gate 0.70
+    python3 optimise_squad.py --no-haaland --gate 0.70
     python3 optimise_squad.py --fixtures               # score on xP_adj (GW1-4)
     python3 optimise_squad.py --fixtures --transfers 1
 
-EXOGENOUS PREFERENCES. Two standing choices are applied as ILP constraints,
-ON by default, each overridable per run - see "THE FORMULATION" below for
-why constraints (not a hardcoded pool filter) is the right mechanism, and
-"PRICE OF THE PREFERENCE" for why every one of them reports its own cost.
+EXOGENOUS PREFERENCES. Standing choices are applied as ILP constraints,
+each overridable per run - see "THE FORMULATION" below for why constraints
+(not a hardcoded pool filter) is the right mechanism, and "PRICE OF THE
+PREFERENCE" for why every one of them reports its own cost.
 
-    python3 optimise_squad.py --haaland                      # relax: allow Haaland
+The no-Haaland preference is OFF by default since 16 Sep 2026 (Sylvan: the
+season has started, so Haaland is a candidate like anyone else, wildcard
+included). It is still available as an opt-in, and still priced when held.
+--haaland is kept as an accepted no-op so older callers do not break.
+
+    python3 optimise_squad.py --no-haaland                   # opt in: exclude Haaland
     python3 optimise_squad.py --max-attackers-per-club 3      # relax: allow 3
     python3 optimise_squad.py --no-max-attackers-per-club     # disable: fall back
                                                                 # to the blanket
@@ -280,8 +286,64 @@ BOUGHT_FOR = {p["name"]: float(p["bought_for"]) for p in _STATE.players}
 _sell_price = squad_state.sell_price
 
 
-def optimise(pool, allow_haaland=False, max_att_per_club=MAX_ATT_PER_CLUB_DEFAULT,
-             verbose=True, role_rivals=()):
+# WILDCARD BUDGET - added 16 Sep 2026. A wildcard is unlimited free transfers,
+# not a fresh start: you rebuild with what the current fifteen SELL for (full
+# falls, half of any rise rounded down) plus the bank - never a reset £100m.
+# Rebuild mode used constants.BUDGET (100.0) for every run until now, which
+# overstated the money on hand once the squad had lost value (GW5: sell value
+# £98.2m + bank £1.3m = £99.5m). A KEPT player is costed at his sell price
+# too - the same rule optimise_transfers() applies - because the unbanked half
+# of a rise was never spendable, so keeping a riser uses only what he sells for.
+# main() sets both module globals for the rebuild path; compare modes and any
+# caller that does not set them keep the old £100m / current-price behaviour.
+_OWNED_COEF = None
+
+
+def _tenths(v):
+    return int(round(float(v) * 10))
+
+
+def wildcard_budget(pool, state=None):
+    """(budget, owned_coef, detail) for a wildcard played from the live squad.
+
+    owned_coef maps (name, team) -> sell price for every owned player. The live
+    price comes from the pool row for that player; if the pool has no row under
+    his squad.json club but exactly one under his name (a club move), that row
+    is used; otherwise squad.json's recorded price is used and the player is
+    listed in detail['fallback'] so the substitution is never silent.
+    """
+    st = _STATE if state is None else state
+    live = {(r["name"], r["team"]): r["price"] for r in pool}
+    by_name = {}
+    for r in pool:
+        by_name.setdefault(r["name"], []).append(r)
+    coef, fallback = {}, []
+    for p in st.players:
+        key = (p["name"], p["team"])
+        now = live.get(key)
+        if now is None and len(by_name.get(p["name"], [])) == 1:
+            row = by_name[p["name"]][0]
+            key, now = (row["name"], row["team"]), row["price"]
+        if now is None:
+            now = float(p["price"])
+            fallback.append(p["name"])
+        coef[key] = _sell_price(float(p.get("bought_for", now)), now)
+    sell_tenths = sum(_tenths(v) for v in coef.values())
+    budget = (sell_tenths + _tenths(st.bank)) / 10
+    return budget, coef, {"sell_value": sell_tenths / 10, "bank": float(st.bank),
+                          "fallback": fallback}
+
+
+def _cost(r, owned_coef=None):
+    """What owning row r costs against the budget: sell price if already owned."""
+    oc = _OWNED_COEF if owned_coef is None else owned_coef
+    if oc:
+        return oc.get((r["name"], r["team"]), r["price"])
+    return r["price"]
+
+
+def optimise(pool, allow_haaland=True, max_att_per_club=MAX_ATT_PER_CLUB_DEFAULT,
+             verbose=True, role_rivals=(), budget=None, owned_coef=None):
     P = [r for r in pool if r["ok"]]
     if not allow_haaland:
         P = [r for r in P if r["name"] != "Haaland"]
@@ -308,7 +370,8 @@ def optimise(pool, allow_haaland=False, max_att_per_club=MAX_ATT_PER_CLUB_DEFAUL
         if P[i]["stp"] < bs.GATE_XI:
             prob += x[i] == 0                      # fodder-only: may not start
 
-    prob += pulp.lpSum(P[i]["price"] * (x[i] + b[i]) for i in range(len(P))) <= BUDGET
+    cap = BUDGET if budget is None else budget
+    prob += pulp.lpSum(_cost(P[i], owned_coef) * (x[i] + b[i]) for i in range(len(P))) <= cap
     prob += pulp.lpSum(x[i] + b[i] for i in range(len(P))) == 15
     prob += pulp.lpSum(x[i] for i in range(len(P))) == XI_SIZE
 
@@ -337,7 +400,7 @@ def optimise(pool, allow_haaland=False, max_att_per_club=MAX_ATT_PER_CLUB_DEFAUL
     return xi, bench, pulp.value(prob.objective)
 
 
-def optimise_transfers(pool, owned_names, bank, n_transfers, allow_haaland=False,
+def optimise_transfers(pool, owned_names, bank, n_transfers, allow_haaland=True,
                        max_att_per_club=MAX_ATT_PER_CLUB_DEFAULT,
                        free_transfers=1, force=False, role_rivals=(),
                        pin_in=(), pin_out=(), bought_for=None):
@@ -476,8 +539,8 @@ def optimise_transfers(pool, owned_names, bank, n_transfers, allow_haaland=False
 def show(xi, bench, obj):
     order = ["GKP", "DEF", "MID", "FWD"]
     form = "-".join(str(sum(1 for r in xi if r["pos"] == p)) for p in order[1:])
-    spend_xi = sum(r["price"] for r in xi)
-    spend = spend_xi + sum(r["price"] for r in bench)
+    spend_xi = sum(_cost(r) for r in xi)
+    spend = spend_xi + sum(_cost(r) for r in bench)
     xp_xi = sum(r["score"] for r in xi)
     print(f"formation {form}   XI £{spend_xi:.1f}m   squad £{spend:.1f}m   "
           f"bank £{BUDGET-spend:.1f}m   XI xP/90 {xp_xi:.2f}   "
@@ -840,8 +903,13 @@ def main():
 
 
 def _main():
-    global BUDGET
-    allow_haaland = "--haaland" in sys.argv
+    global BUDGET, _OWNED_COEF
+    # Haaland is allowed by default since 16 Sep 2026; --no-haaland opts back
+    # in to the old preference. --haaland is accepted and ignored.
+    allow_haaland = "--no-haaland" not in sys.argv
+    if "--budget" in sys.argv and "--transfers" in sys.argv:
+        sys.exit("--budget applies to wildcard/rebuild mode only - transfer mode's "
+                 "budget is always the sale proceeds plus the bank.")
     if "--gate" in sys.argv:
         bs.GATE_XI = float(sys.argv[sys.argv.index("--gate") + 1])
 
@@ -1007,12 +1075,17 @@ def _main():
     if "--force-in" in sys.argv or "--force-out" in sys.argv:
         sys.exit("--force-in/--force-out need --transfers N (they pin a move FROM "
                  "the current squad; rebuild mode has no squad to pin against)")
+    budget_info = set_wildcard_budget(pool)
     xi, bench, obj = optimise(pool, allow_haaland, max_att_per_club, role_rivals=role_rivals)
     print("=== OPTIMAL (ILP)" + ("" if allow_haaland else " — WITH THE NO-HAALAND PREFERENCE APPLIED") + " ===")
     show(xi, bench, obj)
-    RESULT.update(mode="rebuild", xi=[_pj(r) for r in xi], bench=[_pj(r) for r in bench],
+    cost = round(sum(_tenths(_cost(r)) for r in xi + bench) / 10, 1)
+    RESULT.update(mode="rebuild", xi=[_pj(r, _cost(r) if _is_owned(r) else None) for r in xi],
+                  bench=[_pj(r, _cost(r) if _is_owned(r) else None) for r in bench],
                   xi_xp=round(sum(r["score"] for r in xi), 4),
-                  squad_cost=round(sum(r["price"] for r in xi + bench), 1),
+                  squad_cost=cost, budget=budget_info,
+                  bank_after=round(budget_info["value"] - cost, 1),
+                  kept=sorted(r["name"] for r in xi + bench if _is_owned(r)),
                   preference_costs={})
 
     # PRICE THE PREFERENCE. Excluding Haaland is a Tier 5 preference under
@@ -1109,7 +1182,7 @@ def _main():
 
     print("\nBudget sensitivity — where the method starts to matter:")
     print(f"  {'budget':>7}{'ILP xP':>9}   greedy")
-    for B in (100.0, 95.0, 90.0, 85.0):
+    for B in sorted({round(BUDGET, 1), 100.0, 95.0, 90.0, 85.0}, reverse=True):
         keep, BUDGET = BUDGET, B
         try:
             oxi, _ob, _oo = optimise(pool, allow_haaland)
@@ -1121,6 +1194,34 @@ def _main():
                   for f_ in ((3,4,3),(3,5,2),(4,4,2),(4,3,3),(5,3,2),(4,5,1),(5,4,1)))
         BUDGET = keep
         print(f"  {B:>7.1f}{oil:>9}   {'ok' if gok else 'NO FEASIBLE SQUAD'}")
+
+
+def _is_owned(r):
+    return bool(_OWNED_COEF) and (r["name"], r["team"]) in _OWNED_COEF
+
+
+def set_wildcard_budget(pool, argv=None):
+    """Set BUDGET / _OWNED_COEF for a rebuild run and print where the number
+    came from. Returns the RESULT['budget'] block. Shared with scenario_squad.py."""
+    global BUDGET, _OWNED_COEF
+    argv = sys.argv if argv is None else argv
+    if "--budget" in argv:
+        BUDGET = float(argv[argv.index("--budget") + 1])
+        _OWNED_COEF = None
+        print(f"WILDCARD BUDGET: £{BUDGET:.1f}m (--budget override - owned players "
+              f"costed at current price; a real wildcard uses sell value + bank)\n")
+        return {"value": BUDGET, "basis": "override"}
+    budget, coef, det = wildcard_budget(pool)
+    BUDGET, _OWNED_COEF = budget, coef
+    print(f"WILDCARD BUDGET: £{budget:.1f}m = squad selling value £{det['sell_value']:.1f}m "
+          f"+ bank £{det['bank']:.1f}m. A wildcard does not reset to £100m; kept "
+          f"players count at their sell price. Pass --budget 100 to compare.")
+    if det["fallback"]:
+        print(f"  WARNING: no live price for {det['fallback']} - used squad.json's price.")
+    print()
+    return {"value": budget, "basis": "sell_value_plus_bank",
+            "sell_value": det["sell_value"], "bank": det["bank"],
+            "fallback": det["fallback"]}
 
 
 if __name__ == "__main__":

@@ -519,7 +519,13 @@ recorded here so the divergence isn't mistaken for an oversight later.
 
 ## STANDING PREFERENCES — confirmed, priced, do not re-litigate
 
-**No Haaland.** Confirmed by Sylvan 9 Aug 2026 *after* being shown the price —
+**Haaland exclusion LIFTED, 16 Sep 2026 (Sylvan).** "Now that the season has
+started we should remove the constraint ... and he should be included in the
+wildcard assessment." Haaland is a candidate by default in every mode;
+`--no-haaland` still excludes him and still prices the choice. The 9 Aug record
+below is kept as history.
+
+**No Haaland (superseded 16 Sep 2026).** Confirmed by Sylvan 9 Aug 2026 *after* being shown the price —
 the exclusion had previously been a hardcoded name filter, and the result was
 reported as "optimal" without ever being tested.
 
@@ -672,6 +678,34 @@ share rises; the differential case depends entirely on him playing.
 ---
 
 ## CHANGE HISTORY (newest first)
+
+### Wed 16 Sep 2026 — strategy + methodology change, not a transfer — Haaland allowed; wildcard budget is sell value + bank
+
+**Haaland (Sylvan's call).** The no-Haaland preference is now OFF by default in
+`optimise_squad.py` and `scenario_squad.py`; `--no-haaland` opts back in.
+`--haaland` is still accepted, so the VM runner's running process keeps working
+before a restart. On the live pool (shrunk, fixtures GW5-8) Haaland is still not
+in the optimal wildcard squad, so the change costs nothing today — it only stops
+the model from being blind to him.
+
+**Wildcard budget (methodology fix).** Rebuild mode used a fresh £100.0m. A
+wildcard is unlimited free transfers, so the real budget is what the fifteen
+sell for plus the bank: GW5 £98.2m + £1.3m = **£99.5m**. Kept players are now
+costed at their sell price (João Pedro £7.6m, not £7.8m), matching transfer
+mode. `--budget X` overrides for comparison and is refused in transfer mode.
+Sources checked: full90fpl.com ("you must still work to the budget" on a
+wildcard), bawler.ai ("a wildcard does not give you back money the market has
+taken"), premierleague.com on the half-profit sell rule. The GW5 wildcard at
+£99.5m scores the same XI xP/90 (58.83) as at £100m with a different shape
+(3-4-3 keeping João Pedro, vs 3-5-2 with Gibbs-White).
+
+**Not changed:** a doubtful player (e.g. Shaw, `d` 75%) is still selectable and
+still scored at his historical start rate; the runner flags him as a warning.
+
+`vm_runner.py`: `haaland` defaults True on `optimise_transfers`, new `haaland`
+and `budget` on `optimise_scenario`, new `budget` on `optimise_transfers` — these
+parameters need a server restart. Tests: `test_optimise_squad.py` (wildcard
+budget arithmetic), `test_vm_runner.py` (flag mapping, budget refusal).
 
 ### Tue 15 Sep 2026 — strategy change, not a transfer — fixture window weighted towards the next gameweek
 

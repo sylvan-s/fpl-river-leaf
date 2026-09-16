@@ -129,6 +129,30 @@ check("0-transfer hold is feasible even with an empty bought_for map "
       "(missing entries fall back to current price, not a crash)",
       res_default is not None)
 
+print("\n== wildcard_budget: sell value + bank, not a fresh £100m ==")
+class _St:
+    bank = 1.3
+    players = [
+        {"name": "Riser", "team": "AAA", "price": 5.0, "bought_for": 5.0},   # live 5.3 -> sells 5.1
+        {"name": "Faller", "team": "BBB", "price": 6.0, "bought_for": 6.0},  # live 5.8 -> sells 5.8
+        {"name": "Mover", "team": "CCC", "price": 4.5, "bought_for": 4.5},   # club changed in pool
+        {"name": "Gone", "team": "DDD", "price": 4.0, "bought_for": 4.0},    # not in pool at all
+    ]
+_pool = [{"name": "Riser", "team": "AAA", "price": 5.3},
+         {"name": "Faller", "team": "BBB", "price": 5.8},
+         {"name": "Mover", "team": "EEE", "price": 4.6}]
+_b, _coef, _det = opt.wildcard_budget(_pool, _St())
+check("riser counted at sell price (half the rise, rounded down)", _coef[("Riser", "AAA")] == 5.1, _coef)
+check("faller counted at full current price", _coef[("Faller", "BBB")] == 5.8, _coef)
+check("club move resolved by unique name", _coef.get(("Mover", "EEE")) == 4.5, _coef)
+check("missing player falls back to squad.json price and is reported",
+      _coef[("Gone", "DDD")] == 4.0 and _det["fallback"] == ["Gone"], _det)
+check("budget = sell value + bank, exact in tenths",
+      _b == 20.7 and _det["sell_value"] == 19.4, (_b, _det))
+check("_cost uses the sell price only for owned rows",
+      opt._cost({"name": "Riser", "team": "AAA", "price": 5.3}, _coef) == 5.1
+      and opt._cost({"name": "Other", "team": "AAA", "price": 5.3}, _coef) == 5.3)
+
 print("\n" + ("ALL TESTS PASSED" if not FAILS else f"{len(FAILS)} FAILURE(S): {FAILS}"))
 import sys
 sys.exit(1 if FAILS else 0)

@@ -54,7 +54,7 @@ STATUS / CONTAMINATED stderr lines verbatim (never swallowed), and repo HEAD.
    in-process and `fixture_adjust.py --update --gw N`, defaulting N to the live
    next GW. Removes the paste-the-table step. Returns the stamp and the 20 rows.
 3. **`optimise_transfers(transfers=1, hits=False, estimator="shrunk",
-   intel=True, quarantine=True, fixtures=True, haaland=False,
+   intel=True, quarantine=True, fixtures=True, haaland=True,   # default flipped 16 Sep 2026
    max_attackers_per_club=2, free_transfers=None, gate=None,
    force_in=[], force_out=[], role_rivals=[], allow_contaminated=False)`** —
    wraps `optimise_squad.py`. Refuses if the window stamp ≠ live GW. Returns the
@@ -112,8 +112,12 @@ Minimal set to make "run a scenario optimisation" cloud-only: A1–A4 + tools 1,
   `shrunk`, quarantine ON. Fence-only and prior are opt-in comparisons, not the
   default, because the fence-only/prior answer on 15 Sep (buy O'Reilly) was an
   artefact of a stale 75% start row Sylvan's ticked 65% overrides.
-- Standing preferences (no Haaland, max 2 attackers/club) stay as overridable
-  constraints with their cost printed; a cloud call states which were active.
+- Standing preferences (max 2 attackers/club; Haaland exclusion opt-in since
+  16 Sep 2026) stay as overridable constraints with their cost printed; a cloud
+  call states which were active. `optimise_transfers` / `optimise_scenario`
+  take `haaland` (default True) and, in rebuild mode, `budget` (default: selling
+  value + bank). Both new parameters need a server restart to appear; the script
+  defaults behind them apply from the next pull.
 - Every result that names a player runs him through the status flag and the
   contaminated fence before returning; a recommendation of a flagged player is
   an error, not a footnote.
