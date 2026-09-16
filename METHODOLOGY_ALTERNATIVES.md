@@ -877,7 +877,64 @@ this-week blank signal.** Only `BANNED` — the status flag — moves P(blank) n
 *Not modelled: second-yellow reds, which need per-match data this file does not
 fetch.*
 
-#### A0.2 Start-rate shrinkage — OBSERVATION BUILT, ACTIVATION gated ~GW6
+#### A0.2 Start-rate shrinkage — ACTIVATION BUILT 16 Sep 2026, behind `--stp-estimator shrunk` (default still prior)
+
+**BUILT 16 Sep 2026 (GW5 pre-deadline), commit `01f6d22`.** Start-rate
+shrinkage now reaches squad selection: `build_squad.load(stp_estimator=
+"shrunk")`, `--stp-estimator shrunk` on `optimise_squad.py` / `scenario_squad.py`,
+`--compare-stp`, and `stp_estimator=` on the VM runner tools. Default stays
+`prior`; flipping it is a separate, dated decision.
+
+**Two corrections to the design, both found by re-running the backtest first.**
+
+*1. The denominator.* The tracker's validated start rate is starts per
+APPEARANCE, and it only scores players who appeared. Selection needs starts
+per TEAM MATCH: an unused-sub match is a non-start. The two differ most on
+the players the 75% gate exists for — a rotation player who started the two
+games he appeared in, out of four, reads 100% on appearances and 50% on
+team matches. Re-scored on team matches against the prior `build_squad`
+actually uses (last-16), walk-forward 2026/27 GW2-4, n=249:
+
+| | RMSE | vs prior |
+|---|---|---|
+| prior (last-16, frozen) | 0.492 | — |
+| raw (starts / team matches) | 0.391 | −20.5% |
+| shrunk | 0.397 | −19.2% |
+
+Excluding currently-injured players: prior 0.475, shrunk 0.395 (−16.8%). On the
+tracker's own appearances definition: −18.6%. The prior is the worst estimator
+every way it is cut. Team match counts come from `/fixtures/`, because
+bootstrap's `teams[].played` reads 0.
+
+*2. k.* `_estimate_k_binomial` measures spread around the POSITION mean, but
+this shrinks toward each player's OWN prior, so the variance that matters is
+that prior's own error. `scoring.estimate_k_start` uses that: E[(raw−prior)²]
+minus binomial noise p(1−p)/n. It lands at k ≈ 1.1–2.8 for outfield positions
+through GW4 (the pool-mean version hit its floor of 1.0), and a fixed-k sweep
+agrees (k=2 RMSE 0.384, k=4 0.411, k=8 0.439): three or four matches of start
+data genuinely outweigh last season's final sixteen. GKP falls back to k=8
+(too few keepers for a variance estimate).
+
+**What it changes, and what it does not.** stp is not in xP/90 (that is A0.5),
+so this moves the 75% XI / 60% bench gates only: who is eligible, never a
+score. A ROLE_INTEL `set stp` still wins, because shrinkage runs before intel.
+Through GW4, 34 players newly clear the XI gate and 29 fall below it; most of
+the fallers are injured or gone and already excluded by status.
+
+**GW5 decision, weekly configuration (shrunk per-90, intel + quarantine ON,
+40/30/20/10 window):** prior gives Virgil -> Mukiele +0.71 free; shrunk gives
+**Virgil -> Calafiori +1.80** (Calafiori: 38% last-16 prior, 4/4 starts, 84%
+shrunk). Rebuild XI 58.83 -> 61.29, eight players different — mostly a larger
+eligible pool, not better estimates.
+
+**Known bias, not fixed.** A player out injured accrues non-starts, so on
+return his shrunk rate is depressed by absence, not rotation. The live status
+filter excludes him while he is out; with k ≈ 1-2 a few starts recover the rate
+quickly, and a ROLE_INTEL `set stp` corrects it sooner if it matters.
+
+**Kill criterion, unchanged:** the GW10 `predictive_backtest`. If shrunk start
+rate does not beat the last-16 prior out of sample over GW6-10, revert.
+
 
 *Status corrected 26 Aug 2026.* This was marked NOT BUILT, full stop — wrong.
 `build_prediction_tracker.py` (→ `docs/priors.html`) already has a working,
