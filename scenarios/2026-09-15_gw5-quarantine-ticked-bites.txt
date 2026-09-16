@@ -1,0 +1,25 @@
+# Scenario, 15 Sep 2026 — GW5 pre-deadline (Fri 18 Sep 17:30 UTC). HYPOTHETICAL, no decision implied.
+# player|team|field|op|value|gws|confidence|date|why
+#
+# THE QUARANTINE SET: every item TICKED on a "Required Decisions" checklist of a
+# Take action card on the FPL News Management board as of 15 Sep 20:50 UTC, that
+# is NOT already live in ROLE_INTEL.md's fence. Read via the Trello connector in
+# this Cowork session (optimise_squad.py --quarantine needs TRELLO_API_KEY in the
+# shell, unavailable here), and written in the same replace-never-stack shape
+# trello_quarantine.py applies: a `set` on stp replaces the fence value.
+#
+# Ticked and ALREADY live (no-ops, so not repeated here): O'Reilly cbit90 x0.80
+# and xgi90 x1.20 (GWs 1-6); Szoboszlai xg90 x1.20 (GWs 3-8); Villa x0.70 set
+# incl. Ruggeri (not in pool); Watkins/Martinez removals.
+# UNTICKED, so NOT in this set: Justin cbit90 x1.15 / xgi90 x0.75 (GWs 4-8);
+# O'Reilly "end early" (dormant); Anderson xgi90 x1.15 (contaminated anyway).
+O'Reilly | MCI | stp | set | 0.65 | 3-8 | medium | 2026-09-15 | Ticked on EnzoFernandez-MCI-transfer-20260901-1: Sylvan's 14 Sep comment, revise 75% back down to 65% - derby unused sub, Enzo+Anderson the central pair
+Mosquera | ARS | stp | set | 0.50 | 5-6 | high | 2026-09-15 | Ticked on Mosquera-ARS-stp-20260821-1: Sylvan 13/14 Sep - out injured, Konsa has taken his place (4 straight starts), 50% until GW6
+O.Dango | BRE | stp | set | 0.50 | 5-6 | medium | 2026-09-15 | Ticked on Dango-BRE-stp-20260901-1: Sylvan 13 Sep - start rate to 50% for two weeks; benched on the confirmed GW4 sheet
+
+# --- DATA-HYGIENE CORRECTION, NOT A HYPOTHESIS ------------------------------
+# build_squad.py's LIVE_STATUS_EXCLUDE only excludes status u/n; status 'i'
+# (injured, chance_of_playing 0) still enters the pool. Hinshelwood (ankle,
+# back 10 Oct per injury_report 15 Sep) was recommended by the shrunk run
+# above. Zero his start rate so the solver cannot pick him.
+Hinshelwood | BHA | stp | set | 0.0 | 5-8 | high | 2026-09-15 | injury_report 15 Sep: INJURED 0%, ankle, expected back 10 Oct - status 'i' is not in LIVE_STATUS_EXCLUDE

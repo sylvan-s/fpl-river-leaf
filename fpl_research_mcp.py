@@ -325,6 +325,12 @@ _PRIORS_PATH = _os.path.join(_PRIORS_DIR, "fpl_priors_2025_26.json")
 _PRIORS_PATH_V2 = _os.path.join(_PRIORS_DIR, "fpl_priors_2025_26_v2.json")
 _priors_cache: dict | None = None
 
+# price_history.jsonl (built 13 Sep 2026, appended nightly by
+# .github/workflows/price-history-nightly.yml) - the git-tracked, durable
+# source of truth. See _load_price_history_db() below for the derived
+# SQLite copy.
+_PRICE_HISTORY_PATH = _os.path.join(_PRIORS_DIR, "price_history.jsonl")
+
 # Metrics that get shrunk, with how hard. Facts (price, ownership, FDR,
 # set-piece order, status) are never shrunk.
 SHRINK_METRICS = {
@@ -861,6 +867,96 @@ def _load_priors_db(db_path: str | None = None) -> str:
     return "\n".join(out)
 
 
+# price_history table columns -> SQL type, in the exact order price_history.py
+# writes them to price_history.jsonl (build_rows() there). One ordered dict,
+# same role as _GW_COLS/_SEASON_NUM above, so there is one place that has to
+# change if that script's row shape ever does.
+_PRICE_HISTORY_COLS = {
+    "name": "TEXT", "team": "TEXT", "pos": "TEXT",
+    "price": "REAL", "own_pct": "REAL",
+    "total_players": "INTEGER",
+    "transfers_in_event": "INTEGER", "transfers_out_event": "INTEGER",
+    "cost_change_event": "INTEGER", "cost_change_start": "INTEGER",
+    "status": "TEXT", "logged_utc": "TEXT",
+}
+
+
+def _load_price_history_db(db_path: str | None = None,
+                           path: str | None = None) -> str:
+    """Load price_history.jsonl into SQLite - a derived, rebuildable copy of
+    the git-tracked append-only log, same relationship player_season above
+    has to its own frozen JSON snapshot: price_history.jsonl remains the
+    canonical source (and the one thing that must never be reconstructed
+    from this file, since a lost night's rows are gone for good - see that
+    file's own docstring), this table exists purely so it can be queried
+    with SQL alongside player_gw/player_season/entry_gw instead of being
+    re-parsed line by line every time.
+
+    Idempotent and cheap: INSERT OR REPLACE keyed on (player_id, date), and
+    a full reload every call rather than tracking a byte/line offset - at a
+    few hundred KB per day this stays well under a second for a whole
+    season, and "always just reload everything" has no sync-state bug to
+    have. Column names here use player_id (not price_history.jsonl's `id`)
+    to match every other table in this database (player_gw, player_sync,
+    player_season), so a join needs no renaming.
+    """
+    import json
+    import sqlite3
+
+    jpath = path or _PRICE_HISTORY_PATH
+    if not _os.path.exists(jpath):
+        return (f"No price_history.jsonl found at {jpath} - nothing to load. "
+                f"It's written by price_history.py, scheduled nightly via "
+                f".github/workflows/price-history-nightly.yml; pull the repo "
+                f"to get whatever nights have landed so far.")
+
+    defs = ", ".join(f"{c} {t}" for c, t in _PRICE_HISTORY_COLS.items())
+    conn = sqlite3.connect(db_path or _DB_PATH)
+    try:
+        conn.execute(f"""
+            CREATE TABLE IF NOT EXISTS price_history (
+                player_id INTEGER NOT NULL,
+                date      TEXT    NOT NULL,
+                {defs},
+                PRIMARY KEY (player_id, date)
+            )""")
+
+        n, bad, dates = 0, 0, set()
+        cols_sql = "player_id, date, " + ", ".join(_PRICE_HISTORY_COLS)
+        ph = ",".join("?" * (2 + len(_PRICE_HISTORY_COLS)))
+        with open(jpath, encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    row = json.loads(line)
+                    vals = [row["id"], row["date"]] + [row.get(c) for c in _PRICE_HISTORY_COLS]
+                except (json.JSONDecodeError, KeyError):
+                    bad += 1
+                    continue
+                conn.execute(f"INSERT OR REPLACE INTO price_history ({cols_sql}) "
+                            f"VALUES ({ph})", vals)
+                n += 1
+                dates.add(row["date"])
+        conn.commit()
+        n_rows = conn.execute("SELECT COUNT(*) FROM price_history").fetchone()[0]
+        n_players = conn.execute("SELECT COUNT(DISTINCT player_id) FROM price_history").fetchone()[0]
+    finally:
+        conn.close()
+
+    out = [
+        "PRICE HISTORY TABLE LOADED",
+        f"  source     {jpath}",
+        f"  rows read  {n}" + (f"  ({bad} malformed line(s) skipped)" if bad else ""),
+        f"  table      price_history — {n_rows} row(s) total, {n_players} distinct player(s), "
+        f"{len(dates)} night(s) in this load",
+    ]
+    if dates:
+        out.append(f"  date range this load  {min(dates)} .. {max(dates)}")
+    return "\n".join(out)
+
+
 def _finished_rounds() -> set[int]:
     """Gameweeks whose data is final. Anything else must not be persisted."""
     return {e["id"] for e in _boot().get("events", [])
@@ -911,15 +1007,21 @@ def _player_history(player_id: int, force: bool = False) -> list[dict]:
 
 @mcp.tool(
     description=(
-        "Warm or inspect the local history cache. element-summary is one HTTP call "
-        "per player, so the first pass is slow (1-3 min) and every later analysis "
-        "is instant. Only FINISHED gameweeks are stored - a live gameweek is still "
-        "changing and caching it as final would poison downstream analysis. Run "
-        "with refresh=False to just see cache status. Stores minutes, goals, "
-        "assists, clean sheets, defensive actions, cards, own goals and penalty "
-        "misses per player per gameweek - the squad page's Expected/Actual "
-        "points-breakdown toggle reads this table directly (offline, no MCP call "
-        "of its own) once it's warm."
+        "Warm or inspect the local history cache - the one-stop-shop status "
+        "check for everything this file stores in SQLite. element-summary is "
+        "one HTTP call per player, so the first pass on player_gw is slow "
+        "(1-3 min) and every later analysis is instant. Only FINISHED "
+        "gameweeks are stored - a live gameweek is still changing and "
+        "caching it as final would poison downstream analysis. Run with "
+        "refresh=False to just see cache status, no live calls at all. "
+        "Reports THREE tables: player_gw (per-gameweek minutes/goals/"
+        "assists/defensive actions/cards - the squad page's Expected/Actual "
+        "toggle reads this directly, offline), player_season (prior-season "
+        "totals from the frozen snapshot, loaded separately via "
+        "--load-priors-db), and price_history (nightly price/transfer-flow "
+        "snapshots from price_history.jsonl, written by GitHub Actions - "
+        "reloaded here every call, no network needed, so this always "
+        "reflects the latest git pull)."
     )
 )
 def cache_history(refresh: bool = True, max_players: int = 700,
@@ -955,6 +1057,25 @@ def cache_history(refresh: bool = True, max_players: int = 700,
     finally:
         conn.close()
 
+    # THIRD shape held here: price_history.jsonl's nightly transfer-flow
+    # snapshots. Loaded unconditionally (not gated behind `refresh`) since
+    # it's a local file read with no network call at all - see
+    # _load_price_history_db()'s own docstring for why reloading it every
+    # time is safe and cheap. This is what makes cache_history() the actual
+    # single place to check "is my local store current" across every table
+    # this file writes, not just player_gw.
+    _load_price_history_db()
+    conn = _db()
+    try:
+        ph_rows, ph_players, ph_nights, ph_min, ph_max = conn.execute(
+            "SELECT COUNT(*), COUNT(DISTINCT player_id), COUNT(DISTINCT date), "
+            "MIN(date), MAX(date) FROM price_history"
+        ).fetchone()
+    except sqlite3.OperationalError:
+        ph_rows = 0
+    finally:
+        conn.close()
+
     out = [
         "LOCAL STORE",
         f"  file            {_DB_PATH}",
@@ -973,6 +1094,15 @@ def cache_history(refresh: bool = True, max_players: int = 700,
         out.append(f"    cards/saves/bps populated: {filled[0]}/{filled[1]}/{filled[2]}"
                    + ("  <- v1 snapshot, re-run --snapshot-priors then --load-priors-db"
                       if filled[2] == 0 else ""))
+    out.append("")
+    out.append("  price_history (nightly transfer-flow snapshots, from price_history.jsonl)")
+    if not ph_rows:
+        out.append(f"    NOT LOADED - {_os.path.basename(_PRICE_HISTORY_PATH)} not found "
+                   f"locally yet, or is empty. Written nightly by GitHub Actions "
+                   f"(.github/workflows/price-history-nightly.yml) - pull the repo.")
+    else:
+        out.append(f"    rows stored     {ph_rows}  ({ph_players} players x {ph_nights} night(s))")
+        out.append(f"    date range      {ph_min} .. {ph_max}")
     if max_fin == 0:
         out += ["", "No finished gameweeks yet, so there is nothing to cache. "
                     "Nothing is stored until a gameweek is final."]
@@ -3729,6 +3859,12 @@ if __name__ == "__main__":
     if "--load-priors-db" in sys.argv:
         # Purely local: reads the frozen JSON, writes SQLite. No network.
         print(_load_priors_db())
+        sys.exit(0)
+    if "--load-price-history-db" in sys.argv:
+        # Purely local: reads price_history.jsonl, writes SQLite. No
+        # network. Also runs automatically inside cache_history() - this
+        # flag is for loading it on its own, e.g. right after a git pull.
+        print(_load_price_history_db())
         sys.exit(0)
     # CLI escape hatches - run a tool without restarting Claude Desktop.
     if "--defenders" in sys.argv:

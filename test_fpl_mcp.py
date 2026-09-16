@@ -885,6 +885,75 @@ m._PRIORS_PATH, m._PRIORS_PATH_V2 = _ov1, _ov2
 check("db defaults outside the synced folder", "google" not in m._DB_PATH.lower()
       and "CloudStorage" not in m._DB_PATH)
 
+print("\n== price_history table (SQLite copy of price_history.jsonl) ==")
+_phdb = _os2.path.join(_tmp, "ph.sqlite")
+_phj = _os2.path.join(_tmp, "price_history.jsonl")
+
+check("missing price_history.jsonl reports a graceful message, no crash",
+      "No price_history.jsonl found" in
+      m._load_price_history_db(_phdb, _os2.path.join(_tmp, "absent.jsonl")))
+
+with open(_phj, "w") as fh:
+    fh.write('{"date":"2026-09-13","logged_utc":"t1","id":1,"name":"Raya","team":"ARS",'
+             '"pos":"GKP","price":6.0,"own_pct":39.3,"total_players":1000000,'
+             '"transfers_in_event":100,"transfers_out_event":50,"cost_change_event":0,'
+             '"cost_change_start":0,"status":"a"}\n')
+    fh.write('{"date":"2026-09-13","logged_utc":"t1","id":2,"name":"Salah","team":"LIV",'
+             '"pos":"MID","price":13.0,"own_pct":45.0,"total_players":1000000,'
+             '"transfers_in_event":10,"transfers_out_event":9000,"cost_change_event":-1,'
+             '"cost_change_start":-1,"status":"a"}\n')
+    fh.write("this line is not valid json\n")   # must be skipped, not crash the load
+
+_res2 = m._load_price_history_db(_phdb, _phj)
+check("loads price_history.jsonl into SQLite", "PRICE HISTORY TABLE LOADED" in _res2, _res2)
+check("reports the malformed line as skipped, not silently dropped or a crash",
+      "1 malformed line" in _res2, _res2)
+
+_c3 = _sq2.connect(_phdb)
+check("two well-formed rows loaded", _c3.execute("SELECT COUNT(*) FROM price_history").fetchone()[0] == 2)
+check("jsonl's 'id' field lands as player_id (joinable with player_gw/player_season)",
+      _c3.execute("SELECT COUNT(*) FROM price_history WHERE player_id=2").fetchone()[0] == 1)
+_row = _c3.execute("SELECT name, team, price, own_pct, transfers_in_event, transfers_out_event, "
+                   "cost_change_event, status FROM price_history WHERE player_id=2").fetchone()
+check("row values round-trip correctly through the load",
+      _row == ("Salah", "LIV", 13.0, 45.0, 10, 9000, -1, "a"), _row)
+_c3.close()
+
+# Re-run with an UPDATED value at the same (player_id, date) key - INSERT OR
+# REPLACE must overwrite, not duplicate. This is the realistic case: a
+# --force re-run of price_history.py on the same day after a correction.
+with open(_phj, "a") as fh:
+    fh.write('{"date":"2026-09-13","logged_utc":"t2","id":1,"name":"Raya","team":"ARS",'
+             '"pos":"GKP","price":6.1,"own_pct":40.0,"total_players":1000000,'
+             '"transfers_in_event":9999,"transfers_out_event":50,"cost_change_event":1,'
+             '"cost_change_start":1,"status":"a"}\n')
+m._load_price_history_db(_phdb, _phj)
+_c3 = _sq2.connect(_phdb)
+check("re-running does not duplicate rows for an existing (player_id, date)",
+      _c3.execute("SELECT COUNT(*) FROM price_history").fetchone()[0] == 2)
+check("INSERT OR REPLACE picks up the newer value rather than keeping the stale one",
+      _c3.execute("SELECT price, transfers_in_event FROM price_history WHERE player_id=1"
+                 ).fetchone() == (6.1, 9999))
+_c3.close()
+
+# cache_history() must fold this table's status into its own report -
+# that's the whole point (a single "is my local store current" check).
+seed()  # player_gw/player_season come from the real repo state here, not
+        # this test's synthetic squad - cache_history() reads _DB_PATH
+        # directly, so only price_history's own path/db need overriding.
+_ov_ph_path = m._PRICE_HISTORY_PATH
+m._PRICE_HISTORY_PATH = _phj
+_ov_db_path = m._DB_PATH
+m._DB_PATH = _phdb
+try:
+    _ch_out = m.cache_history(refresh=False)
+    check("cache_history() reports the price_history table without a live refresh",
+          "price_history (nightly transfer-flow snapshots" in _ch_out
+          and "rows stored     2" in _ch_out, _ch_out)
+finally:
+    m._PRICE_HISTORY_PATH = _ov_ph_path
+    m._DB_PATH = _ov_db_path
+
 print("\n== read-only guarantee ==")
 src = open(m.__file__).read()
 check("no HTTP writes in source", not any(f"httpx.{v}(" in src for v in ("post", "put", "patch", "delete")))
