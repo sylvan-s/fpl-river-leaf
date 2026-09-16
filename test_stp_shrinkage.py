@@ -108,12 +108,12 @@ def run_load(starts, games, stp_estimator="shrunk", intel=False):
 
 four = {code: 4 for code in set(teams.values())}
 
-print("\n== load(): default is unchanged ==")
+print("\n== load(): prior still available for comparison ==")
 by, err = run_load({RICE: 0}, four, stp_estimator="prior")
-check("default/prior: stp is the last-16 prior, no stp_prior field, no STP lines",
+check("stp_estimator=prior: stp is the last-16 prior, no stp_prior field, no STP lines",
       "stp_prior" not in by["Rice"] and "STP" not in err)
-check("STP_ESTIMATOR_DEFAULT is still prior (flip is a separate, dated decision)",
-      bs.STP_ESTIMATOR_DEFAULT == "prior")
+check("STP_ESTIMATOR_DEFAULT is shrunk since 16 Sep 2026 (GW5)",
+      bs.STP_ESTIMATOR_DEFAULT == "shrunk")
 try:
     bs.load(stp_estimator="vibes")
     check("bad stp_estimator is refused", False)

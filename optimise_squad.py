@@ -1070,11 +1070,11 @@ def _main():
     }[estimator]
     print(f"ESTIMATOR: {est_note}\n")
     print("START RATE: " + ({
-        "prior": "PRIOR — last 16 GWs of 2025/26. Pass --stp-estimator shrunk to blend "
-                 "in 2026/27 starts per team match (roadmap A0.2).",
+        "prior": "PRIOR — last 16 GWs of 2025/26 only (--stp-estimator prior). The "
+                 "default is shrunk since 16 Sep 2026 (roadmap A0.2).",
         "shrunk": "SHRUNK — 2025/26 last-16 prior blended with 2026/27 starts per team "
-                  "match, k per position (--stp-estimator shrunk, roadmap A0.2). Moves "
-                  "the XI/bench gates only, not xP."}[stp_estimator]) + "\n")
+                  "match, k per position (default since 16 Sep 2026, roadmap A0.2). Moves "
+                  "the XI/bench gates only, not xP. --stp-estimator prior to compare."}[stp_estimator]) + "\n")
     RESULT["meta"] = {
         "estimator": estimator, "stp_estimator": stp_estimator, "intel": use_intel,
         "quarantine": bool(use_intel and bs.ia.overlay_active()),

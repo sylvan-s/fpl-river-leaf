@@ -313,8 +313,11 @@ ESTIMATOR_DEFAULT = "prior"  # roadmap A0.2 Phase 2 (revised 31 Aug 2026; extend
 # stp does not enter xP/90 (that is A0.5); it decides the 75% XI / 60% bench
 # gates, so this changes WHO IS ELIGIBLE, not anyone's score. ROLE_INTEL's
 # `set stp` still applies on top. Pass --stp-estimator {prior,shrunk}.
+# DEFAULT "shrunk" SINCE 16 Sep 2026, for the GW5 deadline (Sylvan's call; the
+# roadmap's gate was GW6). Kill criterion: the GW10 predictive_backtest - if
+# shrunk does not beat the last-16 prior out of sample over GW6-10, revert here.
 STP_ESTIMATOR_CHOICES = ("prior", "shrunk")
-STP_ESTIMATOR_DEFAULT = "prior"
+STP_ESTIMATOR_DEFAULT = "shrunk"
 
 # Scoring table, the DC-threshold estimator, and bonus shrinkage all moved to
 # scoring.py (architecture review candidate #1) — see that module's
@@ -906,15 +909,15 @@ def main():
     print(f"formation {form[0]}-{form[1]}-{form[2]}   XI £{xs:.1f}m   "
           f"squad £{tot:.1f}m   bank £{BUDGET-tot:.1f}m\n")
     for r in sorted(xi, key=lambda x: (list(POS.values()).index(x["pos"]), -x["score"])):
-        flag = "*" if r.get("stp_src") == "season_fallback" else " "
+        flag = "*" if str(r.get("stp_src", "")).startswith("season_fallback") else " "
         print(f"  {r['name'][:14]:<15}{r['pos']:<5}{r['team']:<5}£{r['price']:<5.1f}"
               f"{r['stp']*100:>4.0f}%{flag}  xP {r['score']:>5.2f}")
     print("  --- bench ---")
     for r in [x for x in sq if x not in xi]:
-        flag = "*" if r.get("stp_src") == "season_fallback" else " "
+        flag = "*" if str(r.get("stp_src", "")).startswith("season_fallback") else " "
         print(f"  {r['name'][:14]:<15}{r['pos']:<5}{r['team']:<5}£{r['price']:<5.1f}"
               f"{r['stp']*100:>4.0f}%{flag}")
-    if not season_starts and any(r.get("stp_src") == "season_fallback" for r in xi + sq):
+    if not season_starts and any(str(r.get("stp_src", "")).startswith("season_fallback") for r in xi + sq):
         print("\n  * = no last-16 match found; using full-season start rate as fallback.")
 
 

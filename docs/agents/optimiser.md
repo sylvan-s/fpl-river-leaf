@@ -95,7 +95,8 @@ When the VM's fpl-research connector has the runner tools (`optimise_transfers`,
 `optimise_scenario`, `optimise_matrix`/`optimise_job`, `refresh_fixture_window`,
 `quarantine_report`, `player_estimates`, `squad_state`, `repo_file`, ...), the
 same pre-run dialogue applies. State the defaults first: estimator shrunk,
-intel ON, quarantine ON, fixtures ON, Haaland allowed, max 2 attackers/club.
+start rate shrunk, intel ON, quarantine ON, fixtures ON, Haaland allowed, max 2
+attackers/club.
 The tools refuse on a stale fixture window (call `refresh_fixture_window`
 first) or a clone that isn't origin's. They return a flagged player as an
 ERROR, never as advice. See `VM_OPTIMISER_TOOLS.md`.
@@ -109,3 +110,12 @@ a weighted mean, next GW first: 40 / 30 / 20 / 10 (`constants.FIXTURE_GW_WEIGHTS
 and gets auto-refreshed (the VM runner refuses and asks for
 `refresh_fixture_window`). The `fixture_difficulty` research tool stays
 equal-weighted unless given `gw_weights`.
+
+## Start rate — shrunk by default since 16 Sep 2026 (GW5)
+
+`stp` blends each player's 2025/26 last-16 start rate with his 2026/27 starts
+per team match (`--stp-estimator shrunk`, roadmap A0.2). It decides the 75% XI /
+60% bench gates and is not part of xP/90, so it changes who is eligible, not
+anyone's score. A ROLE_INTEL `set stp` still overrides it. `--stp-estimator
+prior` restores the frozen rate; `--compare-stp` shows both. When stating the
+defaults before a run, say start rate is shrunk.

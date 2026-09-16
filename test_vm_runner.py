@@ -94,9 +94,9 @@ check("empty rows refused", raises(vr.validate_rows, []) is not None)
 
 print("\n== optimiser_args ==")
 a = vr.optimiser_args()
-check("weekly defaults: shrunk, fixtures, quarantine, 1 transfer",
-      a == ["optimise_squad.py", "--estimator", "shrunk", "--fixtures", "--quarantine",
-            "--transfers", "1"], a)
+check("weekly defaults: shrunk, shrunk start rate, fixtures, quarantine, 1 transfer",
+      a == ["optimise_squad.py", "--estimator", "shrunk", "--stp-estimator", "shrunk",
+            "--fixtures", "--quarantine", "--transfers", "1"], a)
 check("rebuild mode omits --transfers", "--transfers" not in vr.optimiser_args(transfers=None))
 check("quarantine without intel refused",
       raises(vr.optimiser_args, intel=False) is not None)
@@ -130,8 +130,9 @@ check("force_in without Name:TEAM refused",
 check("force_in in rebuild mode refused",
       raises(vr.optimiser_args, transfers=None, force_in=["X:ARS"]) is not None)
 check("bad estimator refused", raises(vr.optimiser_args, estimator="vibes") is not None)
-check("stp_estimator prior adds no flag (the script's own default)",
-      "--stp-estimator" not in vr.optimiser_args())
+a = vr.optimiser_args()
+check("start rate defaults to shrunk (GW5) and is always passed explicitly",
+      a[a.index("--stp-estimator") + 1] == "shrunk", a)
 a = vr.optimiser_args(stp_estimator="shrunk")
 check("stp_estimator shrunk maps to --stp-estimator shrunk",
       a[a.index("--stp-estimator") + 1] == "shrunk", a)

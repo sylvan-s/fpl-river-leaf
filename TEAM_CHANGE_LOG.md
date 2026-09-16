@@ -679,6 +679,55 @@ share rises; the differential case depends entirely on him playing.
 
 ## CHANGE HISTORY (newest first)
 
+### Wed 16 Sep 2026 — methodology change, not a transfer — start rates now use 2026/27 starts (A0.2 live for GW5)
+
+**Sylvan's call: on for the GW5 deadline**, one gameweek ahead of the roadmap's
+GW6 gate. `build_squad.STP_ESTIMATOR_DEFAULT` is `"shrunk"`. Every optimiser and
+scenario run, the squad page and the VM runner now use it.
+
+**Why.** Every player without a ROLE_INTEL row was selected on his 2025/26
+last-16 start rate, frozen. Re-scored on starts per team match, walk-forward
+over 2026/27 GW2-4 (n=249), that prior was the worst estimator: RMSE 0.492,
+against 0.397 for the blend. That is ~19% better, on three scored gameweeks
+only, so it is a direction rather than a verdict. The blend weights each
+player's prior against his live starts. Through GW4 the data puts three or
+four matches ahead of last season's final sixteen (k ≈ 1-3 outfield; keepers
+fall back to k=8). Full reasoning in METHODOLOGY_ALTERNATIVES.md A0.2.
+
+**What it changes.** Start rate is not in xP/90 (that is A0.5, not built), so
+this moves the **75% XI / 60% bench gates only**: who is eligible, never a
+score. A ROLE_INTEL `set stp` still wins (O'Reilly stays on the fence's value,
+though he has started 2 of 4). Through GW4, 34 players newly clear the XI gate
+and 29 fall below it, most of the latter injured or gone and already excluded
+by status. The squad itself barely moves: Van de Ven 88% -> 78% and Shaw 100%
+-> 82%, both still clear.
+
+**Effect on the GW5 answer** (weekly configuration: shrunk per-90, intel +
+Trello quarantine ON, 40/30/20/10 window):
+
+| start rate | best free transfer | 2 transfers at −4 |
+|---|---|---|
+| prior (before today) | Virgil -> Mukiele, +0.71 | Schade, Virgil -> Gibbs-White, Mukiele, +1.36 |
+| **shrunk (now)** | **Virgil -> Calafiori, +1.80** | Schade, Virgil -> Calafiori, Tavernier, +2.86 |
+
+Calafiori: 38% on the 2025/26 last-16 rate, 4 of 4 starts this season, 84%
+shrunk. **Open question before acting:** whether those starts are a settled
+role or cover for Saliba (injured). The data can't tell those apart; a
+ROLE_INTEL `stp` row can, if the Friday review or the intel sweep finds it is
+cover.
+
+**Known bias.** A player who misses games injured accrues non-starts, so he
+returns on a depressed rate. The status filter excludes him while out, and with
+k ≈ 1-2 a few starts recover it; a `set stp` corrects it sooner.
+
+**Not updated:** `build_dashboard.py` keeps its own loader, so the published
+dashboard still shows the 2025/26 start rate until it is ported.
+
+**Kill criterion:** the GW10 `predictive_backtest` (Tue 10 Nov). If shrunk
+start rate does not beat the last-16 prior out of sample over GW6-10, set the
+default back to `"prior"` and log it here. `--stp-estimator prior` /
+`stp_estimator="prior"` reproduce the old answer at any time.
+
 ### Wed 16 Sep 2026 — strategy + methodology change, not a transfer — Haaland allowed; wildcard budget is sell value + bank
 
 **Haaland (Sylvan's call).** The no-Haaland preference is now OFF by default in

@@ -88,7 +88,10 @@ def fake_live(overrides):
 
 def run_load(elements, clubs):
     real = bs._fetch_current_season
+    real_games = bs._fetch_team_games
     bs._fetch_current_season = lambda: elements
+    # Start rate is not what this file tests; keep it offline and on the prior.
+    bs._fetch_team_games = lambda: {}
     bs._current_cache, bs._live_clubs_cache = elements, clubs
     err = io.StringIO()
     try:
@@ -96,6 +99,7 @@ def run_load(elements, clubs):
             pool = bs.load(intel=False)
     finally:
         bs._fetch_current_season = real
+        bs._fetch_team_games = real_games
         bs._current_cache = bs._live_clubs_cache = None
     return {r["name"]: r for r in pool}, err.getvalue()
 

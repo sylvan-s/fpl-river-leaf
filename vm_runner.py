@@ -301,7 +301,7 @@ def optimiser_args(transfers=1, hits=False, estimator="shrunk", intel=True,
                    quarantine=True, fixtures=True, haaland=True,
                    max_attackers_per_club=2, free_transfers=None, gate=None,
                    force_in=(), force_out=(), role_rivals=(), allow_contaminated=False,
-                   budget=None, stp_estimator="prior"):
+                   budget=None, stp_estimator="shrunk"):
     """optimise_squad.py argv for one configuration. Raises ValueError on a
     combination the script would reject, so the tool can refuse up front.
 
@@ -323,9 +323,8 @@ def optimiser_args(transfers=1, hits=False, estimator="shrunk", intel=True,
                          f"pass hits=True to price the -4s, or free_transfers=N if banked.")
     if stp_estimator not in ("prior", "shrunk"):
         raise ValueError(f"stp_estimator must be prior/shrunk, got {stp_estimator!r}")
-    a = ["optimise_squad.py", "--estimator", estimator]
-    if stp_estimator != "prior":
-        a += ["--stp-estimator", stp_estimator]
+    # Always explicit, so a response never depends on the script's own default.
+    a = ["optimise_squad.py", "--estimator", estimator, "--stp-estimator", stp_estimator]
     if fixtures:
         a.append("--fixtures")
     if not intel:
@@ -456,7 +455,7 @@ def settings_line(meta, quarantine_requested=None):
     qtxt = (f"ON ({meta.get('quarantine_entries', 0)} ticked item(s))" if q
             else ("REQUESTED BUT NOT ACTIVE" if quarantine_requested else "OFF"))
     intel = meta.get("intel", meta.get("base_intel"))
-    return (f"estimator {meta.get('estimator')} · start rate {meta.get('stp_estimator', 'prior')} · "
+    return (f"estimator {meta.get('estimator')} · start rate {meta.get('stp_estimator', '?')} · "
             f"intel {'ON' if intel else 'OFF'} · "
             f"quarantine {qtxt} · fixtures {'ON' if meta.get('fixtures') else 'OFF'} · "
             f"no Haaland {'ON' if prefs.get('no_haaland') else 'OFF'} · max attackers/club "
@@ -614,14 +613,14 @@ def _cell_args(cell, scenario_path, free_transfers):
     ft = free_transfers if free_transfers is not None else 1
     if cell["overlay"] == "scenario":
         a = ["scenario_squad.py", scenario_path, "--estimator", cell["estimator"],
-             "--stp-estimator", cell.get("stp", "prior"), "--fixtures", "--transfers", str(t)]
+             "--stp-estimator", cell.get("stp", "shrunk"), "--fixtures", "--transfers", str(t)]
         if free_transfers is not None:
             a += ["--free-transfers", str(ft)]
         return a
     return optimiser_args(transfers=t, hits=True, estimator=cell["estimator"],
                           intel=cell["overlay"] != "nointel",
                           quarantine=cell["overlay"] == "quarantine",
-                          free_transfers=free_transfers, stp_estimator=cell.get("stp", "prior"))
+                          free_transfers=free_transfers, stp_estimator=cell.get("stp", "shrunk"))
 
 
 def run_matrix_job(job, scenario_rows=None, free_transfers=None, workers=2):
@@ -815,8 +814,9 @@ def register(mcp, live_gw, fixture_table):
         "HOLD - ties are HOLD, never resolved), 5-GW net, breakeven, bank after, both "
         "preference costs, live-data stderr lines verbatim, the script text and JSON. A "
         "move naming an unavailable or contaminated player is returned as an ERROR. "
-        "stp_estimator='shrunk' blends 2025/26 last-16 start rates with 2026/27 starts per "
-        "team match (roadmap A0.2); it moves the 75% XI / 60% bench gates, not xP."))
+        "Start rate is shrunk by default (2025/26 last-16 blended with 2026/27 starts per "
+        "team match, roadmap A0.2, since GW5); stp_estimator='prior' to compare. It moves "
+        "the 75% XI / 60% bench gates, not xP."))
     async def optimise_transfers(transfers: int | None = 1, hits: bool = False,
                                  estimator: str = "shrunk", intel: bool = True,
                                  quarantine: bool = True, fixtures: bool = True,
@@ -827,7 +827,7 @@ def register(mcp, live_gw, fixture_table):
                                  role_rivals: list[str] | None = None,
                                  allow_contaminated: bool = False,
                                  budget: float | None = None,
-                                 stp_estimator: str = "prior") -> str:
+                                 stp_estimator: str = "shrunk") -> str:
         def go():
             sync, stamp, live, refused = _pre("optimise_transfers", need_window=fixtures)
             if refused:
@@ -864,7 +864,7 @@ def register(mcp, live_gw, fixture_table):
                                 force_in: list[str] | None = None,
                                 force_out: list[str] | None = None,
                                 haaland: bool = True, budget: float | None = None,
-                                stp_estimator: str = "prior") -> str:
+                                stp_estimator: str = "shrunk") -> str:
         def go():
             sync, stamp, live, refused = _pre("optimise_scenario", need_window=fixtures)
             if refused:
@@ -920,7 +920,7 @@ def register(mcp, live_gw, fixture_table):
                               transfers: list[int] | None = None,
                               extra_rows: list[str] | None = None,
                               free_transfers: int | None = None,
-                              stp_estimator: str = "prior") -> str:
+                              stp_estimator: str = "shrunk") -> str:
         def go():
             sync, stamp, live, refused = _pre("optimise_matrix")
             if refused:

@@ -877,13 +877,14 @@ this-week blank signal.** Only `BANNED` — the status flag — moves P(blank) n
 *Not modelled: second-yellow reds, which need per-match data this file does not
 fetch.*
 
-#### A0.2 Start-rate shrinkage — ACTIVATION BUILT 16 Sep 2026, behind `--stp-estimator shrunk` (default still prior)
+#### A0.2 Start-rate shrinkage — LIVE 16 Sep 2026 (GW5), `--stp-estimator shrunk` is the default
 
 **BUILT 16 Sep 2026 (GW5 pre-deadline), commit `01f6d22`.** Start-rate
 shrinkage now reaches squad selection: `build_squad.load(stp_estimator=
 "shrunk")`, `--stp-estimator shrunk` on `optimise_squad.py` / `scenario_squad.py`,
-`--compare-stp`, and `stp_estimator=` on the VM runner tools. Default stays
-`prior`; flipping it is a separate, dated decision.
+`--compare-stp`, and `stp_estimator=` on the VM runner tools. **Default flipped
+to `shrunk` the same day for the GW5 deadline, Sylvan's call — one gameweek
+ahead of the GW6 gate** (TEAM_CHANGE_LOG.md, 16 Sep 2026).
 
 **Two corrections to the design, both found by re-running the backtest first.**
 
