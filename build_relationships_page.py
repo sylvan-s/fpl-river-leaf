@@ -380,72 +380,146 @@ p9Draw();
 
 
 _PRED_COLOR = {"raw": _PAL["a"], "prior": _PAL["b"], "shrunk": _PAL["c"]}
-_METRIC_ROWS = [  # (backtest key or None, display label, per-position note)
-    ("xg90", "xG per 90", None),
-    ("xa90", "xA per 90", None),
-    ("xgc90", "xGC per 90", None),
-    ("sv90", "Saves per 90", None),
-    ("cbit90", "CBIT per 90", "no 2024/25 prior for this stat"),
-    ("cbirt90", "CBIRT per 90", "no 2024/25 prior for this stat"),
-    ("stp", "Start rate", None),
+_METRIC_ROWS = [  # (key, display label, positions it applies to)
+    ("xg90", "xG per 90", ("DEF", "MID", "FWD")),
+    ("xa90", "xA per 90", ("DEF", "MID", "FWD")),
+    ("xgc90", "xGC per 90", ("GKP", "DEF")),
+    ("sv90", "Saves per 90", ("GKP",)),
+    ("cbit90", "CBIT per 90", ("DEF",)),
+    ("cbirt90", "CBIRT per 90", ("MID", "FWD")),
+    ("stp", "Start rate", ("GKP", "DEF", "MID", "FWD")),
 ]
 _POS_ORDER = ["GKP", "DEF", "MID", "FWD"]
+# Below this relative gap to the runner-up the "winner" is inside noise.
+_CLOSE_MARGIN = 0.01
 
 
-def _predictor_cell(name, note=None):
+def _predictor_cell(name, note=None, margin=None):
     if note:
         return f'<td class="mono" style="color:var(--dim);font-size:11px">{note}</td>'
     if name is None:
         return '<td class="mono" style="color:var(--dim)">&mdash;</td>'
     color = _PRED_COLOR[name]
+    extra = ""
+    if margin is not None:
+        extra = (f' <span style="color:var(--dim);font-size:11px">'
+                 f'{"&asymp; tie" if margin < _CLOSE_MARGIN else f"+{margin:.0%}"}</span>')
     return (f'<td class="mono"><span style="display:inline-flex;align-items:center;gap:6px">'
             f'<span style="width:9px;height:9px;border-radius:2px;background:{color};'
-            f'display:inline-block;flex:none"></span>{name}</span></td>')
+            f'display:inline-block;flex:none"></span>{name}{extra}</span></td>')
+
+
+def _gw_range(gws):
+    if not gws:
+        return "no gameweeks"
+    return f"GW{gws[0]}" if len(gws) == 1 else f"GW{gws[0]}–GW{gws[-1]}"
+
+
+def _season_predictors():
+    """Live 2026/27 result (season_predictors.py). Rebuilt on every page build
+    so the gameweek label is never stale; falls back to the last saved JSON,
+    flagged as such, if the live build fails."""
+    sp = _load("season_predictors", "season_predictors.py")
+    try:
+        return sp.build(), None
+    except Exception as e:
+        try:
+            with open(sp.OUT, encoding="utf-8") as fh:
+                return json.load(fh), f"live rebuild failed ({e}); showing the last saved result"
+        except (OSError, ValueError):
+            return None, f"live rebuild failed ({e}) and no saved result exists"
+
+
+def _table(cell_for):
+    head = "<th>metric</th>" + "".join(f"<th>{p}</th>" for p in _POS_ORDER)
+    rows = []
+    for key, label, applies in _METRIC_ROWS:
+        cells = "".join(cell_for(key, pos) if pos in applies else _predictor_cell(None)
+                        for pos in _POS_ORDER)
+        rows.append(f"<tr><td><b>{label}</b></td>{cells}</tr>")
+    return f'<table><thead><tr>{head}</tr></thead><tbody>{"".join(rows)}</tbody></table>'
 
 
 def _best_predictor_table():
-    """Panel 5: a static (non-interactive) summary of panel 4's per-position
-    backtest - one row per metric, one column per position, each cell the
-    predictor (raw/prior/shrunk) with the lowest average per-gameweek RMSE
-    for that exact combination. Built entirely in Python since there is
-    nothing to filter or redraw client-side; the table below is baked HTML,
-    not JS-constructed. Returns '' under the same tolerant/missing-file rule
-    as _backtest_panel()."""
-    if not BACKTEST:
-        return ""
-    by_pos = BACKTEST.get("by_position") or {}
-    head = "<th>metric</th>" + "".join(f"<th>{p[:2] if p != 'GKP' else 'GK'}</th>" for p in _POS_ORDER)
-    rows_html = []
-    for key, label, note in _METRIC_ROWS:
-        cells = []
-        for pos in _POS_ORDER:
-            if note:
-                cells.append(_predictor_cell(None, note))
-                continue
-            d = by_pos.get(pos)
-            best = (d or {}).get("best_predictor", {}).get(key)
-            cells.append(_predictor_cell(best))
-        rows_html.append(f"<tr><td><b>{label}</b></td>{''.join(cells)}</tr>")
-    table_html = (f'<table><thead><tr>{head}</tr></thead><tbody>'
-                  f'{"".join(rows_html)}</tbody></table>')
+    """Panel 5: which of raw / prior / shrunk predicts best, one cell per
+    position x metric - lowest mean per-gameweek RMSE.
+
+    LEADS WITH THE SEASON BEING PLAYED (16 Sep 2026). This panel used to show
+    only historical_backtest_2025_26.json, a frozen replay of last season, with
+    no gameweek on it - so it read as current when it was not. Now the main
+    table is 2026/27 to date from season_predictors.py, its title names the
+    gameweeks scored and the "through" gameweek, and each cell carries its
+    margin over the runner-up. The 2025/26 full-season table stays beneath it,
+    labelled, because a 38-gameweek result is the steadier read while the live
+    one rests on a handful of weeks. Start rate in the live table is scored on
+    selection's own definition (starts per team match, A0.2)."""
+    season, warn = _season_predictors()
     a, b, c = _PAL["a"], _PAL["b"], _PAL["c"]
     legend = (f'<div class="legend">'
               f'<span><i style="background:{a}"></i>raw wins</span>'
               f'<span><i style="background:{b}"></i>prior wins</span>'
               f'<span><i style="background:{c}"></i>shrunk wins</span>'
+              f'<span>+N% = runner-up\'s mean RMSE above the winner\'s; &asymp; tie under 1%</span>'
               f'<span>&mdash; = metric doesn\'t apply to this position</span>'
               f'</div>')
-    body_html = table_html + legend
+
+    parts, title_gw = [], "2026/27"
+    if season and season.get("cells"):
+        cells = season["cells"]
+        scored = season.get("scored_gws") or []
+        through = season.get("through_gw")
+        title_gw = f"2026/27 through GW{through}"
+
+        def live_cell(key, pos):
+            d = (cells.get(pos) or {}).get(key)
+            return _predictor_cell(d["best"], margin=d["margin"]) if d else _predictor_cell(None)
+
+        n_by_pos = {pos: max((d or {}).get("n_players", 0) for d in cells.get(pos, {}).values())
+                    for pos in _POS_ORDER}
+        parts.append(
+            f'<div class="mono" style="margin:0 0 8px"><b>Season 2026/27 &middot; scored '
+            f'{_gw_range(scored)} ({len(scored)} gameweek{"s" if len(scored) != 1 else ""}) '
+            f'&middot; data through GW{through}</b> &middot; prior = 2025/26 &middot; '
+            f'{season.get("source", "")} &middot; built {season.get("updated_utc", "")}</div>')
+        parts.append(_table(live_cell))
+        parts.append(
+            f'<div style="color:var(--dim);font-size:12px;margin:6px 0 18px">Players scored per '
+            f'position (largest metric): '
+            + " &middot; ".join(f"{p} {n_by_pos[p]}" for p in _POS_ORDER)
+            + f'. {len(scored)} gameweek{"s" if len(scored) != 1 else ""} is a small sample: a '
+              f'margin of a few percent can reverse week to week.</div>')
+    else:
+        parts.append(f'<div class="mono" style="margin:0 0 18px;color:var(--dim)">Season 2026/27: '
+                     f'{(season or {}).get("note") or "no result available"}</div>')
+    if warn:
+        parts.insert(0, f'<div class="mono" style="color:{_PAL["b"]};margin:0 0 8px">'
+                        f'WARNING: {warn}</div>')
+
+    if BACKTEST:
+        by_pos = BACKTEST.get("by_position") or {}
+
+        def frozen_cell(key, pos):
+            if key in ("cbit90", "cbirt90"):
+                return _predictor_cell(None, "no 2024/25 prior")
+            best = (by_pos.get(pos) or {}).get("best_predictor", {}).get(key)
+            return _predictor_cell(best)
+
+        parts.append('<div class="mono" style="margin:6px 0 8px"><b>Reference: season 2025/26, '
+                     'full season GW2&ndash;GW38</b> &middot; prior = 2024/25 &middot; frozen '
+                     'replay (panel 4), start rate per appearance</div>')
+        parts.append(_table(frozen_cell))
+    body_html = "".join(parts) + legend
     return f"""
-/* ---------- 5. best predictor by position x metric, at a glance (added 2 Sep 2026) ---------- */
-panel('p10','5 \\u00b7 Best predictor, by position and metric',
- `The same full-season backtest as panel 4, one cell per position x metric combination \\u2014
-  whichever of raw, prior or shrunk has the lowest average per-gameweek RMSE for that exact
-  pairing (GK start rate, DEF xG, and so on), each computed on that position's own players only.
-  Two results stand out: GK start rate is won by raw with a huge margin (keeper rotation is close
-  to deterministic once a club has a settled #1, far stickier than any outfield minutes pattern),
-  and FWD xA is the only rate metric anywhere in this analysis where raw beats both prior and
-  shrunk \\u2014 see panel 4's FWD/xA view for the trajectory.`,
+/* ---------- 5. best predictor by position x metric, at a glance (added 2 Sep 2026; live season 16 Sep 2026) ---------- */
+panel('p10','5 \\u00b7 Best predictor, by position and metric \\u00b7 {title_gw}',
+ `One cell per position x metric: whichever of raw (this season's own rate), prior (last
+  season's) or shrunk (the blend) has the lowest mean per-gameweek RMSE, each position scored on
+  its own players only. The first table is the season being played, rebuilt with the page and
+  labelled with the gameweeks it scored; GW1 is never scored because there is no live history
+  before it. Per-90 rates use the live tracker's walk-forward (60+ minute appearances). Start
+  rate uses the definition squad selection uses since 16 Sep 2026: starts per team match, with
+  last season's final-16-gameweek rate as the prior. The second table is last season's full
+  38-gameweek replay from panel 4, kept for contrast: a steadier read, but of a different season.`,
  {json.dumps(body_html)});
 """
 

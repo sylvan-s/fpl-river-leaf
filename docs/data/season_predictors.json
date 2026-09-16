@@ -1,0 +1,302 @@
+{
+ "season": "2026-27",
+ "prior_season": "2025-26",
+ "through_gw": 4,
+ "scored_gws": [
+  2,
+  3,
+  4
+ ],
+ "source": "live API",
+ "cells": {
+  "GKP": {
+   "xgc90": {
+    "best": "prior",
+    "runner_up": "shrunk",
+    "margin": 0.0328,
+    "mean_rmse": {
+     "raw": 0.9921,
+     "prior": 0.6581,
+     "shrunk": 0.6797
+    },
+    "scored_gws": [
+     2,
+     3,
+     4
+    ],
+    "n_players": 15
+   },
+   "sv90": {
+    "best": "prior",
+    "runner_up": "shrunk",
+    "margin": 0.0108,
+    "mean_rmse": {
+     "raw": 2.3028,
+     "prior": 1.9422,
+     "shrunk": 1.9631
+    },
+    "scored_gws": [
+     2,
+     3,
+     4
+    ],
+    "n_players": 15
+   },
+   "stp": {
+    "best": "raw",
+    "runner_up": "shrunk",
+    "margin": 0.6228,
+    "mean_rmse": {
+     "raw": 0.2128,
+     "prior": 0.411,
+     "shrunk": 0.3454
+    },
+    "scored_gws": [
+     2,
+     3,
+     4
+    ],
+    "n_players": 16,
+    "k": [
+     8.0,
+     8.0,
+     8.0
+    ]
+   }
+  },
+  "DEF": {
+   "xg90": {
+    "best": "prior",
+    "runner_up": "shrunk",
+    "margin": 0.0171,
+    "mean_rmse": {
+     "raw": 0.2046,
+     "prior": 0.1462,
+     "shrunk": 0.1487
+    },
+    "scored_gws": [
+     2,
+     3,
+     4
+    ],
+    "n_players": 65
+   },
+   "xa90": {
+    "best": "prior",
+    "runner_up": "shrunk",
+    "margin": 0.0086,
+    "mean_rmse": {
+     "raw": 0.1367,
+     "prior": 0.0956,
+     "shrunk": 0.0964
+    },
+    "scored_gws": [
+     2,
+     3,
+     4
+    ],
+    "n_players": 65
+   },
+   "xgc90": {
+    "best": "prior",
+    "runner_up": "shrunk",
+    "margin": 0.0229,
+    "mean_rmse": {
+     "raw": 1.1082,
+     "prior": 0.7364,
+     "shrunk": 0.7532
+    },
+    "scored_gws": [
+     2,
+     3,
+     4
+    ],
+    "n_players": 65
+   },
+   "cbit90": {
+    "best": "prior",
+    "runner_up": "shrunk",
+    "margin": 0.0202,
+    "mean_rmse": {
+     "raw": 4.3118,
+     "prior": 3.2355,
+     "shrunk": 3.3007
+    },
+    "scored_gws": [
+     2,
+     3,
+     4
+    ],
+    "n_players": 65
+   },
+   "stp": {
+    "best": "shrunk",
+    "runner_up": "raw",
+    "margin": 0.0191,
+    "mean_rmse": {
+     "raw": 0.4228,
+     "prior": 0.4804,
+     "shrunk": 0.4149
+    },
+    "scored_gws": [
+     2,
+     3,
+     4
+    ],
+    "n_players": 93,
+    "k": [
+     8.0,
+     1.37,
+     1.47
+    ]
+   }
+  },
+  "MID": {
+   "xg90": {
+    "best": "shrunk",
+    "runner_up": "prior",
+    "margin": 0.0037,
+    "mean_rmse": {
+     "raw": 0.3568,
+     "prior": 0.2744,
+     "shrunk": 0.2734
+    },
+    "scored_gws": [
+     2,
+     3,
+     4
+    ],
+    "n_players": 72
+   },
+   "xa90": {
+    "best": "shrunk",
+    "runner_up": "prior",
+    "margin": 0.004,
+    "mean_rmse": {
+     "raw": 0.202,
+     "prior": 0.1815,
+     "shrunk": 0.1808
+    },
+    "scored_gws": [
+     2,
+     3,
+     4
+    ],
+    "n_players": 72
+   },
+   "cbirt90": {
+    "best": "shrunk",
+    "runner_up": "prior",
+    "margin": 0.021,
+    "mean_rmse": {
+     "raw": 3.9104,
+     "prior": 3.4577,
+     "shrunk": 3.3866
+    },
+    "scored_gws": [
+     2,
+     3,
+     4
+    ],
+    "n_players": 72
+   },
+   "stp": {
+    "best": "raw",
+    "runner_up": "shrunk",
+    "margin": 0.0374,
+    "mean_rmse": {
+     "raw": 0.3809,
+     "prior": 0.5192,
+     "shrunk": 0.3951
+    },
+    "scored_gws": [
+     2,
+     3,
+     4
+    ],
+    "n_players": 120,
+    "k": [
+     8.0,
+     1.3,
+     1.12
+    ]
+   }
+  },
+  "FWD": {
+   "xg90": {
+    "best": "prior",
+    "runner_up": "shrunk",
+    "margin": 0.0163,
+    "mean_rmse": {
+     "raw": 0.4355,
+     "prior": 0.3465,
+     "shrunk": 0.3521
+    },
+    "scored_gws": [
+     2,
+     3,
+     4
+    ],
+    "n_players": 16
+   },
+   "xa90": {
+    "best": "prior",
+    "runner_up": "shrunk",
+    "margin": 0.0309,
+    "mean_rmse": {
+     "raw": 0.0816,
+     "prior": 0.0784,
+     "shrunk": 0.0808
+    },
+    "scored_gws": [
+     2,
+     3,
+     4
+    ],
+    "n_players": 16
+   },
+   "cbirt90": {
+    "best": "raw",
+    "runner_up": "shrunk",
+    "margin": 0.0246,
+    "mean_rmse": {
+     "raw": 2.1502,
+     "prior": 2.284,
+     "shrunk": 2.203
+    },
+    "scored_gws": [
+     2,
+     3,
+     4
+    ],
+    "n_players": 16
+   },
+   "stp": {
+    "best": "shrunk",
+    "runner_up": "raw",
+    "margin": 0.0431,
+    "mean_rmse": {
+     "raw": 0.3719,
+     "prior": 0.4199,
+     "shrunk": 0.3565
+    },
+    "scored_gws": [
+     2,
+     3,
+     4
+    ],
+    "n_players": 20,
+    "k": [
+     8.0,
+     2.76,
+     1.94
+    ]
+   }
+  }
+ },
+ "definitions": {
+  "rates": "build_prediction_tracker.walk_forward, per position; 60+ minute appearances scored",
+  "stp": "starts per team match vs build_squad last-16 prior, k = scoring.estimate_k_start (selection's definition since 16 Sep 2026)"
+ },
+ "updated_utc": "2026-09-16T12:09:49Z"
+}

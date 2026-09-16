@@ -720,8 +720,15 @@ cover.
 returns on a depressed rate. The status filter excludes him while out, and with
 k ≈ 1-2 a few starts recover it; a `set stp` corrects it sooner.
 
-**Not updated:** `build_dashboard.py` keeps its own loader, so the published
-dashboard still shows the 2025/26 start rate until it is ported.
+**Dashboard ported the same day.** `build_dashboard.py` keeps its own loader, so
+the player benchmarking, team benchmarking and relationships pages were still
+showing the 2025/26 start rate; they now use the same blend (the stp tooltip
+shows prior -> with 2026/27 starts). Its broader 450-minute pool derives its
+own k, so a keeper or an edge case can differ from the optimiser's figure by a
+point or two (Calafiori 85% on the page, 84% in the optimiser). The
+relationships page's panel 5 now leads with 2026/27 to date, titled with the
+gameweeks it scored, and keeps 2025/26's full season beneath it as a labelled
+reference.
 
 **Kill criterion:** the GW10 `predictive_backtest` (Tue 10 Nov). If shrunk
 start rate does not beat the last-16 prior out of sample over GW6-10, set the

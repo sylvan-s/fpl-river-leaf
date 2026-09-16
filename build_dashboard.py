@@ -165,6 +165,8 @@ _current_cache = None
 # {element_id: SHORT_CODE} from the same call. See the CLUB comment in the
 # loader below. {} when the fetch fails.
 _live_clubs_cache = None
+# {team_id: SHORT_CODE}, same call - keys the start-rate team match counts.
+_team_code_cache = {}
 
 
 def _fetch_current_season():
@@ -180,6 +182,7 @@ def _fetch_current_season():
             data = json.loads(resp.read().decode("utf-8"))
         _current_cache = {str(e["id"]): e for e in data.get("elements", [])}
         _code = {t["id"]: t["short_name"] for t in data.get("teams", [])}
+        _team_code_cache.update(_code)
         _live_clubs_cache = {str(e["id"]): _code[e["team"]]
                              for e in data.get("elements", [])
                              if e.get("team") in _code}
@@ -287,6 +290,61 @@ if stale_price_n:
           f"fetch — using the frozen 8 Aug pre-season price for those (see the "
           f"fetch warning above, if any). Affordability/price for everyone else "
           f"is live.", file=sys.stderr)
+
+# START RATE IS LIVE TOO (ported 16 Sep 2026, same day build_squad.py made it
+# the default - roadmap A0.2). This page's `stp` was the frozen 2025/26 last-16
+# rate, so it disagreed with the optimiser for every player whose role has
+# changed. Same arithmetic, shared from scoring.py; the fixtures fetch is this
+# file's own copy, per the hand-maintained-loader rule above. Blends each
+# row's prior with 2026/27 starts per team match, k per position. `stp_prior`
+# keeps the old number. No ROLE_INTEL overrides here: this page never applied
+# the adjustments fence, before or after.
+def _team_games():
+    import urllib.request
+    try:
+        req = urllib.request.Request("https://fantasy.premierleague.com/api/fixtures/",
+                                     headers={"User-Agent": "fpl-build-dashboard/1.0"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            fixtures = json.loads(resp.read().decode("utf-8"))
+    except Exception as exc:
+        print(f"  STP: fixtures fetch failed ({exc}) - start rates stay on the 2025/26 "
+              f"prior this build.", file=sys.stderr)
+        return {}
+    games = {}
+    for fx in fixtures:
+        if fx.get("finished") and fx.get("event"):
+            for side in ("team_h", "team_a"):
+                code = _team_code_cache.get(fx.get(side))
+                if code:
+                    games[code] = games.get(code, 0) + 1
+    return games
+
+
+TEAM_GAMES = _team_games() if current else {}
+for r in rows:
+    r["stp_prior"] = r["stp"]
+if TEAM_GAMES:
+    _starts = {str(r["id"]): current.get(str(r["id"]), {}).get("starts") for r in rows}
+    STP_K = {}
+    for _pos in ("GKP", "DEF", "MID", "FWD"):
+        _samples = [(min(1.0, _starts[str(r["id"])] / TEAM_GAMES[r["team"]]),
+                     TEAM_GAMES[r["team"]], r["stp"])
+                    for r in rows if r["pos"] == _pos and _starts[str(r["id"])] is not None
+                    and TEAM_GAMES.get(r["team"])]
+        STP_K[_pos] = scoring.estimate_k_start(_samples)
+    for r in rows:
+        if r["pos"] not in STP_K:
+            continue
+        _shrunk, _raw = scoring.shrink_start(_starts[str(r["id"])], TEAM_GAMES.get(r["team"]),
+                                            r["stp"], STP_K[r["pos"]][0])
+        if _raw is not None:
+            r["stp"], r["stp_src"] = _shrunk, r["stp_src"] + "+live"
+    print("  STP SHRUNK — start rates blended with 2026/27 starts per team match; k "
+          + ", ".join(f"{p_} {k_:.1f}{f' ({n_})' if n_ else ''}" for p_, (k_, n_) in STP_K.items()),
+          file=sys.stderr)
+elif current:
+    print("  STP: no team match counts - start rates are the 2025/26 prior this build.",
+          file=sys.stderr)
 
 CBIT_HIT_THRESH = 10          # fixed across ALL positions, deliberately - see loader docstring
 CACHE_CSV = os.path.join(HERE, ".cache_merged_gw.csv")
@@ -512,10 +570,10 @@ for label, pool, metric, disp in (
 
 med_xgi_mid = sorted(r["xgi90"] for r in M)[len(M)//2]
 for r in rows:
-    for k in ("n90","stp","stp_season","xgi90","xg90","xa90","delta","cbit90","cbirt90","xgc90","bps90","sv90","own","price"):
+    for k in ("n90","stp","stp_prior","stp_season","xgi90","xg90","xa90","delta","cbit90","cbirt90","xgc90","bps90","sv90","own","price"):
         r[k] = round(r[k], 3)
 
-n_last16 = sum(1 for r in rows if r["stp_src"] == "last16")
+n_last16 = sum(1 for r in rows if r["stp_src"].startswith("last16"))
 last16_info = dict(
     n_matched=n_last16, n_total=len(rows),
     window=f"GW{LAST16_META.get('window_gws', [23,38])[0]}-{LAST16_META.get('window_gws', [23,38])[1]}"

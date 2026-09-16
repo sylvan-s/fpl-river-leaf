@@ -615,6 +615,19 @@ def build():
     source = None
     try:
         cache, finished = _cache_from_sqlite()
+        # STALENESS GUARD (16 Sep 2026). The SQLite cache is warmed weekly, and
+        # that day it sat at GW3 with GW4 finished - a Mac build would have
+        # published a tracker one gameweek behind with nothing on the page to
+        # say so. Prefer it only when it is as current as the live season.
+        if cache is not None:
+            try:
+                live_finished = [e["id"] for e in _bootstrap()["events"] if e.get("finished")]
+            except Exception:
+                live_finished = []            # offline: the cache is the best there is
+            if live_finished and (not finished or max(finished) < max(live_finished)):
+                print(f"  TRACKER: SQLite cache is through GW{max(finished) if finished else 0} "
+                      f"but GW{max(live_finished)} has finished - using the live API instead.")
+                cache = None
         if cache is not None:
             source = "sqlite"
             boot = _boot_from_priors_snapshot()
