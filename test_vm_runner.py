@@ -137,6 +137,16 @@ a = vr.optimiser_args(stp_estimator="shrunk")
 check("stp_estimator shrunk maps to --stp-estimator shrunk",
       a[a.index("--stp-estimator") + 1] == "shrunk", a)
 check("bad stp_estimator refused", raises(vr.optimiser_args, stp_estimator="vibes") is not None)
+check("start_weighted maps to --start-weighted, off by default",
+      "--start-weighted" in vr.optimiser_args(start_weighted=True)
+      and "--start-weighted" not in vr.optimiser_args())
+_lines = "\n".join(vr.verdict_lines({"mode": "transfers", "current_xi_xp": 54.3, "bank": 1.3,
+                                     "free_transfers": 1, "transfers": [], "preference_costs": {},
+                                     "meta": {"unit": "xP/GW", "objective": "per_gw"}}))
+check("verdict lines use the run's own unit (xP/GW when start-weighted)",
+      "XI xP/GW 54.3" in _lines and "xP/90" not in _lines, _lines)
+check("settings line names the start-weighted objective",
+      "START-WEIGHTED" in vr.settings_line({"objective": "per_gw", "preferences": {}}))
 a = vr._cell_args({"estimator": "shrunk", "overlay": "fence", "transfers": 1, "stp": "shrunk"},
                   None, None)
 check("matrix cells carry the start-rate estimator", "--stp-estimator" in a, a)

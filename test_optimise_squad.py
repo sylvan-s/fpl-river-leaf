@@ -129,6 +129,42 @@ check("0-transfer hold is feasible even with an empty bought_for map "
       "(missing entries fall back to current price, not a crash)",
       res_default is not None)
 
+print("\n== A0.5 start weighting ==")
+_pool = [dict(name="A", stp=0.8, score=5.0), dict(name="B", stp=1.0, score=4.5)]
+opt.start_weight(_pool)
+check("score becomes stp x xP, per-90 kept as score_per90",
+      _pool[0]["score"] == 4.0 and _pool[0]["score_per90"] == 5.0 and _pool[1]["score"] == 4.5)
+check("the reliable 100% starter now outranks the 80% starter with more xP/90",
+      _pool[1]["score"] > _pool[0]["score"])
+
+# A 55% starter, the best FWD in the pool by a distance: the 75% gate makes
+# him bench-ineligible too (below 60%), so he is never owned; the 50% floor
+# lets him START, but never sit on the bench as fodder.
+ROTATOR = _row("Rotator", "FWD", "T17", 4.5, 9.0, stp=0.55)
+_gate = opt.bs.GATE_XI
+try:
+    res = opt.optimise_transfers(OWNED + [ROTATOR], OWNED_NAMES, 5.0, 1, allow_haaland=True,
+                                 max_att_per_club=None, bought_for=bf_real)
+    check("per-90 default (75% XI gate): a 55% starter is not bought", res
+          and "Rotator" not in _swapped_in(res))
+    opt.bs.GATE_XI = opt.START_WEIGHTED_XI_FLOOR
+    res = opt.optimise_transfers(OWNED + [ROTATOR], OWNED_NAMES, 5.0, 1, allow_haaland=True,
+                                 max_att_per_club=None, bought_for=bf_real)
+    check("50% floor: the 55% starter can be bought to START", res
+          and "Rotator" in {r["name"] for r in res[0]}, res and [r["name"] for r in res[0]])
+    weak = _row("Rotator", "FWD", "T17", 4.5, 0.1, stp=0.55)
+    res = opt.optimise_transfers(OWNED + [weak], OWNED_NAMES, 5.0, 1, allow_haaland=True,
+                                 max_att_per_club=None, bought_for=bf_real)
+    check("...but never bought as bench fodder (bench gate 60% still applies to buys)",
+          res and "Rotator" not in {r["name"] for r in res[1]})
+    low_owned = [dict(r) for r in OWNED]
+    low_owned[-1]["stp"] = 0.30          # F3, an owned bench FWD, collapses to 30%
+    res = opt.optimise_transfers(low_owned, OWNED_NAMES, BANK, 0, allow_haaland=True,
+                                 max_att_per_club=None, bought_for=bf_real)
+    check("an OWNED player below the bench gate stays ownable (hold is feasible)", res is not None)
+finally:
+    opt.bs.GATE_XI = _gate
+
 print("\n== wildcard_budget: sell value + bank, not a fresh £100m ==")
 class _St:
     bank = 1.3

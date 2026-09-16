@@ -301,7 +301,7 @@ def optimiser_args(transfers=1, hits=False, estimator="shrunk", intel=True,
                    quarantine=True, fixtures=True, haaland=True,
                    max_attackers_per_club=2, free_transfers=None, gate=None,
                    force_in=(), force_out=(), role_rivals=(), allow_contaminated=False,
-                   budget=None, stp_estimator="shrunk"):
+                   budget=None, stp_estimator="shrunk", start_weighted=False):
     """optimise_squad.py argv for one configuration. Raises ValueError on a
     combination the script would reject, so the tool can refuse up front.
 
@@ -325,6 +325,8 @@ def optimiser_args(transfers=1, hits=False, estimator="shrunk", intel=True,
         raise ValueError(f"stp_estimator must be prior/shrunk, got {stp_estimator!r}")
     # Always explicit, so a response never depends on the script's own default.
     a = ["optimise_squad.py", "--estimator", estimator, "--stp-estimator", stp_estimator]
+    if start_weighted:
+        a.append("--start-weighted")
     if fixtures:
         a.append("--fixtures")
     if not intel:
@@ -403,8 +405,10 @@ def verdict_lines(result):
     lines = []
     if not result:
         return lines
+    # A0.5: *_xp90-named fields hold xP per gameweek when the run was start-weighted.
+    u = ((result.get("meta") or {}).get("unit")) or "xP/90"
     if result.get("mode") == "transfers":
-        lines.append(f"current XI xP/90 {result.get('current_xi_xp')} · bank "
+        lines.append(f"current XI {u} {result.get('current_xi_xp')} · bank "
                      f"£{result.get('bank')}m · free transfers {result.get('free_transfers')}")
         for rec in result.get("transfers", []):
             k, v = rec["k"], rec.get("verdict")
@@ -413,12 +417,12 @@ def verdict_lines(result):
                 outs = [p["name"] for p in rec["out"]]
                 ins = [p["name"] for p in rec["in"]]
                 lines.append(
-                    f"  {k} transfer(s): MOVE +{rec['gain_xp90']:.2f} xP/90{cost}"
+                    f"  {k} transfer(s): MOVE +{rec['gain_xp90']:.2f} {u}{cost}"
                     f" · OUT {outs} -> IN {ins}"
                     f" · 5-GW net {rec['net_5gw']:+.1f} · breakeven {rec['breakeven_gws']} GW"
                     f" · bank after £{rec['bank_after']:.1f}m")
             elif v == "HOLD":
-                lines.append(f"  {k} transfer(s): HOLD (no gain above {MIN_GAIN} xP/90"
+                lines.append(f"  {k} transfer(s): HOLD (no gain above {MIN_GAIN} {u}"
                              + (f"; tie between OUT {[p['name'] for p in rec['out']]} and "
                                 f"IN {[p['name'] for p in rec['in']]} - not resolved)"
                                 if rec.get("in") else ")"))
@@ -428,7 +432,7 @@ def verdict_lines(result):
             else:
                 lines.append(f"  {k} transfer(s): {v}")
     elif result.get("mode") == "rebuild":
-        lines.append(f"REBUILD (wildcard) XI xP/90 {result.get('xi_xp')} · squad "
+        lines.append(f"REBUILD (wildcard) XI {u} {result.get('xi_xp')} · squad "
                      f"£{result.get('squad_cost')}m")
         lines.append("  XI:    " + ", ".join(f"{p['name']}({p['pos']},{p['team']})"
                                             for p in result.get("xi", [])))
@@ -443,7 +447,7 @@ def verdict_lines(result):
         elif not c.get("active"):
             lines.append(f"PREFERENCE COST {label}: not active this run")
         else:
-            lines.append(f"PREFERENCE COST {label}: {c.get('cost_xp90')} xP/90")
+            lines.append(f"PREFERENCE COST {label}: {c.get('cost_xp90')} {u}")
     return lines
 
 
@@ -455,7 +459,8 @@ def settings_line(meta, quarantine_requested=None):
     qtxt = (f"ON ({meta.get('quarantine_entries', 0)} ticked item(s))" if q
             else ("REQUESTED BUT NOT ACTIVE" if quarantine_requested else "OFF"))
     intel = meta.get("intel", meta.get("base_intel"))
-    return (f"estimator {meta.get('estimator')} · start rate {meta.get('stp_estimator', '?')} · "
+    return (f"objective {'START-WEIGHTED xP/GW' if meta.get('objective') == 'per_gw' else 'xP/90'} · "
+            f"estimator {meta.get('estimator')} · start rate {meta.get('stp_estimator', '?')} · "
             f"intel {'ON' if intel else 'OFF'} · "
             f"quarantine {qtxt} · fixtures {'ON' if meta.get('fixtures') else 'OFF'} · "
             f"no Haaland {'ON' if prefs.get('no_haaland') else 'OFF'} · max attackers/club "
@@ -814,6 +819,9 @@ def register(mcp, live_gw, fixture_table):
         "HOLD - ties are HOLD, never resolved), 5-GW net, breakeven, bank after, both "
         "preference costs, live-data stderr lines verbatim, the script text and JSON. A "
         "move naming an unavailable or contaminated player is returned as an ERROR. "
+        "start_weighted=True (roadmap A0.5, off by default) scores stp x xP per GAMEWEEK with "
+        "a 50% XI floor instead of xP/90 behind a 75% gate - figures are not comparable "
+        "across the two. "
         "Start rate is shrunk by default (2025/26 last-16 blended with 2026/27 starts per "
         "team match, roadmap A0.2, since GW5); stp_estimator='prior' to compare. It moves "
         "the 75% XI / 60% bench gates, not xP."))
@@ -827,7 +835,8 @@ def register(mcp, live_gw, fixture_table):
                                  role_rivals: list[str] | None = None,
                                  allow_contaminated: bool = False,
                                  budget: float | None = None,
-                                 stp_estimator: str = "shrunk") -> str:
+                                 stp_estimator: str = "shrunk",
+                                 start_weighted: bool = False) -> str:
         def go():
             sync, stamp, live, refused = _pre("optimise_transfers", need_window=fixtures)
             if refused:
@@ -836,7 +845,7 @@ def register(mcp, live_gw, fixture_table):
                 args = optimiser_args(transfers, hits, estimator, intel, quarantine, fixtures,
                                       haaland, max_attackers_per_club, free_transfers, gate,
                                       force_in, force_out, role_rivals, allow_contaminated,
-                                      budget, stp_estimator)
+                                      budget, stp_estimator, start_weighted)
             except ValueError as e:
                 return refusal("optimise_transfers", sync, stamp, live, [str(e)])
             run = run_script(args, want_json=True)
@@ -864,7 +873,8 @@ def register(mcp, live_gw, fixture_table):
                                 force_in: list[str] | None = None,
                                 force_out: list[str] | None = None,
                                 haaland: bool = True, budget: float | None = None,
-                                stp_estimator: str = "shrunk") -> str:
+                                stp_estimator: str = "shrunk",
+                                start_weighted: bool = False) -> str:
         def go():
             sync, stamp, live, refused = _pre("optimise_scenario", need_window=fixtures)
             if refused:
@@ -889,6 +899,8 @@ def register(mcp, live_gw, fixture_table):
                              + "\n".join(lines) + "\n")
                 args = ["scenario_squad.py", path, "--estimator", estimator,
                         "--stp-estimator", stp_estimator]
+                if start_weighted:
+                    args.append("--start-weighted")
                 if fixtures:
                     args.append("--fixtures")
                 if not base_intel:

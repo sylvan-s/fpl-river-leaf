@@ -214,6 +214,12 @@ def main():
     exclude_contam = "--allow-contaminated" not in sys.argv
     # Haaland allowed by default since 16 Sep 2026 - see optimise_squad.py.
     allow_haaland = "--no-haaland" not in sys.argv
+    # A0.5 - same switch as optimise_squad.py: stp x xP per gameweek, XI gate a floor.
+    start_weighted = "--start-weighted" in sys.argv
+    if start_weighted:
+        opt.UNIT = "xP/GW"
+        if "--gate" not in sys.argv:
+            bs.GATE_XI = opt.START_WEIGHTED_XI_FLOOR
     if "--budget" in sys.argv and "--transfers" in sys.argv:
         sys.exit("--budget applies to wildcard/rebuild mode only")
     estimator = (sys.argv[sys.argv.index("--estimator") + 1]
@@ -328,6 +334,12 @@ def main():
         print(f"objective: xP_adj (opponent-adjusted, {fa.window_label()} window, "
               f"{fa.weights_label()})\n")
 
+    if start_weighted:
+        # After scenario rows AND fixtures: a scenario `set stp` must reach the weight.
+        opt.start_weight(pool)
+        print(f"START-WEIGHTED (A0.5): score = start rate x xP, in xP per GAMEWEEK; XI gate "
+              f"is a {bs.GATE_XI:.0%} floor.\n")
+
     if "--transfers" in sys.argv:
         n = int(sys.argv[sys.argv.index("--transfers") + 1])
         free_transfers = (int(sys.argv[sys.argv.index("--free-transfers") + 1])
@@ -356,6 +368,7 @@ def main():
         opt.RESULT.update(
             hypothetical=True,
             meta={"estimator": estimator, "stp_estimator": stp_estimator,
+                  "objective": "per_gw" if start_weighted else "per90", "unit": opt.UNIT,
                   "base_intel": use_base_intel,
                   "allow_contaminated": not exclude_contam,
                   "fixtures": "--fixtures" in sys.argv, "live_gw": bs._live_gw_cache,
