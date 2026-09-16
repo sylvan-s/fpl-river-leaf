@@ -304,6 +304,18 @@ ESTIMATOR_DEFAULT = "prior"  # roadmap A0.2 Phase 2 (revised 31 Aug 2026; extend
                           # via --compare-estimators and look sane - see
                           # METHODOLOGY_ALTERNATIVES.md A0.2 "Phase 2".
 
+# START RATE (roadmap A0.2 activation, 16 Sep 2026). Separate from ESTIMATOR
+# above on purpose: that flag governs the per-90 rates, where the prior still
+# wins or ties; this governs stp, where the frozen last-16 prior is the worst
+# estimator by ~20% (see scoring.estimate_k_start). One of:
+#   prior  - last-16 starts of 2025/26 (or season/38 fallback). The old stp.
+#   shrunk - blended with 2026/27 starts per team match played, per-position k.
+# stp does not enter xP/90 (that is A0.5); it decides the 75% XI / 60% bench
+# gates, so this changes WHO IS ELIGIBLE, not anyone's score. ROLE_INTEL's
+# `set stp` still applies on top. Pass --stp-estimator {prior,shrunk}.
+STP_ESTIMATOR_CHOICES = ("prior", "shrunk")
+STP_ESTIMATOR_DEFAULT = "prior"
+
 # Scoring table, the DC-threshold estimator, and bonus shrinkage all moved to
 # scoring.py (architecture review candidate #1) — see that module's
 # docstring for the drift bug this fixed. Re-exported here so any caller
@@ -355,6 +367,11 @@ _live_clubs_cache = None
 # right up until deadline day and would misdate the fixture window by one GW
 # for most of the week. None when the fetch hasn't run yet or failed.
 _live_gw_cache = None
+# {team_id: SHORT_CODE}, same fetch; used to key team match counts.
+_team_code_cache = None
+# {SHORT_CODE: finished fixtures} for --stp-estimator shrunk. None = not
+# fetched yet this process, {} = fetch failed.
+_team_games_cache = None
 
 
 def current_live_gw():
@@ -384,6 +401,7 @@ def _fetch_current_season():
             or next((ev["id"] for ev in _events if ev.get("is_current")), None)
             or next((ev["id"] for ev in _events if not ev.get("finished")), None))
         _code = {t["id"]: t["short_name"] for t in data.get("teams", [])}
+        globals()["_team_code_cache"] = _code
         _live_clubs_cache = {str(e["id"]): _code[e["team"]]
                              for e in data.get("elements", [])
                              if e.get("team") in _code}
@@ -402,6 +420,38 @@ def _fetch_current_season():
         _live_clubs_cache = {}
         _live_gw_cache = None
     return _current_cache
+
+
+def _fetch_team_games():
+    """{SHORT_CODE: finished fixtures} - the start-rate denominator. Counted
+    from /fixtures/ rather than bootstrap's teams[].played, which reads 0 all
+    season (checked 16 Sep 2026). {} on any failure; load() then keeps the
+    prior stp for everyone and says so."""
+    global _team_games_cache
+    if _team_games_cache is not None:
+        return _team_games_cache
+    _fetch_current_season()
+    import urllib.request
+    try:
+        req = urllib.request.Request(
+            "https://fantasy.premierleague.com/api/fixtures/",
+            headers={"User-Agent": "fpl-build-squad/1.0"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            fixtures = json.loads(resp.read().decode("utf-8"))
+        codes = _team_code_cache or {}
+        games = {}
+        for fx in fixtures:
+            if fx.get("finished") and fx.get("event"):
+                for side in ("team_h", "team_a"):
+                    code = codes.get(fx.get(side))
+                    if code:
+                        games[code] = games.get(code, 0) + 1
+        _team_games_cache = games
+    except Exception as exc:
+        print(f"  STP: fixtures fetch failed ({exc}) - no team match counts, so "
+              f"every start rate stays on its 2025/26 prior this run.", file=sys.stderr)
+        _team_games_cache = {}
+    return _team_games_cache
 
 
 def _current_rates(el):
@@ -431,8 +481,60 @@ def _current_rates(el):
     )
 
 
+def _shrink_start_rates(rows, games, season_starts):
+    """--stp-estimator shrunk: blend each row's prior stp with its 2026/27
+    starts per team match (scoring.estimate_k_start / shrink_start), k per
+    position. Runs before intel, so a ROLE_INTEL `set stp` still wins. Keeps
+    stp_prior / stp_raw / stp_n / stp_k on every row, and prints who crossed
+    the XI gate, never silently."""
+    for r in rows:
+        r["stp_prior"], r["stp_raw"], r["stp_n"], r["stp_k"] = r["stp"], None, 0, None
+    if not games:
+        for r in rows:
+            r.pop("_starts", None)
+        print("  STP: shrunk requested but no team match counts (live fetch failed) - "
+              "start rates are the 2025/26 prior this run.", file=sys.stderr)
+        return
+    ks = {}
+    for pos in ("GKP", "DEF", "MID", "FWD"):
+        samples = [(min(1.0, r["_starts"] / games[r["team"]]), games[r["team"]], r["stp"])
+                   for r in rows if r["pos"] == pos and r.get("_starts") is not None
+                   and games.get(r["team"])]
+        ks[pos] = scoring.estimate_k_start(samples)
+    for r in rows:
+        k = ks[r["pos"]][0]
+        shrunk, raw = scoring.shrink_start(r.pop("_starts", None), games.get(r["team"]),
+                                           r["stp"], k)
+        if raw is not None:
+            r.update(stp=shrunk, stp_raw=raw, stp_n=games[r["team"]], stp_k=k,
+                     stp_src=r["stp_src"] + "+live")
+    n_games = sorted(set(games.values()))
+    print(f"  STP SHRUNK — start rates blended with 2026/27 starts over "
+          f"{n_games[0] if len(n_games) == 1 else n_games} team match(es); k "
+          + ", ".join(f"{p} {k:.1f}{f' ({note})' if note else ''}" for p, (k, note) in ks.items())
+          + (" · prior is SEASON starts (--season-starts)" if season_starts else ""),
+          file=sys.stderr)
+    for gate, label in ((GATE_XI, "XI"), (GATE_BENCH, "bench")):
+        up = sorted((r for r in rows if r["stp_prior"] < gate <= r["stp"]),
+                    key=lambda r: r["stp_prior"] - r["stp"])
+        down = sorted((r for r in rows if r["stp"] < gate <= r["stp_prior"]),
+                      key=lambda r: r["stp"] - r["stp_prior"])
+        def fmt(rs):
+            return ", ".join(f"{r['name']} ({r['team']}) {r['stp_prior']:.0%}->{r['stp']:.0%}"
+                             for r in rs[:15]) + (f" +{len(rs) - 15} more" if len(rs) > 15 else "")
+        if up:
+            print(f"  STP {label} GATE {gate:.0%} — now clear it ({len(up)}): {fmt(up)}",
+                  file=sys.stderr)
+        if down:
+            print(f"  STP {label} GATE {gate:.0%} — now below it ({len(down)}): {fmt(down)}",
+                  file=sys.stderr)
+
+
 def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
-         empirical=None, estimator=None):
+         empirical=None, estimator=None, stp_estimator=None):
+    use_stp = STP_ESTIMATOR_DEFAULT if stp_estimator is None else stp_estimator
+    if use_stp not in STP_ESTIMATOR_CHOICES:
+        raise ValueError(f"stp_estimator must be one of {STP_ESTIMATOR_CHOICES}, got {use_stp!r}")
     use_intel = USE_INTEL if intel is None else intel
     use_bonus = USE_BONUS if bonus is None else bonus
     use_contam_filter = USE_CONTAM_FILTER if exclude_contaminated is None else exclude_contaminated
@@ -565,6 +667,8 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
                  bonus_k=_bonus_k)
         if needs_live:
             r["_cur"] = _current_rates(current.get(pid, {}))
+        if use_stp == "shrunk":
+            r["_starts"] = current.get(pid, {}).get("starts")
         if r["status"] not in (None, "a"):
             live_news[id(r)] = (current[pid].get("news") or "").strip()
         rows.append(r)
@@ -610,6 +714,9 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
                   f"their 2025/26 prior rate for those metrics instead (raw "
                   f"mode does not blend; see scoring.MIN_N90_RAW).",
                   file=sys.stderr)
+
+    if use_stp == "shrunk":
+        _shrink_start_rates(rows, _fetch_team_games() if current else {}, season_starts)
 
     # PASS B - intel, availability, score. Same order as the old single-pass
     # loop (intel BEFORE p_cs/score), so a ROLE_INTEL `mult`/`set` entry

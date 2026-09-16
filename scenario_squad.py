@@ -220,6 +220,10 @@ def main():
                  if "--estimator" in sys.argv else "prior")
     if estimator not in bs.ESTIMATOR_CHOICES:
         sys.exit(f"--estimator must be one of {bs.ESTIMATOR_CHOICES}, got {estimator!r}")
+    stp_estimator = (sys.argv[sys.argv.index("--stp-estimator") + 1]
+                     if "--stp-estimator" in sys.argv else bs.STP_ESTIMATOR_DEFAULT)
+    if stp_estimator not in bs.STP_ESTIMATOR_CHOICES:
+        sys.exit(f"--stp-estimator must be one of {bs.STP_ESTIMATOR_CHOICES}, got {stp_estimator!r}")
 
     # Role rivals - see optimise_squad.py's ROLE_RIVALS_DEFAULT comment.
     # Same "--role-rivals Name:TEAM,Name2:TEAM2" syntax, repeatable per group.
@@ -256,11 +260,14 @@ def main():
           f"(this scenario stacks on top of {'current reality' if use_base_intel else 'a clean slate'})\n")
 
     pool = bs.load(intel=use_base_intel, estimator=estimator,
-                   exclude_contaminated=exclude_contam)
+                   exclude_contaminated=exclude_contam, stp_estimator=stp_estimator)
     if not exclude_contam:
         print("CONTAMINATED PRIORS ADMITTED (--allow-contaminated) — the fenced\n"
               "movers are back in the pool, scored on rates that describe the club\n"
               "they LEFT. Inapplicable, not merely uncertain.\n")
+    print(f"start rate: {stp_estimator}"
+          + ("  (2025/26 last-16 blended with 2026/27 starts - roadmap A0.2)"
+             if stp_estimator == "shrunk" else "") )
     print(f"estimator: {estimator}"
           + ("  (needs live network; degrades to prior-only if unreachable — "
              "check for a fetch-failed warning above)" if estimator != "prior" else "")
@@ -348,7 +355,8 @@ def main():
         import json
         opt.RESULT.update(
             hypothetical=True,
-            meta={"estimator": estimator, "base_intel": use_base_intel,
+            meta={"estimator": estimator, "stp_estimator": stp_estimator,
+                  "base_intel": use_base_intel,
                   "allow_contaminated": not exclude_contam,
                   "fixtures": "--fixtures" in sys.argv, "live_gw": bs._live_gw_cache,
                   "window": fa.window_label() if "--fixtures" in sys.argv else None,

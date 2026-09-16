@@ -223,8 +223,9 @@ RESULT = {}
 
 def _pj(r, sell=None):
     """One pool row as plain JSON - the fields a caller needs to vet a name."""
-    out = {k: r.get(k) for k in ("name", "team", "pos", "price", "stp", "score",
-                                 "status", "chance", "ok", "contaminated")}
+    out = {k: r.get(k) for k in ("name", "team", "pos", "price", "stp", "stp_prior",
+                                 "stp_raw", "stp_n", "score", "status", "chance", "ok",
+                                 "contaminated")}
     out["quarantine"] = sorted({e["field"] for e in r.get("intel_applied", [])
                                 if e.get("source") == "quarantine"})
     if sell is not None:
@@ -828,6 +829,34 @@ def compare_shrink(allow_haaland, season_starts, use_fixtures, n_transfers,
                         max_att_per_club, estimators=("prior", "shrunk"))
 
 
+def compare_stp(allow_haaland, season_starts, use_fixtures, n_transfers,
+                max_att_per_club=MAX_ATT_PER_CLUB_DEFAULT, estimator="prior",
+                intel=True):
+    """--compare-stp: start rate on the 2025/26 prior vs shrunk with live
+    2026/27 starts (roadmap A0.2), same everything else. stp only moves the
+    XI/bench gates, so any difference here is who became eligible or not."""
+    print("=== START-RATE COMPARISON — prior vs shrunk (A0.2) ===\n")
+    pools = {m: bs.load(season_starts=season_starts, estimator=estimator, intel=intel,
+                        stp_estimator=m) for m in ("prior", "shrunk")}
+    if use_fixtures:
+        for p in pools.values():
+            _fixture_scale(p)
+    if n_transfers is not None:
+        for m in ("prior", "shrunk"):
+            print(f"--- stp {m} ---")
+            transfer_mode(pools[m], n_transfers, allow_haaland, max_att_per_club)
+            print()
+        return
+    picks = {}
+    for m in ("prior", "shrunk"):
+        xi, bench, _ = optimise(pools[m], allow_haaland, max_att_per_club)
+        picks[m] = {r["name"] for r in xi + bench}
+        print(f"XI xP/90 [stp {m:>6}]: {sum(r['score'] for r in xi):.2f}")
+    out, inn = sorted(picks["prior"] - picks["shrunk"]), sorted(picks["shrunk"] - picks["prior"])
+    print(f"\nprior -> shrunk: OUT {out}  IN {inn}" if out or inn
+          else "\nprior -> shrunk: same 15 players.")
+
+
 def _load_tq():
     _sp = importlib.util.spec_from_file_location("tq", os.path.join(HERE, "trello_quarantine.py"))
     mod = importlib.util.module_from_spec(_sp)
@@ -967,6 +996,15 @@ def _main():
                        "--fixtures" in sys.argv, n_transfers, max_att_per_club)
         return
 
+    if "--compare-stp" in sys.argv:
+        n_transfers = (int(sys.argv[sys.argv.index("--transfers") + 1])
+                       if "--transfers" in sys.argv else None)
+        est = sys.argv[sys.argv.index("--estimator") + 1] if "--estimator" in sys.argv else "prior"
+        compare_stp(allow_haaland, "--season-starts" in sys.argv, "--fixtures" in sys.argv,
+                    n_transfers, max_att_per_club, estimator=est,
+                    intel="--no-intel" not in sys.argv)
+        return
+
     if "--compare-estimators" in sys.argv:
         n_transfers = (int(sys.argv[sys.argv.index("--transfers") + 1])
                        if "--transfers" in sys.argv else None)
@@ -992,8 +1030,15 @@ def _main():
         estimator = "prior"                       # default - see A0.2 "Phase 2"
     if estimator not in bs.ESTIMATOR_CHOICES:
         sys.exit(f"--estimator must be one of {bs.ESTIMATOR_CHOICES}, got {estimator!r}")
+    # Start rate (roadmap A0.2) - its own switch, separate from --estimator,
+    # which governs the per-90 rates only. See build_squad.STP_ESTIMATOR_DEFAULT.
+    stp_estimator = (sys.argv[sys.argv.index("--stp-estimator") + 1]
+                     if "--stp-estimator" in sys.argv else bs.STP_ESTIMATOR_DEFAULT)
+    if stp_estimator not in bs.STP_ESTIMATOR_CHOICES:
+        sys.exit(f"--stp-estimator must be one of {bs.STP_ESTIMATOR_CHOICES}, got {stp_estimator!r}")
     pool = bs.load(season_starts="--season-starts" in sys.argv, intel=use_intel,
-                   estimator=estimator, exclude_contaminated=exclude_contam)
+                   estimator=estimator, exclude_contaminated=exclude_contam,
+                   stp_estimator=stp_estimator)
     if not exclude_contam:
         # Loud, and above the intel line, because this is not a tuning knob -
         # it readmits players whose rates describe a club they have left. The
@@ -1024,8 +1069,14 @@ def _main():
                   "A0.2 'Phase 2'.",
     }[estimator]
     print(f"ESTIMATOR: {est_note}\n")
+    print("START RATE: " + ({
+        "prior": "PRIOR — last 16 GWs of 2025/26. Pass --stp-estimator shrunk to blend "
+                 "in 2026/27 starts per team match (roadmap A0.2).",
+        "shrunk": "SHRUNK — 2025/26 last-16 prior blended with 2026/27 starts per team "
+                  "match, k per position (--stp-estimator shrunk, roadmap A0.2). Moves "
+                  "the XI/bench gates only, not xP."}[stp_estimator]) + "\n")
     RESULT["meta"] = {
-        "estimator": estimator, "intel": use_intel,
+        "estimator": estimator, "stp_estimator": stp_estimator, "intel": use_intel,
         "quarantine": bool(use_intel and bs.ia.overlay_active()),
         "quarantine_entries": len(bs.ia.overlay_entries()) if use_intel else 0,
         "allow_contaminated": not exclude_contam, "fixtures": "--fixtures" in sys.argv,

@@ -316,6 +316,58 @@ def shrink_rate(raw, n90, baseline, k):
     return (n90 * raw + k * baseline) / (n90 + k)
 
 
+# ---- start rate (roadmap A0.2 activation, 16 Sep 2026) ----------------------
+# Start rate is a share of TEAM MATCHES started - not of appearances, which is
+# what build_prediction_tracker.py scores. An unused-sub match is a non-start,
+# and dropping it (the apps denominator) reads a rotation player who started
+# the two games he appeared in, out of four, as 100% - wrong in exactly the
+# case the 75% XI gate exists for.
+#
+# k is method-of-moments around EACH PLAYER'S OWN prior, not around the
+# position mean (build_prediction_tracker._estimate_k_binomial): shrinkage
+# pulls toward the player's own last-16 rate, so the variance that decides
+# how much to trust it is that prior's own error, not the spread between
+# players (most of which the prior already explains).
+#
+#   E[(raw - prior)^2] = prior error variance + binomial noise p(1-p)/n
+#   k = mean p(1-p) / prior error variance
+#
+# Walk-forward on 2026/27 GW2-4 (n=249, last-16 prior as build_squad uses it):
+# RMSE prior 0.492, raw 0.391, shrunk 0.397 - the frozen prior was the WORST of
+# the three by ~20%. k lands at 1-3 for outfield positions: three matches
+# genuinely say more than last season's final sixteen. GKP falls back (under
+# MIN_START_POOL keepers). Same fallback/clamp shape as the tracker's formula.
+MIN_START_POOL = 20
+START_K_FALLBACK = 8.0
+START_K_MAX = 30.0
+
+
+def estimate_k_start(samples):
+    """samples: [(raw_rate, team_games, prior_rate)]. Returns (k, note):
+    note is None when k was derived from the data, else "fallback" (pool too
+    thin, or under two matches each) or "clamped" (derived, then held to
+    [1, START_K_MAX] - at the floor it means live data outweighs the prior)."""
+    pts = [(r, n, p) for r, n, p in samples if n >= 2]
+    if len(pts) < MIN_START_POOL:
+        return START_K_FALLBACK, "fallback"
+    total = sum((r - p) ** 2 for r, _, p in pts) / len(pts)
+    noise = sum(p * (1 - p) / n for _, n, p in pts) / len(pts)
+    prior_err = total - noise
+    if prior_err <= 1e-6:
+        return START_K_MAX, "clamped"
+    k = (sum(p * (1 - p) for _, _, p in pts) / len(pts)) / prior_err
+    return max(1.0, min(START_K_MAX, k)), (None if 1.0 < k < START_K_MAX else "clamped")
+
+
+def shrink_start(starts, games, prior, k):
+    """(games*raw + k*prior) / (games + k), raw = starts/games capped at 1.
+    Returns (shrunk, raw); prior unchanged with raw None when games <= 0."""
+    if not games or games <= 0 or starts is None:
+        return prior, None
+    raw = min(1.0, starts / games)
+    return (games * raw + k * prior) / (games + k), raw
+
+
 def expected_points(r, empirical=True):
     """Expected FPL points per 90. THE implementation — every caller imports
     this rather than re-deriving it. Every coefficient is a rule, not a

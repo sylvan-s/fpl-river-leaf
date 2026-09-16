@@ -130,6 +130,15 @@ check("force_in without Name:TEAM refused",
 check("force_in in rebuild mode refused",
       raises(vr.optimiser_args, transfers=None, force_in=["X:ARS"]) is not None)
 check("bad estimator refused", raises(vr.optimiser_args, estimator="vibes") is not None)
+check("stp_estimator prior adds no flag (the script's own default)",
+      "--stp-estimator" not in vr.optimiser_args())
+a = vr.optimiser_args(stp_estimator="shrunk")
+check("stp_estimator shrunk maps to --stp-estimator shrunk",
+      a[a.index("--stp-estimator") + 1] == "shrunk", a)
+check("bad stp_estimator refused", raises(vr.optimiser_args, stp_estimator="vibes") is not None)
+a = vr._cell_args({"estimator": "shrunk", "overlay": "fence", "transfers": 1, "stp": "shrunk"},
+                  None, None)
+check("matrix cells carry the start-rate estimator", "--stp-estimator" in a, a)
 
 print("\n== window stamp ==")
 W = [0.4, 0.3, 0.2, 0.1]

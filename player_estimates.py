@@ -11,7 +11,8 @@ ad-hoc dump script in scenarios/_live/. This is that script made permanent:
 same build_squad.load() and fixture_adjust.adjust() calls, nothing re-derived.
 
 WHAT IT REPORTS, per player: live price, status, chance of playing, the ok
-flag gate 3 gives him, the contaminated flag, and for each of prior / raw /
+flag gate 3 gives him, the contaminated flag, start rate as 2025/26 prior >
+2026/27 live (starts per team match) > shrunk (A0.2), and for each of prior / raw /
 shrunk x intel on / off: stp, xg90, xa90, cbit90, cbirt90, xP_flat and (with
 the fixture window) xP_adj.
 
@@ -79,6 +80,10 @@ def select(rows, names, owned_keys, candidates, rank_key, gate_xi=0.0):
     return ordered, unmatched
 
 
+def _pct(v):
+    return " n/a" if v is None else f"{v * 100:3.0f}%"
+
+
 def main():
     bs = _load_module("bs", "build_squad.py")
     fa = _load_module("fa", "fixture_adjust.py")
@@ -110,7 +115,10 @@ def main():
     for est in ESTIMATORS:
         for intel in (True, False):
             with contextlib.redirect_stderr(err):
-                pool = bs.load(intel=intel, estimator=est, exclude_contaminated=False)
+                # Start rate shrunk (A0.2) so stp_prior/stp_raw sit on every row;
+                # stp does not enter xP, so the xP columns are unaffected.
+                pool = bs.load(intel=intel, estimator=est, exclude_contaminated=False,
+                               stp_estimator="shrunk")
             for r in pool:
                 r["xp_flat"] = r["score"]
             if use_fixtures:
@@ -159,13 +167,17 @@ def main():
                         "price": ref["price"], "status": ref["status"],
                         "chance": ref.get("chance"), "ok": ref["ok"],
                         "contaminated": bool(ref.get("contaminated")),
+                        "stp_prior": ref.get("stp_prior"), "stp_raw": ref.get("stp_raw"),
+                        "stp_shrunk": (pools[("shrunk", False)].get(key) or ref).get("stp"),
+                        "stp_team_games": ref.get("stp_n"),
                         "owned": key in owned_set, "estimates": est})
 
     for h in header:
         print(h)
     col = "xp_adj" if use_fixtures else "xp_flat"
     print(f"{'player':<15}{'tm':<5}{'pos':<4}{'£':>5} {'st':<3}{'ch':>4} {'ok':<3}{'cont':<5}"
-          f"| {col} intel ON: prior  raw shrunk | OFF: prior  raw shrunk | shrunk-ON stp xg90 xa90 cbit90")
+          f"| {col} intel ON: prior  raw shrunk | OFF: prior  raw shrunk "
+          f"| stp prior>live>shrunk (used) | xg90 xa90 cbit90")
     for p in players:
         def g(e, side):
             c = p["estimates"].get(e, {}).get(side)
@@ -176,7 +188,8 @@ def main():
               f"{'Y' if p['ok'] else 'N':<3}{'YES' if p['contaminated'] else '':<5}"
               f"| {g('prior', 'intel_on')}{g('raw', 'intel_on')}{g('shrunk', 'intel_on')} "
               f"| {g('prior', 'intel_off')}{g('raw', 'intel_off')}{g('shrunk', 'intel_off')} "
-              f"| {s.get('stp', 0)*100:5.0f}% {s.get('xg90', 0):.2f} {s.get('xa90', 0):.2f} "
+              f"| {_pct(p['stp_prior'])}>{_pct(p['stp_raw'])}>{_pct(p['stp_shrunk'])} "
+              f"({_pct(s.get('stp'))}) | {s.get('xg90', 0):.2f} {s.get('xa90', 0):.2f} "
               f"{s.get('cbit90', 0):5.2f}" + (f"  (quarantine: {', '.join(s['quarantine'])})"
                                               if s.get("quarantine") else ""))
     for u in unmatched:
