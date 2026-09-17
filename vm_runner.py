@@ -583,9 +583,10 @@ def render(tool, sync, stamp, live_gw, run, extra_top=(), quarantine_requested=N
         parts += ["", "LIVE-DATA LINES (from stderr):"] + [f"  {a}" for a in al]
     if not verbose:
         parts += ["", f"(verbose=False: verbatim stderr ({len(stderr)} chars), the script's own "
-                      f"output ({len(run['stdout'])} chars) and the JSON omitted. Every error, "
-                      f"warning and live-data line above is still complete. Call again with "
-                      f"verbose=True for the full record.)"]
+                      f"output ({len(run['stdout'])} chars) and the JSON omitted; every "
+                      f"live-data line is present but long ones are cut at "
+                      f"{ALARM_TERSE_CHARS} chars. Errors and warnings are never cut. Call "
+                      f"again with verbose=True for the full record.)"]
         return "\n".join(parts)
     parts += ["", "--- stderr (verbatim) ---", stderr.rstrip() or "(empty)",
               "", "--- script output ---", run["stdout"].rstrip() or "(empty)"]
