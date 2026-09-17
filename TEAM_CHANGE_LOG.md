@@ -15,7 +15,32 @@ one-line record. What remains is what actually governs a decision today.
 
 ---
 
-## CURRENT STATE — as at Mon 7 Sep 2026 (GW4 pre-deadline)
+## CURRENT STATE — as at Thu 17 Sep 2026 (GW5 pre-deadline)
+
+**Deadline:** Fri 18 Sep 2026, 18:30 BST (17:30 UTC) · **Formation:** 3-4-3 (unchanged)
+
+**Last change: 1 transfer, 17 Sep 2026 — `Van de Ven -> Calafiori`.** Free
+transfer, **0 pts cost**. Bank £1.3m -> **£0.5m**. Sylvan's call.
+**Captain Mbeumo** (was João Pedro, DOUBTFUL 75%) · **Vice** Gabriel (unchanged).
+
+**Squad value** (ledger) £99.5m · **Bank** £0.5m · realisable sell value is
+lower than the ledger (squad_state: −£0.5m before this move) — not spendable.
+
+**Why.** VM runner, HEAD 0a7a709, window GW5-8, estimator shrunk, quarantine ON
+(7 ticked items), start-weighted objective: the free-transfer answer is
+`Van de Ven -> Calafiori`, **+0.95 xP/GW, 5-GW net +4.7**. First answer under
+the new units (xP/GW) — not comparable with Tuesday's xP/90 `Virgil -> Mukiele`.
+The difference is A0.2 + A0.5 (see CHANGE HISTORY, 16 Sep).
+
+**Risks accepted.** Calafiori's 83% start rate is blended from 4 of 4 starts
+this season (38% last season); those starts may be Saliba cover. Third Arsenal
+player (Raya, Gabriel, Calafiori). Captain: captaincy_odds had Mbeumo E 5.49,
+P(blank) 38.5% v B.Fernandes E 5.48, P(haul) 13.5% — effectively tied; Sylvan
+chose Mbeumo. **Alternative rejected:** the two-transfer −4 line
+`Schade + Van de Ven -> Calafiori + Tavernier` (+1.88 xP/GW, 5-GW net +5.4,
+breakeven 2.12) — marginal over the free move.
+
+## CURRENT STATE — as at Mon 7 Sep 2026 (GW4 pre-deadline, superseded above)
 
 **Deadline:** Sat 12 Sep 2026, 13:30 BST (12:30 UTC) · **Formation:** 3-4-3 (unchanged)
 
@@ -678,6 +703,15 @@ share rises; the differential case depends entirely on him playing.
 ---
 
 ## CHANGE HISTORY (newest first)
+
+### Thu 17 Sep 2026 — GW5 transfer: Van de Ven -> Calafiori, captain Mbeumo
+
+1 free transfer, 0 pts, bank £1.3m -> £0.5m. Van de Ven sold at £5.0m, Calafiori
+bought at £5.8m. Captain João Pedro -> Mbeumo; vice Gabriel unchanged. Reasoning
+and risks in CURRENT STATE above. **ACTIONED LIVE, confirmed 17 Sep 2026, via Claude-in-Chrome browser automation.**
+Site showed 15/15, bank £0.5m, 0 pts cost; "Your team has been saved."; after a
+fresh reload the badges read C Mbeumo, V Gabriel. GW5 predictions logged
+(9 players) on the VM after the armband was set.
 
 ### Wed 16 Sep 2026 — methodology change, not a transfer — the optimiser now maximises points per GAMEWEEK (A0.5 live for GW5)
 
