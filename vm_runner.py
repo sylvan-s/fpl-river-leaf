@@ -59,6 +59,15 @@ JOBS_DIR = os.path.join(STATE_DIR, "jobs")
 # into the clone. Dirty here is expected; dirty anywhere else is refused.
 RUNNER_OWNED = ("fixture_window.json", "docs/data/", "logs/", "__pycache__/")
 
+# Append-only logs (CLAUDE.md / preflight.sh). NEVER runner-owned: resetting one
+# to origin would delete rows nothing can reconstruct. The VM's own
+# log_predictions appends to fpl_calibration_log.jsonl, and until a write tool
+# exists (C1-C3) those rows reach the repo only by being copied to the Mac - so
+# when the local copy is a superset of origin's, say exactly that instead of
+# reporting it as anonymous dirt (9 GW5 captaincy rows, 17 Sep 2026).
+APPEND_ONLY = ("fpl_calibration_log.jsonl", "docs/data/intel_sweep_log.jsonl",
+               "price_history.jsonl")
+
 # repo_file() allow-list: exact paths, plus single-level globs. fnmatch's `*`
 # also matches `/`, so glob hits are re-checked for depth below.
 ALLOWED_FILES = ("ROLE_INTEL.md", "TEAM_CHANGE_LOG.md", "SELECTION_FRAMEWORK.md",
@@ -110,12 +119,37 @@ def _dirty(repo=None):
     return [(ln[:2], ln[3:].strip().strip('"')) for ln in r.stdout.splitlines() if ln.strip()]
 
 
+def _lines_ahead(path, repo):
+    """(local_only, origin_only) line counts for an append-only file, or None
+    if either side cannot be read."""
+    try:
+        with open(os.path.join(repo, path), encoding="utf-8") as fh:
+            local = [l for l in fh.read().splitlines() if l.strip()]
+    except OSError:
+        return None
+    r = _git("show", f"origin/{BRANCH}:{path}", repo=repo)
+    if r.returncode != 0:
+        return None
+    theirs = [l for l in r.stdout.splitlines() if l.strip()]
+    ls, ts = set(local), set(theirs)
+    return len(ls - ts), len(ts - ls)
+
+
 def repo_sync(fetch=True, repo=None):
     """Fetch, then fast-forward only. Returns a dict; `ok` False means refuse.
 
     Never merges, never rebases, never pushes. A runner-owned file dirty here
     AND changed on origin is backed up and reset to origin before the pull,
     because the VM is a runner, not the record. Anything else dirty stops the pull.
+
+    DIRT IS JUDGED AGAINST origin/main, NOT HEAD (fixed 17 Sep 2026). git status
+    compares with HEAD, so a file already holding origin's newer content reads as
+    modified and blocked every pull - which is exactly what CLAUDE.md warns about
+    ("the only meaningful question is how the tree differs from origin/main").
+    It happened for real: fpl_calibration_log.jsonl, brought level with origin,
+    then wedged the clone four commits behind. Such a file is reset to HEAD
+    before the fast-forward, which restores it to that same content - no data
+    moves, and nothing is discarded that origin does not already have.
     """
     repo = repo or HERE
     with _repo_lock:
@@ -134,8 +168,32 @@ def repo_sync(fetch=True, repo=None):
             origin, ahead, behind = None, 0, 0
             res["warnings"].append(str(e))
         dirty = _dirty(repo)
-        foreign = [p for _xy, p in dirty if not is_runner_owned(p)]
-        owned = [p for _xy, p in dirty if is_runner_owned(p)]
+        # Tracked paths that differ from origin/main - the real question.
+        try:
+            differs = set(_out("diff", "--name-only", f"origin/{BRANCH}", "--",
+                               repo=repo).splitlines()) if origin else {p for _x, p in dirty}
+        except RuntimeError:
+            differs = {p for _x, p in dirty}
+        untracked = {p for xy, p in dirty if xy.strip() == "??"}
+        foreign, owned, already_origin = [], [], []
+        for xy, p in dirty:
+            if is_runner_owned(p):
+                owned.append(p)
+            elif p in differs or p in untracked:
+                foreign.append(p)
+            else:
+                already_origin.append(p)     # dirty vs HEAD, identical to origin
+        # An append-only log with rows origin has not got is not dirt to clear:
+        # it is data with no way home until a write tool exists. Name it.
+        for p in list(foreign):
+            if p in APPEND_ONLY:
+                counts = _lines_ahead(p, repo)
+                if counts and counts[0]:
+                    res["problems"].append(
+                        f"{p} has {counts[0]} line(s) this clone holds and origin does not "
+                        f"(the VM's own appends, e.g. log_predictions). Copy them into the "
+                        f"repo from the Mac and push - never reset this file.")
+                    foreign.remove(p)
 
         if ahead:
             res["problems"].append(f"clone is {ahead} commit(s) AHEAD of origin/{BRANCH} - "
@@ -143,7 +201,13 @@ def repo_sync(fetch=True, repo=None):
         if foreign:
             res["problems"].append(f"clone has non-runner changes: {foreign[:10]} - "
                                    f"refusing to run on a tree that is not origin's.")
-        if behind and not ahead and not foreign:
+        if already_origin:
+            res["warnings"].append(f"{already_origin[:10]} differ from this clone's HEAD but "
+                                   f"already match origin/{BRANCH} - reset before the pull, "
+                                   f"which restores the same content.")
+        if behind and not ahead and not res["problems"]:
+            for p in already_origin:
+                _out("checkout", "--", p, repo=repo)
             upstream = set(_out("diff", "--name-only", "HEAD", f"origin/{BRANCH}",
                                 repo=repo).splitlines())
             clash = [p for p in owned if p in upstream]

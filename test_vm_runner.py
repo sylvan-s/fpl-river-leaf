@@ -279,6 +279,38 @@ check("foreign dirty file: refused, NOT pulled, edit untouched",
       and json.load(open(os.path.join(clone, "squad.json"))) == {"hand": "edit"}, s)
 sh(clone, "git", "checkout", "--", "squad.json")
 
+# A tracked file brought level with origin's NEWER content reads as modified
+# against the clone's own HEAD (git status' view) but is not dirt: it already
+# holds the destination content. It must not wedge the pull - the real case was
+# fpl_calibration_log.jsonl on 17 Sep 2026, four commits behind and stuck.
+push("squad.json", '{"v": 5}', "squad v5")
+open(os.path.join(clone, "squad.json"), "w").write('{"v": 5}')   # same as origin
+s5 = vr.repo_sync(repo=clone)
+check("a file already holding origin's content does not block the pull",
+      s5["ok"] and s5["pulled"] and s5["behind"] == 0
+      and json.load(open(os.path.join(clone, "squad.json"))) == {"v": 5}, s5)
+check("...and it is reported as reset-to-origin, not silently",
+      any("already match origin" in w for w in s5["warnings"]), s5["warnings"])
+
+# An append-only log the clone has appended to (the VM's own log_predictions)
+# is DATA, not dirt: refuse with a message naming the count, and never offer to
+# reset it. See vm_runner.APPEND_ONLY.
+open(os.path.join(seed, "fpl_calibration_log.jsonl"), "w").write('{"gw": 1}\n')
+sh(seed, "git", "add", "fpl_calibration_log.jsonl")
+sh(seed, "git", "commit", "-qm", "calib log")
+sh(seed, "git", "push", "-q", "origin", "HEAD:main")
+s6 = vr.repo_sync(repo=clone)
+with open(os.path.join(clone, "fpl_calibration_log.jsonl"), "a") as fh:
+    fh.write('{"gw": 2, "logged_on": "the VM"}\n')
+push("squad.json", '{"v": 6}', "squad v6")
+s7 = vr.repo_sync(repo=clone)
+check("an append-only log ahead of origin refuses the pull with its line count",
+      not s7["ok"] and any("1 line(s) this clone holds" in p and "never reset" in p
+                           for p in s7["problems"]), s7["problems"])
+check("...and the appended rows are still there afterwards",
+      "the VM" in open(os.path.join(clone, "fpl_calibration_log.jsonl")).read())
+
+
 s = vr.repo_sync(repo=clone)
 sh(clone, "git", "commit", "-q", "--allow-empty", "-m", "hand commit on the VM")
 s = vr.repo_sync(repo=clone)
