@@ -282,9 +282,21 @@ def window_problem(stamp, live_gw, weights=None):
     return None
 
 
-def alarms(stderr):
-    return [ln.strip() for ln in stderr.splitlines()
-            if ln.strip().startswith(ALARM_PREFIXES)]
+# In terse mode each live-data line is cut to its headline - the count and the
+# reason, which is what decides whether to act - since the full lists run to
+# thousands of characters (STATUS EXCLUDED alone names 46 players). Nothing is
+# hidden: the line is still there, marked as cut, and verbose=True has it whole.
+ALARM_TERSE_CHARS = 200
+
+
+def alarms(stderr, terse=False):
+    out = [ln.strip() for ln in stderr.splitlines()
+           if ln.strip().startswith(ALARM_PREFIXES)]
+    if not terse:
+        return out
+    return [ln if len(ln) <= ALARM_TERSE_CHARS
+            else ln[:ALARM_TERSE_CHARS].rstrip() + " … [cut - verbose=True for the full list]"
+            for ln in out]
 
 
 def header(tool, sync, stamp, live_gw, settings=None):
@@ -566,7 +578,7 @@ def render(tool, sync, stamp, live_gw, run, extra_top=(), quarantine_requested=N
         parts += [f"  - {e}" for e in errors]
     if warnings:
         parts += ["", "WARNINGS:"] + [f"  - {w}" for w in warnings]
-    al = alarms(stderr)
+    al = alarms(stderr, terse=not verbose)
     if al:
         parts += ["", "LIVE-DATA LINES (from stderr):"] + [f"  {a}" for a in al]
     if not verbose:
@@ -1138,7 +1150,7 @@ def register(mcp, live_gw, fixture_table):
             if not fixtures:
                 args.append("--no-fixtures")
             run = run_script(args, want_json=True, timeout=240)
-            al = alarms(run["stderr"])
+            al = alarms(run["stderr"], terse=not verbose)
             flagged = [f"{p['name']}|{p['team']} status {p['status']} chance {p['chance']}"
                        + (" CONTAMINATED" if p["contaminated"] else "")
                        for p in (run["json"] or {}).get("players", [])

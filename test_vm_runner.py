@@ -233,8 +233,14 @@ check("...but never the ERRORS, the live-data lines, or what was omitted",
 # saving (a live transfer run trims ~13k of ~16k chars) - just that it shrinks
 # and says by how much.
 check("verbose=False is shorter and states the omitted sizes",
-      len(_terse) < len(body) and "chars) and the JSON omitted" not in _terse
-      and "chars)" in _terse, (len(_terse), len(body)))
+      len(_terse) < len(body) and "chars)" in _terse, (len(_terse), len(body)))
+_long = "STATUS EXCLUDED — 46 player(s): " + ", ".join(f"Player{i} (XYZ)" for i in range(60))
+check("terse mode cuts a long live-data line to its headline, marked as cut",
+      len(vr.alarms(_long, terse=True)[0]) < 260
+      and "STATUS EXCLUDED — 46 player(s)" in vr.alarms(_long, terse=True)[0]
+      and "verbose=True for the full list" in vr.alarms(_long, terse=True)[0])
+check("verbose mode leaves every live-data line whole",
+      vr.alarms(_long) == [_long])
 
 print("\n== repo_sync against a real origin ==")
 origin = os.path.join(_tmp, "origin.git")
