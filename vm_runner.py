@@ -531,8 +531,17 @@ def settings_line(meta, quarantine_requested=None):
             f"{'ADMITTED' if meta.get('allow_contaminated') else 'excluded'}")
 
 
-def render(tool, sync, stamp, live_gw, run, extra_top=(), quarantine_requested=None):
-    """The standard response body: header, verdict, errors, alarms, stderr, stdout, JSON."""
+def render(tool, sync, stamp, live_gw, run, extra_top=(), quarantine_requested=None,
+           verbose=True):
+    """The standard response body: header, verdict, errors, alarms, stderr, stdout, JSON.
+
+    verbose=False drops the three bulk blocks - verbatim stderr, the script's
+    own output and the JSON - which are most of the response (a transfer run is
+    ~16k characters, ~4k tokens, and ~13k of that is those blocks). What it
+    NEVER drops is the header, the verdict, ERRORS, WARNINGS and the LIVE-DATA
+    lines lifted from stderr: the rule that a live-fetch failure or a flagged
+    player cannot be hidden is not a verbosity setting. The response says what
+    was omitted and how to get it."""
     data = run.get("json")
     errors, warnings = assess(data)
     if run["returncode"] != 0:
@@ -560,6 +569,12 @@ def render(tool, sync, stamp, live_gw, run, extra_top=(), quarantine_requested=N
     al = alarms(stderr)
     if al:
         parts += ["", "LIVE-DATA LINES (from stderr):"] + [f"  {a}" for a in al]
+    if not verbose:
+        parts += ["", f"(verbose=False: verbatim stderr ({len(stderr)} chars), the script's own "
+                      f"output ({len(run['stdout'])} chars) and the JSON omitted. Every error, "
+                      f"warning and live-data line above is still complete. Call again with "
+                      f"verbose=True for the full record.)"]
+        return "\n".join(parts)
     parts += ["", "--- stderr (verbatim) ---", stderr.rstrip() or "(empty)",
               "", "--- script output ---", run["stdout"].rstrip() or "(empty)"]
     if data is not None:
@@ -887,7 +902,10 @@ def register(mcp, live_gw, fixture_table):
         "a 75% gate - figures are not comparable across the two. "
         "Start rate is shrunk by default (2025/26 last-16 blended with 2026/27 starts per "
         "team match, roadmap A0.2, since GW5); stp_estimator='prior' to compare. It moves "
-        "the 75% XI / 60% bench gates, not xP."))
+        "the 75% XI / 60% bench gates, not xP. "
+        "verbose=False returns the header, verdict, errors, warnings and live-data lines only, "
+        "dropping the verbatim stderr, script output and JSON (about four fifths of the reply); "
+        "nothing that could hide a bad run is dropped."))
     async def optimise_transfers(transfers: int | None = 1, hits: bool = False,
                                  estimator: str = "shrunk", intel: bool = True,
                                  quarantine: bool = True, fixtures: bool = True,
@@ -899,7 +917,8 @@ def register(mcp, live_gw, fixture_table):
                                  allow_contaminated: bool = False,
                                  budget: float | None = None,
                                  stp_estimator: str = "shrunk",
-                                 start_weighted: bool = True) -> str:
+                                 start_weighted: bool = True,
+                                 verbose: bool = True) -> str:
         def go():
             sync, stamp, live, refused = _pre("optimise_transfers", need_window=fixtures)
             if refused:
@@ -918,7 +937,8 @@ def register(mcp, live_gw, fixture_table):
             if estimator != "shrunk" or not intel or not quarantine:
                 top.append("NOTE: not the weekly configuration (shrunk + intel + quarantine) - "
                            "a comparison, not the answer.")
-            return render("optimise_transfers", sync, stamp, live, run, top, quarantine)
+            return render("optimise_transfers", sync, stamp, live, run, top, quarantine,
+                          verbose=verbose)
         return await _thread(go)
 
     @mcp.tool(name="optimise_scenario", description=(
@@ -929,7 +949,8 @@ def register(mcp, live_gw, fixture_table):
         "(wildcard) mode, budgeted at selling value plus bank unless budget is given. "
         "Haaland is allowed unless haaland=False. "
         "Output keeps the HYPOTHETICAL banner and the applied/unmatched audit; flagged "
-        "players in a result are ERRORS. Same repo/window refusals as optimise_transfers."))
+        "players in a result are ERRORS. Same repo/window refusals as optimise_transfers. "
+        "verbose=False trims the bulk blocks, as on optimise_transfers."))
     async def optimise_scenario(rows: list[str], transfers: int | None = 1,
                                 estimator: str = "shrunk", base_intel: bool = True,
                                 fixtures: bool = True, free_transfers: int | None = None,
@@ -937,7 +958,8 @@ def register(mcp, live_gw, fixture_table):
                                 force_out: list[str] | None = None,
                                 haaland: bool = True, budget: float | None = None,
                                 stp_estimator: str = "shrunk",
-                                start_weighted: bool = True) -> str:
+                                start_weighted: bool = True,
+                                verbose: bool = True) -> str:
         def go():
             sync, stamp, live, refused = _pre("optimise_scenario", need_window=fixtures)
             if refused:
@@ -980,7 +1002,7 @@ def register(mcp, live_gw, fixture_table):
             finally:
                 os.remove(path)
             top = ["rows sent:"] + [f"  {ln}" for ln in lines]
-            return render("optimise_scenario", sync, stamp, live, run, top)
+            return render("optimise_scenario", sync, stamp, live, run, top, verbose=verbose)
         return await _thread(go)
 
     @mcp.tool(name="optimise_matrix", description=(
@@ -1097,10 +1119,11 @@ def register(mcp, live_gw, fixture_table):
         "on/off. names take 'Name' or 'Name:TEAM'; squad=True adds the fifteen; candidates "
         "adds the top N per position (ok, uncontaminated, XI start gate, not owned). "
         "quarantine=True puts ticked Trello items on the intel-ON columns and fails "
-        "loudly without Trello. A diagnostic view, never a selection."))
+        "loudly without Trello. A diagnostic view, never a selection. verbose=False drops the "
+        "verbatim stderr and the JSON, keeping the table and the flagged list."))
     async def player_estimates(names: list[str] | None = None, squad: bool = True,
                                candidates: int = 5, quarantine: bool = True,
-                               fixtures: bool = True) -> str:
+                               fixtures: bool = True, verbose: bool = True) -> str:
         def go():
             sync, stamp, live, refused = _pre("player_estimates", need_window=fixtures)
             if refused:
@@ -1130,11 +1153,16 @@ def register(mcp, live_gw, fixture_table):
                 parts += ["FLAGGED (unavailable, doubtful, suspended or contaminated):"] + [f"  {f}" for f in flagged]
             if al:
                 parts += ["", "LIVE-DATA LINES:"] + [f"  {a}" for a in al]
-            parts += ["", run["stdout"].rstrip(), "", "--- stderr (verbatim) ---",
-                      run["stderr"].rstrip() or "(empty)"]
-            if run["json"] is not None:
-                parts += ["", "--- structured (JSON) ---",
-                          json.dumps(run["json"], indent=1, ensure_ascii=False)]
+            parts += ["", run["stdout"].rstrip()]      # the table is the answer here
+            if verbose:
+                parts += ["", "--- stderr (verbatim) ---", run["stderr"].rstrip() or "(empty)"]
+                if run["json"] is not None:
+                    parts += ["", "--- structured (JSON) ---",
+                              json.dumps(run["json"], indent=1, ensure_ascii=False)]
+            else:
+                parts += ["", f"(verbose=False: verbatim stderr ({len(run['stderr'])} chars) and "
+                              f"the JSON omitted; the flagged list and live-data lines above are "
+                              f"complete.)"]
             return "\n".join(parts)
         return await _thread(go)
 

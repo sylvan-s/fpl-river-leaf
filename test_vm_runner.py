@@ -220,6 +220,21 @@ body = vr.render("t", {"head": "abc1234", "origin": "abc1234", "behind": 0, "war
                  vr.run_script(["echo.py"], want_json=True, repo=sdir))
 check("render flags a failed live fetch as an ERROR, and keeps stderr verbatim",
       "LIVE FETCH FAILED" in body and "--- stderr (verbatim) ---\nLIVE FETCH: x" in body, body)
+_sync = {"head": "abc1234", "origin": "abc1234", "behind": 0, "warnings": []}
+_run = vr.run_script(["echo.py"], want_json=True, repo=sdir)
+_terse = vr.render("t", _sync, {"generated_for_gw": 5, "horizon": 4}, 5, _run, verbose=False)
+check("verbose=False drops stderr verbatim, script output and JSON",
+      "--- stderr (verbatim) ---" not in _terse and "--- script output ---" not in _terse
+      and "structured result (JSON)" not in _terse, _terse)
+check("...but never the ERRORS, the live-data lines, or what was omitted",
+      "LIVE FETCH FAILED" in _terse and "LIVE-DATA LINES" in _terse
+      and "LIVE FETCH: x" in _terse and "verbose=False" in _terse, _terse)
+# The stub's stdout/JSON are a few bytes, so the ratio here is not the real
+# saving (a live transfer run trims ~13k of ~16k chars) - just that it shrinks
+# and says by how much.
+check("verbose=False is shorter and states the omitted sizes",
+      len(_terse) < len(body) and "chars) and the JSON omitted" not in _terse
+      and "chars)" in _terse, (len(_terse), len(body)))
 
 print("\n== repo_sync against a real origin ==")
 origin = os.path.join(_tmp, "origin.git")
