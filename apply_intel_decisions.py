@@ -11,8 +11,8 @@ reads Trello itself, matching every other offline script in this repo
 say the same thing: no MCP access, static input only).
 
 WHO CALLS THIS AND HOW. The `fpl-friday-intel-review` flow, driven by an
-agent with Trello MCP access, reads each `Take action` card's checklist
-(accept/reject/defer per bite), then calls this script with one JSON object
+agent with Trello MCP access, reads each `Live in model` card's `Rows in model`
+checklist (ticked = authorised, unticked = pull; board reshaped 17 Sep 2026), then calls this script with one JSON object
 per decided bite:
 
     [{"bite_id": "Sarr-CRY-injury-20260826-1", "decision": "accepted",

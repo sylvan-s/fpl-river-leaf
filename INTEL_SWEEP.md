@@ -246,14 +246,39 @@ not "intel" in the falsifiable-hypothesis sense this pipeline logs.
 `fpl-friday-intel-review`, every Friday at 07:30, ahead of the
 `fpl-weekly-deadline-brief` transfer-strategy task.
 
-**Decisions are made on Trello now, not in chat.** Each `Take action` card
-carries a "Modelling" section with checklist rows to tick — accept/reject/
-defer per bite — added by the Curator/Modeller passes during the week. The
-Friday review no longer presents a queue and waits for a reply; it reads
-whatever is already ticked.
+**Decisions are made on Trello now, not in chat — board reshaped 17 Sep 2026.**
+The old `Take action` list and its `Required Decisions` / `Live in Model`
+checklists are gone. Two lists replace them, and the `Board contract — read
+me first` card in Ops restates this contract on the board itself:
 
-1. Reads every `Take action` card's checklist via the Trello MCP and, for
-   each ticked row, resolves the decision (accepted/rejected/deferred).
+- **`Quarantined decisions`** — one card per bite with a *modellable* outcome,
+  one checklist `Decisions — tick to approve`: each item is one candidate
+  fence row (`Player | TEAM | field | ×1.15 or set → 50% | GWs a-b`) plus a
+  standing `Decline — no model change, let the data speak` item. Only Sylvan
+  ticks. The Curator's daily run moves ticked rows onto a `Live in model`
+  card and takes the card out of quarantine (Decline → `Reject / Expired`).
+  A bite with nothing modellable yet stays in `Wait for more evidence`.
+- **`Live in model`** — one card per bite, one checklist `Rows in model —
+  ticked = authorised`, one item per fence row. **Ticked = Sylvan authorises
+  the row; unticked = his instruction to pull it.** Items in (parentheses)
+  are notes, not rows. Every card carries a due date = the FPL deadline of
+  the last GW in the row's window; on expiry the Conductor either moves the
+  card to `Reject / Expired` (the default — let the data speak) or raises a
+  new quarantine card proposing an extension. Green label = fence matches
+  the card; red = drift.
+
+**The invariant the review enforces:** after step 5, the set of ticked
+`Rows in model` items across `Live in model` equals the `adjustments` fence
+in `ROLE_INTEL.md`, row for row.
+
+1. Reads every `Live in model` card's `Rows in model` checklist via the Trello
+   MCP (and any still-ticked `Quarantined decisions` items the Curator has not
+   yet moved — treat those as approved too, and move them). For each row:
+   ticked and absent from the fence → **write it** (replacing any existing
+   row for the same player/team/field — never stack); ticked and present with
+   a different value/window → **replace**; unticked but present → **remove**;
+   `Remove … row` items → remove. Each bite's decision resolves to
+   accepted/rejected/deferred for the log exactly as before.
 2. **The Applier — `apply_intel_decisions.py`.** Appends one `decision`
    record per decided bite to `docs/data/intel_sweep_log.jsonl` — the one
    record kind in this log that is **not** first-write-stands: Sylvan can
@@ -281,14 +306,16 @@ whatever is already ticked.
    not a queue and nothing in it waits for a reply. The old "present the
    queue, wait for Sylvan's answer" flow this replaced is why the script used
    to run first; it doesn't need to any more.
-5. **Only `accepted` bites with a `field_affected` get written into the
-   `setpieces`/`adjustments` fence**, following the exact format the fence
+5. **Only rows that are ticked on a `Live in model` card get written into the
+   `setpieces`/`adjustments` fence** (an `accepted` decision with a
+   `field_affected`, in log terms), following the exact format the fence
    already uses, with the `why` column citing the bite ID(s) behind it (see
    "Trello-gated since 28 Aug 2026" below the fence in this file) and stating
    it was accepted in that week's review. `rejected` bites get a one-line
    dated note in the narrative section and nothing else. `deferred` bites
    simply reappear as still-open cards on the board.
-6. Refreshes `docs/data/trello_snapshot.json` (same method as step 4 of the
+6. Re-labels every `Live in model` card against the fence just written (green
+   = exact match, red = drift) and refreshes `docs/data/trello_snapshot.json` (same method as step 4 of the
    daily sweep — fetch the board via the Trello MCP, write the file) so the
    public page reflects however Sylvan actually sorted the cards **and any
    card merges/archives from the week** — a snapshot left stale across a
@@ -456,9 +483,9 @@ mount already keeps his working tree current.
 - **Trello board `FPL News Management`** — the live triage surface (renamed
   28 Aug 2026 from "FPL Intel Review — GW2"; board ID/URL unchanged, only the
   display name). Every bite gets a card (step 3a) the moment it's logged;
-  Sylvan sorts cards into `Backlog` / `Wait for more evidence` / `Take
-  action` / `Reject / Expired`; the Friday review acts on whatever's in
-  `Take action`. Persistent across gameweeks — don't create a new board each
+  Cards flow `Backlog` / `Wait for more evidence` / `Quarantined decisions`
+  / `Live in model` / `Reject / Expired`; the Friday review acts on the
+  ticked rows in `Live in model`. Persistent across gameweeks — don't create a new board each
   week. Match on board ID/URL, not name, when looking it up — the Trello MCP
   has no rename action, so any future name change happens by hand and could
   momentarily lag a reference to the old name somewhere in this repo.

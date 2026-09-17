@@ -58,8 +58,9 @@ Changed 16 Sep 2026 (GW5: £98.2m + £1.3m = £99.5m, not £100m).
 
 ## Trello quarantine overlay (`--quarantine`) — opt-in, off by default
 
-`--quarantine` layers every **ticked** item on a `Required Decisions`
-checklist on a **Take action** card onto the ROLE_INTEL fence, for that one
+`--quarantine` layers every **ticked** row item on a `Rows in model` checklist
+(**Live in model** list) or a `Decisions` checklist (**Quarantined decisions**
+list) onto the ROLE_INTEL fence — board reshaped 17 Sep 2026 — for that one
 run only. Nothing is written to Trello, `ROLE_INTEL.md` or the repo; the
 Friday review is still the only path from "approved" to "permanent". Without
 the flag, output is byte-for-byte the fence-only result (verified 15 Sep 2026

@@ -1071,9 +1071,13 @@ that never fires rather than staying silent about it. `gws` is a window like
 `1-4`, a single GW, or `ALL`; it is provenance plus a staleness nudge, not an
 auto-expiry — still prune by hand per rule 6 below.
 
-**Trello-gated since 28 Aug 2026.** Every row below must trace to a bite that
-was sorted into the Trello board's `Take action` list and accepted at a
-Friday review (see `INTEL_SWEEP.md` step 3a). This is retroactive: on
+**Trello-gated since 28 Aug 2026; board reshaped 17 Sep 2026.** Every row
+below must trace to a bite whose card sits in the Trello board's `Live in
+model` list with the row TICKED on its `Rows in model` checklist (approved
+via `Quarantined decisions`) and written at a Friday review (see
+`INTEL_SWEEP.md`, "The Friday review"). The ticked `Live in model` rows and
+this fence are meant to be identical, row for row; the daily Conductor
+reports any drift. This is retroactive: on
 28 Aug 2026, five rows — Szoboszlai (xg90), Ndiaye (xg90), Anderson (xgi90),
 Dubravka (stp), Rice (stp) — were **pulled from this fence** because they
 were agreed directly in chat between 7–12 Aug, before the Trello board

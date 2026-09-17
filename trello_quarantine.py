@@ -13,16 +13,24 @@ decision Sylvan ticks on Tuesday has no effect on a Wednesday scenario run. At
 board held ticked start-rate decisions for three more.
 
 WHAT THIS DOES. Reads the FPL News Management board live, takes every TICKED
-item on a `Required Decisions` checklist on a card in `Take action`, turns
-each into a fence-shaped entry, and hands them to intel_adjust.set_overlay().
+row item on a `Rows in model` checklist on a card in `Live in model`, and every
+TICKED row item on a `Decisions` checklist on a card in `Quarantined decisions`
+(board reshaped 17 Sep 2026 - `Take action` / `Required Decisions` are gone),
+turns each into a fence-shaped entry, and hands them to intel_adjust.set_overlay().
 Nothing is written anywhere — not to Trello, not to ROLE_INTEL.md, not to the
 repo. Without --quarantine the optimiser behaves exactly as before.
 
-WHAT COUNTS. Only: list `Take action`, checklist name starting `Required
-Decisions`, item state complete. Everything else is ignored by construction —
-Backlog / Wait / Reject-Expired cards are never read, unticked items are not
-approvals, and `Live in Model` checklists describe what the fence ALREADY
-holds, so they would add nothing ROLE_INTEL.md does not already say.
+WHAT COUNTS. Only: lists `Live in model` and `Quarantined decisions`, checklist
+name starting `Rows in model` or `Decisions`, item state complete. Everything
+else is ignored by construction — Backlog / Wait / Reject-Expired cards are
+never read, unticked items are not approvals (in `Live in model` an UNTICKED
+row is Sylvan's instruction to PULL it at the next Friday write, which this
+overlay does not model - the fence value stands until then), checklists named
+`Archive ...` are pre-reshape history, an item wrapped in (parentheses) is a
+note not a row, and the standing `Decline — no model change` quarantine item
+is skipped silently. A ticked `Live in model` row that the fence already holds
+is a no-op (REPLACE, below), which is exactly the 1:1 invariant the board
+promises: ticked Live rows == fence rows.
 
 THE ITEM GRAMMAR. Verified against the live board 15 Sep 2026, and it is not
 the shape first guessed from outside the repo. The research-to-action skill
@@ -69,8 +77,11 @@ producing a fence-only answer that looks like an overlay answer. Pass
 import json, os, re, sys, unicodedata, urllib.error, urllib.parse, urllib.request
 
 BOARD = "AEOlxhen"                       # FPL News Management (shortLink; stable across renames)
-LIST_NAME = "Take action"
-APPROVAL_PREFIX = "required decisions"   # "Required Decisions — tick to authorise"
+LIST_NAMES = ("live in model", "quarantined decisions")     # board reshape 17 Sep 2026
+APPROVAL_PREFIXES = ("rows in model", "decisions")          # "Rows in model — ticked = authorised" / "Decisions — tick to approve"
+LIST_NAME = LIST_NAMES[0]                                    # kept for callers that print it
+_NOTE_ITEM = re.compile(r"^\s*\(")                         # "(note, not a row: ...)"
+_DECLINE_ITEM = re.compile(r"^\s*decline\b", re.I)         # "Decline — no model change, let the data speak"
 TIMEOUT = 20
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -183,18 +194,21 @@ def parse_item(text, mult_fields, set_fields):
 
 
 def parse_board(board, mult_fields, set_fields):
-    """Board dict -> (entries, warnings). Only ticked Required Decisions items on Take action cards."""
+    """Board dict -> (entries, warnings). Ticked row items on `Rows in model` (Live in model)
+    and `Decisions` (Quarantined decisions) checklists; notes and Decline items skipped."""
     entries, warnings = [], []
-    lists = [l for l in board.get("lists", []) if l["name"].strip().lower() == LIST_NAME.lower()]
+    lists = [l for l in board.get("lists", []) if l["name"].strip().lower() in LIST_NAMES]
     if not lists:
-        warnings.append(f"QUARANTINE: no '{LIST_NAME}' list on the board — nothing read")
+        warnings.append(f"QUARANTINE: none of {LIST_NAMES} found on the board — nothing read")
     for lst in lists:
         for card in lst["cards"]:
             for cl in card.get("checklists", []):
-                if not cl["name"].strip().lower().startswith(APPROVAL_PREFIX):
+                if not cl["name"].strip().lower().startswith(APPROVAL_PREFIXES):
                     continue
                 for it in cl["items"]:
                     if not it["complete"]:
+                        continue
+                    if _NOTE_ITEM.match(it["name"]) or _DECLINE_ITEM.match(it["name"]):
                         continue
                     e, why = parse_item(it["name"], mult_fields, set_fields)
                     if e is None:
@@ -306,8 +320,8 @@ def report(ia, bs):
     rows = bs.load(intel=False)
     warnings += resolve(entries, rows)
     fence, gw = ia.load_adjustments(), ia._current_gw()
-    print(f"QUARANTINE OVERLAY — board {BOARD}, list '{LIST_NAME}', ticked "
-          f"'Required Decisions' items · target GW{gw} (fixture_window.json)\n")
+    print(f"QUARANTINE OVERLAY — board {BOARD}, lists {LIST_NAMES}, ticked "
+          f"'Rows in model' / 'Decisions' items · target GW{gw} (fixture_window.json)\n")
     if not entries:
         print("No ticked, parseable approval items. The overlay would change nothing.")
     else:

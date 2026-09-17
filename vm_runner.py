@@ -990,7 +990,7 @@ def register(mcp, live_gw, fixture_table):
         return await _thread(go)
 
     @mcp.tool(name="quarantine_report", description=(
-        "VM runner: every ticked 'Required Decisions' item on Take-action Trello cards, as "
+        "VM runner: every ticked row item on 'Rows in model' (Live in model) and 'Decisions' (Quarantined decisions) Trello checklists, as "
         "the optimiser would read it (optimise_squad.py --quarantine-report): parsed rows, "
         "what each does vs ROLE_INTEL (NEW / CHANGES / REMOVES / same as fence = no-op / "
         "OUT OF WINDOW / DROPPED), and skipped items with reasons. Never optimises. Needs "

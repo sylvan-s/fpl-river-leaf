@@ -3,7 +3,11 @@
 
 The fixture below is the REAL `Take action` list as read from the FPL News
 Management board on 15 Sep 2026 (via the Trello MCP connector), verbatim item
-text included. The spec this module was built from guessed a different item
+text included, re-homed on 17 Sep 2026 when the board was reshaped: the list is
+now `Live in model` (checklist `Rows in model — ticked = authorised`), the old
+`Live in Model — applied` checklists became `Archive — ...` and are ignored, and
+a `Quarantined decisions` list carries `Decisions — tick to approve` checklists
+whose standing `Decline` item and any (parenthesised note) must be skipped. The spec this module was built from guessed a different item
 grammar ("stp → 50%, GWs 5-6") and a card-ID-based player; neither survives
 contact with the actual board, and this file is what keeps that true.
 
@@ -38,8 +42,9 @@ def item(name, complete):
     return {"name": name, "complete": complete}
 
 
-APPROVE = "Required Decisions — tick to authorise"
-LIVE = "Live in Model — applied (verified 14 Sep)"
+APPROVE = "Rows in model — ticked = authorised"
+LIVE = "Archive — pre-17 Sep checklist (ignore)"
+DECIDE = "Decisions — tick to approve"
 
 BOARD = {"lists": [
     {"name": "Wait for more evidence", "cards": [
@@ -47,7 +52,7 @@ BOARD = {"lists": [
          "checklists": [{"name": APPROVE, "items": [
              item("Calvert-Lewin | LEE | stp | set → 80% | GWs 5-8 — would apply if this list were read", True)]}]},
     ]},
-    {"name": "Take action", "cards": [
+    {"name": "Live in model", "cards": [
         {"name": "Enzo Fernandez (CHE→MCI) — deadline-day £125m signing", "url": "https://trello.com/c/enzo",
          "checklists": [
              {"name": APPROVE, "items": [
@@ -85,6 +90,14 @@ BOARD = {"lists": [
              item("James Justin | LEE | cbit90 | ×1.15 | GWs 4-8 — CANDIDATE, drafted 14 Sep", False),
              item("James Justin | LEE | xgi90 | ×0.75 | GWs 4-8 — CANDIDATE, drafted 14 Sep", False)]}]},
     ]},
+    {"name": "Quarantined decisions", "cards": [
+        {"name": "Van de Ven (TOT) — newly owned, minutes thesis", "url": "https://trello.com/c/vdv",
+         "checklists": [{"name": DECIDE, "items": [
+             item("Van de Ven | TOT | stp | set → 90% | GWs 5-8", True),
+             item("Van de Ven | TOT | cbit90 | ×1.10 | GWs 5-8", False),
+             item("(note, not a row: window defaulted to 4 GWs by the modeller)", True),
+             item("Decline — no model change, let the data speak", True)]}]},
+    ]},
     {"name": "Reject / Expired", "cards": [
         {"name": "Old rejected card", "url": "https://trello.com/c/old",
          "checklists": [{"name": APPROVE, "items": [item("Thiago | BRE | stp | set → 10% | GWs 1-38 — rejected, tick left behind", True)]}]},
@@ -94,12 +107,17 @@ BOARD = {"lists": [
 print("parse_board — what counts as accepted")
 entries, warns = tq.parse_board(BOARD, M, S)
 keys = sorted((e["item_player"], e["field"], e["action"]) for e in entries)
-check("exactly 9 ticked Take-action approval items parse",
-      len(entries) == 9)
+check("exactly 10 ticked row items parse (9 Live in model + 1 Quarantined decisions)",
+      len(entries) == 10)
+check("Quarantined decisions ticked row read (Van de Ven stp)",
+      any(e["item_player"] == "Van de Ven" and e["field"] == "stp" for e in entries))
+check("ticked '(note ...)' item and ticked 'Decline' item skipped silently, no warning",
+      not any(e["item_player"].startswith("(") for e in entries)
+      and not any("Decline" in e["item_player"] for e in entries))
 check("Wait-list card ignored even though ticked", not any(e["item_player"] == "Calvert-Lewin" for e in entries))
 check("Reject/Expired card ignored even though ticked", not any(e["item_player"] == "Thiago" for e in entries))
 check("unticked candidates ignored (Justin)", not any("Justin" in e["item_player"] for e in entries))
-check("Live in Model lists ignored (no 75% O'Reilly entry)",
+check("Archive (pre-reshape) checklists ignored (no 75% O'Reilly entry)",
       not any(e["item_player"] == "O'Reilly" and e["field"] == "stp" and abs(e["value"] - 0.75) < 1e-9 for e in entries))
 check("no warnings - every ticked approval item on the real board is parseable", warns == [])
 
@@ -136,7 +154,7 @@ got, _ = tq.parse_item("Justin | LEE | cbit90 | mult 1.15 | GWs 4-8", M, S)
 check("'mult 1.15' accepted as a multiplier", got and got["op"] == "mult" and got["value"] == 1.15)
 
 print("\nwarning surfaces a ticked-but-unparseable item, naming card and text")
-b2 = {"lists": [{"name": "Take action", "cards": [{"name": "X card", "url": "https://trello.com/c/x",
+b2 = {"lists": [{"name": "Live in model", "cards": [{"name": "X card", "url": "https://trello.com/c/x",
       "checklists": [{"name": APPROVE, "items": [item("END the O'Reilly pair early", True)]}]}]}]}
 e2, w2 = tq.parse_board(b2, M, S)
 check("no entry, one warning", e2 == [] and len(w2) == 1 and "X card" in w2[0] and "END the O'Reilly" in w2[0])
