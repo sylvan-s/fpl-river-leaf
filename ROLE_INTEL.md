@@ -126,6 +126,15 @@ report he's expected available for City's GW2 fixture v Crystal Palace
 (28 Aug) — where Sarr (own squad, entry 13) is on the opposing side.
 Logged as `Anderson-MCI-injury-20260827-1`.?
 
+**Re-accepted, Friday review 18 Sep 2026.** The `xgi90 mult 1.15` row,
+pulled from the fence 28 Aug because no card backed it, is back in the
+fence — Sylvan ticked it on the Live-in-model card
+(`Anderson-MCI-xgi90-20260828-1`, https://trello.com/c/5qOSpiim) on 17 Sep.
+The GW4 derby answered the No.6-vs-advanced question for one match at
+least: Enzo Fernandez and Anderson paired centrally, O'Reilly unused.
+Window GWs 5-8 (migration default, no window was ever agreed). Magnitude
+is the original chat-agreed +15%, not sourced to an outlet.
+
 ### 3. Mosquera (ARS, £5.5m, DEF) — minutes opening through injury
 
 **Thesis:** regular early-season minutes in the league's best defence while
@@ -216,6 +225,18 @@ September", Saliba pencilled for winter) accepted. The `stp` fence entry
 below is updated: window extended from GWs 1-3 to 1-8, confidence raised
 from medium to high given actual matchday evidence rather than predicted
 lineups.
+
+**Reversed, Friday review 18 Sep 2026.** The thesis has run out: Konsa
+(signed 4 Sep, `Konsa-ARS-transfer-20260904-1`, merged into this entry's
+card https://trello.com/c/1M4cWmG8) has started four straight at
+centre-back with Mosquera left out, confirmed on the 12 Sep sheet, and
+Sports Mole's GW5 preview (18 Sep) names Mosquera a major doubt with a
+muscle issue of his own. The `stp set 0.85` (GWs 1-8) row is withdrawn and
+replaced by `stp set 0.30` (GWs 5-6). The value follows Sylvan's latest
+card instruction (17 Sep: "take his start prob down to 0.3"); the ticked
+Live row still read 50% from his 13/14 Sep comments and was edited to
+0.30 to keep the board==fence invariant. Re-check at GW6: if Saliba/Timber
+are still out and Mosquera is fit, the case for minutes reopens.
 
 ### 4. Ndiaye (EVE, £6.0m, MID) — penalties + shot volume
 
@@ -516,6 +537,15 @@ the cbit90/xgi90 pair above assumes. Magnitude is Sylvan's own instructed
 estimate, revised from 65% to 75% by card comment 3 Sep, not sourced.
 **Condition attached: re-run captaincy odds with and without this row and
 show both, ahead of the GW3 deadline (17:30 UTC, 4 Sep).**
+
+**Revised down, Friday review 18 Sep 2026.** `stp set 0.75` -> `0.65`
+(GWs 3-8 unchanged), per Sylvan's 14 Sep card comment ("revise O'Reilly
+starting % back down to 65%") and the ticked Live-in-model row on
+https://trello.com/c/anIaFGBl. Evidence: GW4 derby XI had Enzo Fernandez
+and Anderson as the central pair, O'Reilly an unused sub all match.
+Effect roughly -0.75 xP/GW vs -0.28 at 75%. The cbit90/xgi90 pair (GWs
+1-6) is untouched and expires after GW6 — the "end early" proposal was
+withdrawn 17 Sep. Magnitude is Sylvan's own instructed estimate.
 
 ### 11. Guimarães (ARS, £7.0m, MID) — GW1 fitness doubt, relevant to Rice's workload-sharing thesis — **NOT OWNED**
 
@@ -818,6 +848,39 @@ materially below the 81% the model assumes? Source:
 `Dango-BRE-stp-20260901-1`. Sources: Fantasy Football Scout 2pm team
 news, 30 Aug 2026; ESPN/Yahoo Leeds 1-1 Brentford match reports.?
 
+**Accepted, Friday review 18 Sep 2026 — no longer owned.** Sold 7 Sep
+(Szoboszlai in). The pattern continued — started/dropped/started-then-
+hooked/dropped, confirmed BENCH on the GW4 sheet (12 Sep) — and Sylvan's
+13 Sep instruction ("take start rate prob to 50% for two weeks until raw
+data catches up") is now in the fence as `stp set 0.5`, GWs 5-6, via the
+ticked Live-in-model row (https://trello.com/c/KD2CDma7). Purpose now is
+to stop the optimiser re-buying him on the stale 81% prior. AFCON claim
+(14 Sep) remains uncorroborated. Magnitude is Sylvan's own estimate.
+
+### 15. Justin (LEE, £4.5m, DEF) — playing centre-back while Rodon is out — **ALREADY OWNED, BENCH (first sub)**
+
+**Thesis:** with Rodon out (hamstring, from GW2, ~GW11-13 return) Justin
+has moved from right-back/wing-back to centre-back in a back three —
+Elvedi/Muharemovic/Justin on the 5 Sep Brighton sheet, and three straight
+confirmed instances by 14 Sep including Leeds 4-1 Newcastle (8/10, "hybrid
+role getting forward plenty"). Farke, 10 Sep: "it could right now also be
+we need James Justin a bit more like in central defence."
+
+**Model implication:** CB duty means more clearances, blocks,
+interceptions and tackles than wing-back, and less forward involvement.
+Both levers sized Sylvan's-estimate style, same approach as the O'Reilly
+pair: `cbit90 mult 1.15` and `xgi90 mult 0.75`, GWs 4-8.
+
+**Accepted, Friday review 18 Sep 2026.** Both rows ticked by Sylvan 17 Sep
+on https://trello.com/c/pqgginRd (`Justin-LEE-role-20260904-1`) and now in
+the fence. He is first substitute, so this mostly changes autosub value
+and the bench-vs-XI comparison rather than the XI itself. Neither
+magnitude is sourced. Re-check at GW8, or sooner if Rodon returns early.
+
+**Falsifiable check:** does Justin keep lining up at CB on confirmed sheets
+through GW8, and does his raw CBIT/90 actually rise above his wing-back
+baseline?
+
 ---
 
 ## Machine-readable set-piece overrides
@@ -1089,8 +1152,8 @@ note) for the underlying theses — those still stand as intel, they just no
 longer move a number until re-approved.
 
 ```adjustments
-Mosquera   | ARS | stp   | set  | 0.85 | 1-8 | high   | 2026-08-28 | Accepted in Friday review 28 Aug 2026 (Mosquera-ARS-stp-20260821-1, Saliba-ARS-stp-20260820-1): GW1 matchday evidence confirms he started ahead of Ben White; window extended from 1-3 to 1-8 given Timber now "in September" and Saliba pencilled for winter (earliest contention ~GW8, 10 Oct Leeds fixture); see entry 3 above
-O'Reilly   | MCI | stp    | set  | 0.75 | 3-8 | medium | 2026-09-04 | Accepted in Friday review 4 Sep 2026 (via Enzo Fernandez card EnzoFernandez-MCI-transfer-20260901-1, revised from 65% to 75% by card comment 3 Sep): Enzo Fernandez's £125m arrival at City is the most direct threat yet to O'Reilly's central-midfield minutes, on top of the existing cbit90/xgi90 role bet. Magnitude is Sylvan's own instructed estimate, not sourced. CONDITION: re-run captaincy odds with and without this row and compare, ahead of the GW3 deadline
+Mosquera   | ARS | stp   | set  | 0.30 | 5-6 | high   | 2026-09-18 | REPLACED in Friday review 18 Sep 2026 (Mosquera-ARS-stp-20260821-1 + merged Konsa-ARS-transfer-20260904-1, https://trello.com/c/1M4cWmG8): the 0.85 GWs 1-8 row (accepted 28 Aug on the Saliba/Timber-out thesis) is withdrawn - Konsa has started four straight at CB with Mosquera left out (confirmed sheet 12 Sep), and Sports Mole's GW5 preview (18 Sep) names Mosquera a major doubt with a muscle issue. Value follows Sylvan's LATEST card instruction of 17 Sep ("take his start prob down to 0.3"); the ticked Live row still read 50% (his 13/14 Sep instruction) and was edited to 0.30 to keep the board==fence invariant - revert to 0.50 by saying so. Window 5-6 per his "until GW6". Magnitude is Sylvan's own instructed estimate, not sourced
+O'Reilly   | MCI | stp    | set  | 0.65 | 3-8 | medium | 2026-09-18 | Revised 0.75 -> 0.65 in Friday review 18 Sep 2026 per Sylvan's 14 Sep card comment and ticked Live-in-model row (EnzoFernandez-MCI-transfer-20260901-1, https://trello.com/c/anIaFGBl): GW4 derby had Enzo Fernandez + Anderson as City's central pair with O'Reilly an unused sub. Originally accepted 4 Sep at 0.75 (revised up from 65% by comment 3 Sep). Magnitude is Sylvan's own instructed estimate, not sourced
 O'Reilly   | MCI | cbit90 | mult | 0.8 | 1-6 | medium | 2026-09-04 | Accepted in Friday review 28 Aug 2026 (OReilly-MCI-cbit90-20260826-1/-2), window extended 1-4 -> 1-6 in Friday review 4 Sep 2026: GW4 check re-run 3 Sep and confirmed (raw CBIT/90 below 6.0, outside top 45 of 76 screened DEFs vs a 10.0 threshold only 14/76 clear); corroborated by OReilly-MCI-role-20260829-1 (GW2 lineup + compare_players); magnitude is Sylvan's own instructed estimate (-20%), not sourced; see entry 10 above
 O'Reilly   | MCI | xgi90  | mult | 1.2 | 1-6 | medium | 2026-09-04 | Accepted in Friday review 28 Aug 2026 (OReilly-MCI-xgi90-20260826-1), window extended 1-4 -> 1-6 in Friday review 4 Sep 2026: supported by xGI 0.31/90 vs Gabriel 0.11, Virgil 0.15, Shaw 0.16; corroborated by OReilly-MCI-role-20260829-1; magnitude is Sylvan's own instructed estimate (+20%), not sourced; see entry 10 above
 Szoboszlai | LIV | xg90   | mult | 1.2 | 3-8 | medium | 2026-09-04 | Accepted in Friday review 4 Sep 2026 (Szoboszlai-LIV-xg90-20260828-1): sized down from the original 1.35 proposal as a double-count hedge (penalties already inflate observed xG); duty is API-confirmed P1F1C1, superseding the earlier "pen order contested" objection (Szoboszlai-LIV-xg90-20260820-1). Pulled from this fence 28 Aug pending a Take Action card; card now accepted. Re-check by GW6: does the duty stay sole-Szoboszlai or rotate to Mac Allister/Gakpo (Szoboszlai-LIV-xg90-20260826-1)
@@ -1107,6 +1170,10 @@ Onana      | AVL | xgi90  | mult | 0.7 | 1-6 | low    | 2026-08-28 | Accepted in
 Pau        | AVL | xgi90  | mult | 0.7 | 1-6 | low    | 2026-08-28 | Accepted in Friday review 28 Aug 2026 (AstonVilla-AVL-xgi90-20260825-1): squad exodus (Rogers/Konsa/Tielemans/Digne sold) + GW1 4-0 collapse to Brighton, Watkins/Martinez left out amid exit talk; -30% magnitude is Sylvan's own instructed estimate, not sourced; see entry 12 above
 Ruggeri    | AVL | xgi90  | mult | 0.7 | 1-6 | low    | 2026-09-04 | Added in Friday review 4 Sep 2026 (AstonVilla-AVL-xgi90-20260825-1): 14th player on the original squad-wide list, excluded 28 Aug for not being in the pool at the time; now added to complete the set. Same -30% instructed estimate, not sourced; see entry 12 above
 Sarr       | CRY | stp    | set  | 0.0 | 3-8 | high   | 2026-08-31 | Accepted in Friday review 28 Aug 2026 (Sarr-CRY-injury-20260826-1, Sarr-CRY-injury-20260827-1): live injury_report unchanged since 27 Aug (GROIN, INJURED, 0%, unknown return) - accepted 28 Aug as narrative-only on the wrong assumption that this flows into the optimiser automatically; it does not (see entry 13's 31 Aug correction above). Without this row optimise_squad.py --fixtures --transfers 1 recommended buying him back for GW3 (Schade -> Sarr, +0.85 xP/90) despite him being unable to play. gws is a staleness nudge only - his return date is still unknown, so re-verify against injury_report before every run and remove this row (do not wait for GW8) the moment he's actually available again
+O.Dango    | BRE | stp    | set  | 0.5 | 5-6 | medium | 2026-09-18 | Accepted in Friday review 18 Sep 2026 (Dango-BRE-stp-20260901-1, https://trello.com/c/KD2CDma7): ticked Live-in-model row, Sylvan's 13 Sep instruction ("take start rate prob to 50% for two weeks until raw data catches up"). Started/dropped/started-then-hooked/dropped across GW1-4, confirmed BENCH on the GW4 sheet (12 Sep) vs an 81%-starts prior. No longer owned (sold 7 Sep for Szoboszlai) - row stops the optimiser re-buying him on the stale prior. Magnitude is Sylvan's own instructed estimate, not sourced
+Anderson   | MCI | xgi90  | mult | 1.15 | 5-8 | medium | 2026-09-18 | Accepted in Friday review 18 Sep 2026 (Anderson-MCI-xgi90-20260828-1, https://trello.com/c/5qOSpiim): the 7 Aug elevated-creative-role thesis (entry 2), pulled from this fence 28 Aug for lacking a card, is back with Sylvan's tick of 17 Sep. GW4 derby: Enzo Fernandez and Anderson paired centrally, O'Reilly unused; xGI 0.34/90 with almost all of it creation (xA 0.47 of 0.54). Window 5-8 was the migration default (item carried 'GWs TBD') - shorten via the card if wanted. Magnitude is the original chat-agreed +15%, not sourced to an outlet
+Justin     | LEE | cbit90 | mult | 1.15 | 4-8 | medium | 2026-09-18 | Accepted in Friday review 18 Sep 2026 (Justin-LEE-role-20260904-1, https://trello.com/c/pqgginRd): Rodon out (hamstring, ~GW11-13), Justin at centre-back on three straight confirmed sheets incl. Leeds 4-1 Newcastle (8/10). CB duty = more clearances/blocks/interceptions/tackles than wing-back. Ticked by Sylvan 17 Sep. Magnitude is Sylvan's-estimate style (+15%, same approach as the O'Reilly pair), not sourced
+Justin     | LEE | xgi90  | mult | 0.75 | 4-8 | medium | 2026-09-18 | Accepted in Friday review 18 Sep 2026 (Justin-LEE-role-20260904-1, https://trello.com/c/pqgginRd): same role change as the cbit90 row - less forward involvement at CB than at RB/wing-back, though the 14 Sep report calls it a hybrid role getting forward plenty, so this is the more contestable of the pair. Ticked by Sylvan 17 Sep. Magnitude is Sylvan's-estimate style (-25%), not sourced
 ```
 
 **Also wired into the live weekly tools, not just the offline squad scripts.**

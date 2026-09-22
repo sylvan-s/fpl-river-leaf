@@ -1,18 +1,18 @@
 {
-  "generated_utc": "2026-09-04T10:44:52.711468+00:00",
+  "generated_utc": "2026-09-18T09:24:08.354015+00:00",
   "min_resolved_for_accuracy": 5,
   "sources": [
     {
       "source_name": "agreed in chat, not sourced to an outlet",
       "source_tier": null,
-      "n_bites": 3,
+      "n_bites": 4,
       "n_confirmed": 0,
       "n_contradicted": 0,
       "n_expired": 0,
       "n_superseded": 0,
-      "n_open": 3,
+      "n_open": 4,
       "categories": {
-        "tactical": 1,
+        "tactical": 2,
         "rotation": 2
       },
       "n_resolved": 0,
@@ -367,6 +367,22 @@
       "n_open": 1,
       "categories": {
         "other": 1
+      },
+      "n_resolved": 0,
+      "accuracy": null,
+      "stale_rate": null
+    },
+    {
+      "source_name": "leedsunited.com (Farke, 10 Sep); Yorkshire Evening Post / motleedsnews.com (14 Sep)",
+      "source_tier": 3,
+      "n_bites": 1,
+      "n_confirmed": 0,
+      "n_contradicted": 0,
+      "n_expired": 0,
+      "n_superseded": 0,
+      "n_open": 1,
+      "categories": {
+        "rotation": 1
       },
       "n_resolved": 0,
       "accuracy": null,
