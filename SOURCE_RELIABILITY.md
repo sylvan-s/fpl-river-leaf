@@ -1,12 +1,12 @@
 # Source reliability — generated, do not hand-edit
 
-Regenerate with `python3 score_source_reliability.py`. Source: `docs/data/intel_sweep_log.jsonl` (28 bites logged, 11 resolutions). Live gameweek: 3.
+Regenerate with `python3 score_source_reliability.py`. Source: `docs/data/intel_sweep_log.jsonl` (30 bites logged, 11 resolutions). Live gameweek: 5.
 
 **Accuracy only reported at 5+ resolved bites** (confirmed + contradicted) — below that, the percentage would be more noise than signal from two or three claims. Expired and superseded bites count toward `stale_rate` (the check never resolved either way) but not toward accuracy, since going stale is a different failure mode from being wrong.
 
 | Source | Tier | n | Resolved | Accuracy | Stale rate | Open |
 |---|---|---|---|---|---|---|
-| agreed in chat, not sourced to an outlet | None | 3 | 0 | n=0, need 5 | — | 3 |
+| agreed in chat, not sourced to an outlet | None | 4 | 0 | n=0, need 5 | — | 4 |
 | Fantasy Football Scout | 3 | 2 | 1 | n=1, need 5 | 0% | 1 |
 | Manchester City official site | 3 | 2 | 1 | n=1, need 5 | 0% | 1 |
 | Sports Mole / mancity.com (GW1 lineup); magnitude sized by Sylvan Sitkey against scoring.expected_points() | 3 | 2 | 0 | n=0, need 5 | — | 2 |
@@ -29,10 +29,11 @@ Regenerate with `python3 score_source_reliability.py`. Source: `docs/data/intel_
 | Chelsea FC official site / ESPN / Sky Sports / Goal.com (completed transfers) | 3 | 1 | 0 | n=0, need 5 | — | 1 |
 | ESPN match report (Aston Villa 0-1 Arsenal) + Sports Mole | 3 | 1 | 0 | n=0, need 5 | — | 1 |
 | Sky Sports / Al Jazeera / Fox Sports | 3 | 1 | 0 | n=0, need 5 | — | 1 |
+| leedsunited.com (Farke, 10 Sep); Yorkshire Evening Post / motleedsnews.com (14 Sep) | 3 | 1 | 0 | n=0, need 5 | — | 1 |
 
 ## By category, per source
 
-- **agreed in chat, not sourced to an outlet** — rotation: 2, tactical: 1
+- **agreed in chat, not sourced to an outlet** — rotation: 2, tactical: 2
 - **Fantasy Football Scout** — setpiece: 2
 - **Manchester City official site** — manager_change: 1, tactical: 1
 - **Sports Mole / mancity.com (GW1 lineup); magnitude sized by Sylvan Sitkey against scoring.expected_points()** — tactical: 2
@@ -55,6 +56,7 @@ Regenerate with `python3 score_source_reliability.py`. Source: `docs/data/intel_
 - **Chelsea FC official site / ESPN / Sky Sports / Goal.com (completed transfers)** — other: 1
 - **ESPN match report (Aston Villa 0-1 Arsenal) + Sports Mole** — other: 1
 - **Sky Sports / Al Jazeera / Fox Sports** — other: 1
+- **leedsunited.com (Farke, 10 Sep); Yorkshire Evening Post / motleedsnews.com (14 Sep)** — rotation: 1
 
 ---
 
