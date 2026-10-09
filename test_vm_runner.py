@@ -331,6 +331,29 @@ check("an append-only log ahead of origin refuses the pull with its line count",
 check("...and the appended rows are still there afterwards",
       "the VM" in open(os.path.join(clone, "fpl_calibration_log.jsonl")).read())
 
+# The VM's rows reach origin another way (copied by hand, or the vm-log-sync
+# job), plus a row from the Mac, so the two files now differ. Every local row is
+# on origin, so the pull must NOT wedge.
+sh(clone, "git", "checkout", "--", "fpl_calibration_log.jsonl")
+with open(os.path.join(clone, "fpl_calibration_log.jsonl"), "a") as fh:
+    fh.write('{"gw": 3, "logged_on": "the VM"}\n')
+d = vr.append_only_delta(repo=clone)
+check("append_only_delta lists the rows origin lacks",
+      d == {"fpl_calibration_log.jsonl": ['{"gw": 3, "logged_on": "the VM"}']}, d)
+for ln in ('{"gw": 9, "logged_on": "the Mac"}', '{"gw": 3, "logged_on": "the VM"}'):
+    with open(os.path.join(seed, "fpl_calibration_log.jsonl"), "a") as fh:
+        fh.write(ln + "\n")
+sh(seed, "git", "commit", "-qam", "log rows landed")
+sh(seed, "git", "push", "-q", "origin", "HEAD:main")
+s8 = vr.repo_sync(repo=clone)
+check("an append-only log whose rows are all on origin no longer wedges the pull",
+      s8["ok"] and s8["pulled"] and s8["behind"] == 0, s8)
+check("...and no row was lost",
+      all(x in open(os.path.join(clone, "fpl_calibration_log.jsonl")).read()
+          for x in ("the VM", "the Mac")))
+check("append_only_delta is empty once origin holds everything",
+      vr.append_only_delta(repo=clone) == {}, vr.append_only_delta(repo=clone))
+
 
 s = vr.repo_sync(repo=clone)
 sh(clone, "git", "commit", "-q", "--allow-empty", "-m", "hand commit on the VM")
@@ -365,10 +388,17 @@ print("\n== register() with a stub server ==")
 class StubMCP:
     def __init__(self):
         self.names = []
+        self.routes = []
 
     def tool(self, name=None, description=""):
         def deco(fn):
             self.names.append(name or fn.__name__)
+            return fn
+        return deco
+
+    def custom_route(self, path, methods=None):
+        def deco(fn):
+            self.routes.append((path, tuple(methods or ())))
             return fn
         return deco
 
@@ -380,6 +410,8 @@ want = {"repo_sync", "refresh_fixture_window", "optimise_transfers", "optimise_s
         "player_estimates", "squad_state", "repo_file", "bench_value"}
 check("all runner tools register under their spec names", set(stub.names) == want,
       sorted(set(stub.names) ^ want))
+check("the read-only delta route is GET only",
+      stub.routes == [("/append-only-delta", ("GET",))], stub.routes)
 check("module-level repo_sync is still the function, not a tool closure",
       vr.repo_sync.__module__ == "vm_runner" and not vr.repo_sync.__name__.endswith("_tool"))
 

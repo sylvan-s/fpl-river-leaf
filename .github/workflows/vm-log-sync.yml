@@ -1,0 +1,73 @@
+# Carries the VM's own append-only rows (log_predictions writes
+# fpl_calibration_log.jsonl on the VM clone, which never pushes) into the repo.
+#
+# WHY IT PULLS. The VM holds no GitHub write credential: it is also the deploy
+# target (cron pulls main and restarts the service), so a write key there would
+# be a path from the VM to code the VM runs. Instead this job asks the VM for
+# the rows origin lacks (GET /append-only-delta, read-only, behind Caddy's
+# bearer check) and does the commit as the bot, like the other workflows.
+#
+# SETUP (once, by the owner): repo secret FPL_VM_TOKEN = the VM's bearer token.
+# Until it exists this job fails loudly rather than skipping.
+#
+# SAFETY. vm_log_merge.py allow-lists three file names, requires every row to be
+# a one-line JSON object and never writes a row twice. On a rejected push the
+# job resets to origin/main and re-applies the (idempotent) merge instead of
+# rebasing, so a race with the Mac's own pushes cannot produce a conflict.
+name: VM log sync
+
+on:
+  schedule:
+    - cron: "17,47 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vm-log-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Fetch the VM's unpushed rows
+        env:
+          FPL_VM_TOKEN: ${{ secrets.FPL_VM_TOKEN }}
+        run: |
+          if [ -z "$FPL_VM_TOKEN" ]; then
+            echo "::error::secret FPL_VM_TOKEN is not set - see the header of this workflow"
+            exit 1
+          fi
+          curl --fail --silent --show-error --max-time 90 \
+            -H "Authorization: Bearer ${FPL_VM_TOKEN}" \
+            -o delta.json https://140-238-66-196.nip.io/append-only-delta
+
+      - name: Merge, commit and push (resets and retries on a race)
+        shell: bash   # -eo pipefail: a refused payload must fail the job, not hide behind tee
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for attempt in 1 2 3; do
+            python3 vm_log_merge.py delta.json | tee merge.txt
+            git add fpl_calibration_log.jsonl docs/data/intel_sweep_log.jsonl price_history.jsonl 2>/dev/null || true
+            if git diff --cached --quiet; then
+              echo "Nothing new from the VM."
+              exit 0
+            fi
+            git commit -q -m "VM log sync: $(tr '\n' ' ' < merge.txt)"
+            if git push; then
+              echo "Pushed on attempt ${attempt}."
+              exit 0
+            fi
+            echo "Push rejected (attempt ${attempt}/3) - resetting to origin/main and re-applying."
+            git fetch origin main
+            git reset -q --hard origin/main
+          done
+          echo "::error::could not push after 3 attempts"
+          exit 1

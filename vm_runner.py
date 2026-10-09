@@ -135,6 +135,36 @@ def _lines_ahead(path, repo):
     return len(ls - ts), len(ts - ls)
 
 
+def append_only_delta(repo=None, fetch=True):
+    """{path: [rows]} this clone holds in each APPEND_ONLY file that origin/main
+    lacks, in file order, deduplicated. Read-only: a fetch and nothing else, so it
+    is safe to serve over HTTP. Feeds the vm-log-sync workflow, which is the only
+    thing that carries the VM's own appends (log_predictions) into the repo."""
+    repo = repo or HERE
+    with _repo_lock:
+        if fetch:
+            f = _git("fetch", "--quiet", "origin", BRANCH, timeout=45, repo=repo)
+            if f.returncode != 0:
+                raise RuntimeError(f"git fetch failed: {f.stderr.strip()[:300]}")
+        out = {}
+        for p in APPEND_ONLY:
+            try:
+                with open(os.path.join(repo, p), encoding="utf-8") as fh:
+                    local = [l for l in fh.read().splitlines() if l.strip()]
+            except OSError:
+                continue
+            r = _git("show", f"origin/{BRANCH}:{p}", repo=repo)
+            theirs = {l for l in r.stdout.splitlines() if l.strip()} if r.returncode == 0 else set()
+            seen, rows = set(), []
+            for l in local:
+                if l not in theirs and l not in seen:
+                    seen.add(l)
+                    rows.append(l)
+            if rows:
+                out[p] = rows
+        return out
+
+
 def repo_sync(fetch=True, repo=None):
     """Fetch, then fast-forward only. Returns a dict; `ok` False means refuse.
 
@@ -191,9 +221,16 @@ def repo_sync(fetch=True, repo=None):
                 if counts and counts[0]:
                     res["problems"].append(
                         f"{p} has {counts[0]} line(s) this clone holds and origin does not "
-                        f"(the VM's own appends, e.g. log_predictions). Copy them into the "
-                        f"repo from the Mac and push - never reset this file.")
+                        f"(the VM's own appends, e.g. log_predictions). The vm-log-sync "
+                        f"workflow copies them into the repo (or copy them from the Mac "
+                        f"and push) - never reset this file.")
                     foreign.remove(p)
+                elif counts is not None:
+                    # Every local row is already on origin (origin may hold more,
+                    # e.g. after vm-log-sync landed them): nothing here to lose,
+                    # but git sees a differing file and would wedge the pull.
+                    foreign.remove(p)
+                    already_origin.append(p)
 
         if ahead:
             res["problems"].append(f"clone is {ahead} commit(s) AHEAD of origin/{BRANCH} - "
@@ -844,6 +881,16 @@ def register(mcp, live_gw, fixture_table):
 
     async def _thread(fn, *a, **kw):
         return await asyncio.to_thread(fn, *a, **kw)
+
+    # Plain read-only HTTP route (behind Caddy's bearer check like every other
+    # path) for the vm-log-sync workflow. Not an MCP tool: Actions can curl it.
+    @mcp.custom_route("/append-only-delta", methods=["GET"])
+    async def _append_only_delta_route(request):
+        from starlette.responses import JSONResponse
+        try:
+            return JSONResponse({"ok": True, "delta": await _thread(append_only_delta)})
+        except Exception as e:
+            return JSONResponse({"ok": False, "error": str(e)[:300]}, status_code=500)
 
     # Inner names end in _tool where they would otherwise shadow a module-level
     # function _pre() calls (repo_sync, squad_state) - a closure would pick up
