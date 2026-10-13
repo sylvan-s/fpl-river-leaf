@@ -5,22 +5,23 @@
     2,
     3,
     4,
-    5
+    5,
+    6
   ],
   "positive": {
-    "appearance": 23.6,
-    "goal_involvement": 19.0,
-    "clean_sheets": 11.2,
-    "defensive_contribution": 3.2,
-    "saves": 0.2,
-    "bonus": 7.0
+    "appearance": 23.5,
+    "goal_involvement": 21.3333,
+    "clean_sheets": 9.3333,
+    "defensive_contribution": 2.6667,
+    "saves": 0.3333,
+    "bonus": 6.6667
   },
   "deductions": {
-    "goals_conceded": -1.0,
-    "yellow_cards": -2.2,
+    "goals_conceded": -1.1667,
+    "yellow_cards": -2.5,
     "red_cards": 0.0,
-    "own_goals": -0.4,
-    "penalties_missed": -0.8
+    "own_goals": -0.3333,
+    "penalties_missed": -0.6667
   },
-  "fetched_utc": "2026-10-06T18:16:07+00:00"
+  "fetched_utc": "2026-10-13T19:12:07+00:00"
 }
