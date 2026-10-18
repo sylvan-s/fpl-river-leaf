@@ -1,12 +1,12 @@
 {
   "_comment": "SINGLE SOURCE OF TRUTH for live squad state. Read by squad_state.py. TEAM_CHANGE_LOG.md is the human narrative. Update BOTH after every actioned transfer. LEDGER NOTE, 7 Sep 2026 (GW4 transfer): O.Dango was recorded here at £6.5m but sold LIVE at £6.4m - a real price fall, so the £0.1m is a genuine loss of team value, not a bookkeeping error. squad_value+bank therefore moves 100.1 -> 100.0. THREE unrealised drifts remain and are deliberately NOT reconciled into this ledger (per the weekly-brief runbook: flag drift, never silently absorb it): VERIFIED AGAINST THE LIVE SITE 7 Sep 2026 - Mbeumo £8.0m->£7.9m, Thiago £8.0m->£7.9m, Shaw £4.5m->£4.4m. The live site reports Squad value £98.4m against this file's £98.7m, and those three account for the full £0.3m. DO NOT treat that £0.3m as spendable, and do not reconcile it into squad_value here - the ledger is bought_for-based by design. The live BANK matched this file exactly at £1.3m, so nothing in the GW4 transfer was mispriced. Root cause is roadmap B1 (price forecasting), gate GW3, still not built - now overdue. Previous correction 2 Sep 2026 (Sarr/João Pedro) preserved in TEAM_CHANGE_LOG.md.",
-  "updated_utc": "2026-09-17T00:00:00Z",
-  "as_at_note": "DECISION RECORDED 17 Sep 2026 (GW5, deadline Fri 18 Sep 17:30 UTC), Sylvan's call: Van de Ven OUT (sell £5.0m), Calafiori IN (£5.8m), 1 free transfer, 0 pts cost, bank £1.3m -> £0.5m. Captain Mbeumo (was João Pedro, DOUBTFUL 75%), vice Gabriel unchanged. ACTIONED LIVE, confirmed 17 Sep 2026, via Claude-in-Chrome browser automation (0 pts, bank £0.5m on site; captain Mbeumo / vice Gabriel verified after reload). PREVIOUS: ACTIONED LIVE, confirmed 7 Sep 2026, via Claude-in-Chrome browser automation. GW4 pre-deadline (Sat 12 Sep 2026 12:30 UTC). TRANSFER RECORDED, 7 Sep 2026, Sylvan's own call on the brief's Option 2: O'Reilly + O.Dango OUT, Szoboszlai + Van de Ven IN. Both banked free transfers used, 0 pts cost, bank £0.4m -> £1.3m. Also clears the 3-Brentford-attacker soft breach the optimiser has flagged since GW3. CAPTAIN CHANGED: B.Fernandes -> João Pedro (captaincy_odds, shrunk + intel, neutral: E[pts] 5.50 vs Gabriel 5.42 vs B.Fernandes 5.21 - Bruno drops because United host City in GW4). VICE CHANGED: Thiago -> Gabriel. NOTE the ceiling/floor trade-off, taken knowingly: João Pedro's P(blank) is 48.8% against Gabriel's 26.3%; Gabriel was the floor alternative and was not taken. EVIDENCE BASIS: on the standing ROLE_INTEL fence alone this move is worth only +0.14 xP/90 - the case rests on two Trello news bites NOT yet in the fence, priced as a scenario_squad.py run: O'Reilly's back strain (6 Sep evening sweep, first sourced timeline - mild ~2wks, severe up to 4wks, both running past this deadline; injury_report still lags at DOUBTFUL 75%) modelled at stp 0.10, and O.Dango's started/dropped/started-then-hooked-at-HT pattern modelled at stp 0.65 (my sizing, the card proposes none). With those priced in: +3.33 xP/90, +16.6 pts over a 5-GW hold. THAT FIGURE IS A CONDITIONAL UPPER BOUND, NOT A FORECAST - xP_adj is blind to start rate, so stp acts only as the 75% XI gate; both players simply fall out of the XI and the gain decays toward +0.14 if the news is wrong (roadmap A0.5). LIVE SUBMISSION VERIFIED: Confirm Transfers panel read 'O'Reilly -> Van de Ven 0 pts, O.Dango -> Szoboszlai 0 pts, Total cost 0 pts, active for Gameweek 4'; after a FRESH RELOAD the site shows 15/15, Gameweek transfers 2, In the bank £1.3m, and zoomed badges confirm Joao Pedro C / Gabriel V. NOTE the armband save FAILED SILENTLY on the first attempt - the checkboxes showed the new badges on the pitch but a hard reload had reverted them to B.Fernandes C / Thiago V; it took a second pass plus the 'Save Your Team' button and the 'Your team has been saved.' banner to persist. This is the third time that bug has bitten - the reload check in FPL_LIVE_TRANSFER_STEPS.md is what caught it, again. PREVIOUS (GW3): no transfer, captain B.Fernandes - preserved in TEAM_CHANGE_LOG.md.",
-  "gameweek": 5,
+  "updated_utc": "2026-10-18T15:30:00Z",
+  "as_at_note": "SYNCED TO THE LIVE SITE 18 Oct 2026 (GW7 locked; GW8 deadline Fri 23 Oct 17:30 UTC). This file had stood at GW5 since 17 Sep - the GW6 and GW7 team changes were made directly on the FPL site and never recorded here, so the VM optimiser was scoring a stale squad (it recommended Schade -> Tavernier, a move already made). Back-filled from the FPL API: GW6 no transfers (captain Mbeumo, Virgil in the XI, Szoboszlai benched injured). GW7, 16 Oct 2026 23:36 BST, 2 free transfers, 0 pts: Szoboszlai OUT (sold £6.9m) -> E.Le Fée IN (£5.7m); Schade OUT (sold £6.1m) -> Tavernier IN (£6.1m). Bank £0.5m -> £1.7m, matching the live site exactly. Captain Tavernier, vice Gabriel. Virgil to the bench (bench 1), Justin into the XI. Szoboszlai's £0.1m sale below his recorded £7.0m is a real loss of team value, not a bookkeeping error. PREVIOUS: GW5, 17 Sep 2026 - Van de Ven -> Calafiori, captain Mbeumo; preserved in TEAM_CHANGE_LOG.md.",
+  "gameweek": 7,
   "formation": "3-4-3",
-  "bank": 0.5,
-  "squad_value": 99.5,
-  "captain": "Mbeumo",
+  "bank": 1.7,
+  "squad_value": 98.3,
+  "captain": "Tavernier",
   "vice": "Gabriel",
   "squad": [
     {
@@ -20,16 +20,6 @@
       "selected_on": "19 clean sheets, best xGC in the league (0.74). Unchanged since 9 Aug."
     },
     {
-      "name": "Gabriel",
-      "pos": "DEF",
-      "team": "ARS",
-      "price": 8.0,
-      "bought_for": 8.0,
-      "role": "XI",
-      "bench_order": null,
-      "selected_on": "xGC 0.72, 18 clean sheets, 23.7 bps/90, xbonus90 0.82 (3rd-highest DEF in the pool). Unchanged since 9 Aug. Was CAPTAIN 28 Aug-3 Sep (GW2); armband moved to B.Fernandes 4 Sep 2026 (GW3, Sylvan's own call) - Arsenal host Chelsea GW3, a tougher clean-sheet fixture than the Villa one Gabriel was captained into."
-    },
-    {
       "name": "Calafiori",
       "pos": "DEF",
       "team": "ARS",
@@ -41,14 +31,24 @@
       "selected_on_caveat": "The case rests on the start-rate jump: 4 of 4 starts may be Saliba injury cover rather than a settled role. Third Arsenal player (Raya, Gabriel) - concentrated clean-sheet risk. Revisit when Saliba returns."
     },
     {
-      "name": "Virgil",
+      "name": "Gabriel",
       "pos": "DEF",
-      "team": "LIV",
-      "price": 6.5,
-      "bought_for": 6.5,
+      "team": "ARS",
+      "price": 8.0,
+      "bought_for": 8.0,
       "role": "XI",
       "bench_order": null,
-      "selected_on": "Liverpool's GW1-4 DEF x is 0.69, the best defensive fixture run in the league by a distance. 100% starts, xP_adj 4.48."
+      "selected_on": "xGC 0.72, 18 clean sheets, 23.7 bps/90, xbonus90 0.82 (3rd-highest DEF in the pool). Unchanged since 9 Aug. Was CAPTAIN 28 Aug-3 Sep (GW2); armband moved to B.Fernandes 4 Sep 2026 (GW3, Sylvan's own call) - Arsenal host Chelsea GW3, a tougher clean-sheet fixture than the Villa one Gabriel was captained into."
+    },
+    {
+      "name": "Justin",
+      "pos": "DEF",
+      "team": "LEE",
+      "price": 4.5,
+      "bought_for": 4.5,
+      "role": "XI",
+      "bench_order": null,
+      "selected_on": "First substitute. 100% starts, xP_adj 3.64 - the most valuable autosub in the squad. Unchanged since 9 Aug."
     },
     {
       "name": "B.Fernandes",
@@ -61,6 +61,26 @@
       "selected_on": "xGI/90 0.68, highest in the game. xbonus90 1.11, 2nd-highest in the pool. 100% starts. CAPTAIN, 4 Sep 2026 (GW3, moved from Gabriel) - Sylvan's own call. captaincy_odds (with intel) actually had O'Reilly ahead on E[pts]/P(haul)/P(blank), but that lead runs partly through unsourced ROLE_INTEL fence rows; B.Fernandes was the fully data-driven runner-up (E[pts] 5.99, P(haul) 15.6%, no ROLE_INTEL dependency)."
     },
     {
+      "name": "E.Le Fée",
+      "pos": "MID",
+      "team": "SUN",
+      "price": 5.7,
+      "bought_for": 5.7,
+      "role": "XI",
+      "bench_order": null,
+      "selected_on": "IN for Szoboszlai, 16 Oct 2026 (GW7), free transfer, 0 pts. Szoboszlai sold live at £6.9m (recorded £7.0m - a real £0.1m fall), injured 0% at the time. Sylvan's own move, made on the FPL site and not run through the brief; back-filled into this file 18 Oct 2026 from the FPL API transfer history."
+    },
+    {
+      "name": "Tavernier",
+      "pos": "MID",
+      "team": "BOU",
+      "price": 6.1,
+      "bought_for": 6.1,
+      "role": "XI",
+      "bench_order": null,
+      "selected_on": "IN for Schade, 16 Oct 2026 (GW7), free transfer, 0 pts. Schade sold live at £6.1m (bought £6.0m, half of a £0.2m rise). CAPTAIN GW7. The GW5 brief had already priced Schade -> Tavernier as the second leg of a -4 line (+1.88 xP/GW with Calafiori). Sylvan's own move, made on the FPL site; back-filled 18 Oct 2026 from the FPL API transfer history."
+    },
+    {
       "name": "Mbeumo",
       "pos": "MID",
       "team": "MUN",
@@ -71,26 +91,14 @@
       "selected_on": "xGI/90 0.58, delta -3.0 - underperforming his chances. Unchanged since 9 Aug."
     },
     {
-      "name": "Szoboszlai",
-      "pos": "MID",
-      "team": "LIV",
-      "price": 7.0,
-      "bought_for": 7.0,
-      "role": "XI",
-      "bench_order": null,
-      "selected_on": "IN for O.Dango, 7 Sep 2026 (GW4). xP_adj 5.68, 4th-best MID in the pool and within 0.02 of Palmer at £9.6m. Carries the approved ROLE_INTEL adjustments-fence row xg90 mult 1.20 (accepted in the 4 Sep Friday review, sized down from the original 1.35 as a double-count hedge); duty is API-confirmed P1F1C1. stp 94%, injury_report available.",
-      "selected_on_caveat": "The xg90 x1.20 row is due a re-check by GW6 (Szoboszlai-LIV-xg90-20260826-1): does the penalty duty stay sole-Szoboszlai or rotate to Mac Allister/Gakpo. Not a captaincy candidate this week - captaincy_odds E[pts] 4.38, lowest of the eight screened."
-    },
-    {
-      "name": "Schade",
-      "pos": "MID",
-      "team": "BRE",
+      "name": "Calvert-Lewin",
+      "pos": "FWD",
+      "team": "LEE",
       "price": 6.0,
       "bought_for": 6.0,
-      "sold_for_note": "Sarr sold live at £6.4m (a real price drop from his recorded £6.5m bought_for - not yet caught by our price-tracking, roadmap B1).",
       "role": "XI",
       "bench_order": null,
-      "selected_on": "IN for Sarr, 28 Aug 2026 (GW2, 1 free transfer via optimise_squad.py --fixtures --transfers 1): +0.22 xP/90, +1.1 pts over a 5-GW hold. Sarr downgraded by live injury_report to INJURED/0%, unknown return, ahead of the GW2 deadline. Penalties order 2 at BRE (behind Thiago)."
+      "selected_on": "14 goals, xGI/90 0.55, delta -0.6 at £6.0m. Unchanged since 9 Aug."
     },
     {
       "name": "Thiago",
@@ -113,16 +121,6 @@
       "selected_on": "xbonus90 0.97 - 4th-highest in the ENTIRE 248-player pool, behind only Haaland, B.Fernandes and Ekitike. Delta +7.13 (one of the largest overperformances in the game) remains an open question the model doesn't resolve, but bonus gives him a second, largely independent route to points that isn't riding on his finishing holding up. Was CAPTAIN briefly on 28 Aug (ahead of Thiago on captaincy_odds), then Sylvan moved the armband to Gabriel later the same day - conservative call after a poor GW1, not a data-driven reversal; see Gabriel's note."
     },
     {
-      "name": "Calvert-Lewin",
-      "pos": "FWD",
-      "team": "LEE",
-      "price": 6.0,
-      "bought_for": 6.0,
-      "role": "XI",
-      "bench_order": null,
-      "selected_on": "14 goals, xGI/90 0.55, delta -0.6 at £6.0m. Unchanged since 9 Aug."
-    },
-    {
       "name": "Leno",
       "pos": "GKP",
       "team": "FUL",
@@ -133,14 +131,14 @@
       "selected_on": "GK cover at £4.5m, 100% starts. Effectively tied with Verbruggen (xP_adj 3.36 vs 3.47) - the ILP's bench objective doesn't distinguish tied 100%-starters, so treat this as a coin-flip, not a finding."
     },
     {
-      "name": "Justin",
+      "name": "Virgil",
       "pos": "DEF",
-      "team": "LEE",
-      "price": 4.5,
-      "bought_for": 4.5,
+      "team": "LIV",
+      "price": 6.5,
+      "bought_for": 6.5,
       "role": "BENCH",
       "bench_order": 1,
-      "selected_on": "First substitute. 100% starts, xP_adj 3.64 - the most valuable autosub in the squad. Unchanged since 9 Aug."
+      "selected_on": "Liverpool's GW1-4 DEF x is 0.69, the best defensive fixture run in the league by a distance. 100% starts, xP_adj 4.48."
     },
     {
       "name": "Sadiki",

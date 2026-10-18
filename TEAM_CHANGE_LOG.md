@@ -15,7 +15,38 @@ one-line record. What remains is what actually governs a decision today.
 
 ---
 
-## CURRENT STATE — as at Thu 17 Sep 2026 (GW5 pre-deadline)
+## CURRENT STATE — as at Sun 18 Oct 2026 (GW7 locked, GW8 pre-deadline)
+
+**Deadline:** Fri 23 Oct 2026, 18:30 BST (17:30 UTC) · **Formation:** 3-4-3 (unchanged)
+
+**Last change: 2 transfers, Fri 16 Oct 2026 23:36 BST (GW7) — `Szoboszlai -> E.Le Fée`
+and `Schade -> Tavernier`.** Both free, **0 pts cost**. Bank £0.5m -> **£1.7m**.
+Sylvan's own moves, made directly on the FPL site — **not run through the brief and
+not recorded here at the time.** Back-filled 18 Oct 2026 from the FPL API transfer
+history (`/api/entry/1041614/transfers/`) and the locked GW6/GW7 picks.
+**Captain Tavernier** · **Vice** Gabriel.
+
+| Out | Sold | In | Bought |
+|---|---|---|---|
+| Szoboszlai (LIV) | £6.9m | E.Le Fée (SUN) | £5.7m |
+| Schade (BRE) | £6.1m | Tavernier (BOU) | £6.1m |
+
+**XI:** Raya · Calafiori, Gabriel, Justin · B.Fernandes, E.Le Fée, Tavernier, Mbeumo ·
+Calvert-Lewin, Thiago, João Pedro. **Bench:** Leno, Virgil, Sadiki, Shaw.
+
+**Squad value** (ledger) £98.3m · **Bank** £1.7m (matches the live site exactly).
+Szoboszlai sold £0.1m below his recorded £7.0m — a real loss of team value, not a
+bookkeeping error. Unrealised drift on held players is still not reconciled into the
+ledger (roadmap B1) — check `squad_state` sell value before planning a move.
+
+**Why it matters.** With this file stuck at GW5 the VM optimiser was scoring a stale
+squad: on 18 Oct it recommended `Schade -> Tavernier`, a move already made. **Every
+change made on the live site needs recording here and in `squad.json` the same day.**
+
+**GW6 (no transfers, for the record):** captain Mbeumo, vice Gabriel; Virgil in the XI,
+Szoboszlai benched (injured, 0%).
+
+## CURRENT STATE — as at Thu 17 Sep 2026 (GW5 pre-deadline, superseded above)
 
 **Deadline:** Fri 18 Sep 2026, 18:30 BST (17:30 UTC) · **Formation:** 3-4-3 (unchanged)
 
@@ -703,6 +734,16 @@ share rises; the differential case depends entirely on him playing.
 ---
 
 ## CHANGE HISTORY (newest first)
+
+### Sun 18 Oct 2026 — record catch-up, not a new transfer — GW6/GW7 back-filled from the live site
+
+The GW7 moves of Fri 16 Oct 2026 (`Szoboszlai -> E.Le Fée`, sold £6.9m / bought £5.7m;
+`Schade -> Tavernier`, sold £6.1m / bought £6.1m; 2 free transfers, 0 pts, bank
+£0.5m -> £1.7m, captain Tavernier, vice Gabriel) were made directly on the FPL site and
+never recorded. `squad.json` and CURRENT STATE updated from the FPL API transfer
+history and locked picks; `squad_state.py` validates. **ACTIONED LIVE by Sylvan, 16 Oct
+2026, outside the brief** — no optimiser run, captaincy_odds or prediction log exists
+for GW7 in this repo. GW6: no transfers, captain Mbeumo.
 
 ### Thu 17 Sep 2026 — GW5 transfer: Van de Ven -> Calafiori, captain Mbeumo
 
