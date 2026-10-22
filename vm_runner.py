@@ -498,7 +498,7 @@ def assess(result):
         return ["the script produced no structured result (it exited early - see stderr)."], []
     if result.get("mode") == "transfers":
         for rec in result.get("transfers", []):
-            if rec.get("verdict") != "MOVE":
+            if rec.get("verdict") not in ("MOVE", "FORCED"):
                 continue
             e, w = vet_players(rec.get("in", []))
             if e:
@@ -533,6 +533,14 @@ def verdict_lines(result):
                     f" · OUT {outs} -> IN {ins}"
                     f" · 5-GW net {rec['net_5gw']:+.1f} · breakeven {rec['breakeven_gws']} GW"
                     f" · bank after £{rec['bank_after']:.1f}m")
+            elif v == "FORCED":
+                cost = f" (hit -{rec['hits']})" if rec.get("hits") else " (free)"
+                lines.append(
+                    f"  {k} transfer(s): FORCED {rec['gain_xp90']:+.2f} {u}{cost}"
+                    f" · OUT {[p['name'] for p in rec['out']]} -> IN "
+                    f"{[p['name'] for p in rec['in']]}"
+                    f" · 5-GW net {rec['net_5gw']:+.1f} vs holding - a pinned move's cost,"
+                    f" not advice · bank after £{rec['bank_after']:.1f}m")
             elif v == "HOLD":
                 lines.append(f"  {k} transfer(s): HOLD (no gain above {MIN_GAIN} {u}"
                              + (f"; tie between OUT {[p['name'] for p in rec['out']]} and "
@@ -954,7 +962,8 @@ def register(mcp, live_gw, fixture_table):
         "strings (role_rivals: one comma-joined group per string). hits=False refuses "
         "transfers above free_transfers. Refuses if the repo clone is not origin's or "
         "the window stamp is not the live GW. Returns the verdict per move count (MOVE / "
-        "HOLD - ties are HOLD, never resolved), 5-GW net, breakeven, bank after, both "
+        "HOLD - ties are HOLD, never resolved / FORCED - a force_out/force_in that rules "
+        "holding out, with its cost against holding), 5-GW net, breakeven, bank after, both "
         "preference costs, live-data stderr lines verbatim, the script text and JSON. A "
         "move naming an unavailable or contaminated player is returned as an ERROR. "
         "The objective is START-WEIGHTED by default since 16 Sep 2026 (roadmap A0.5): stp x "

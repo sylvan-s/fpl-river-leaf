@@ -723,6 +723,13 @@ def transfer_mode(pool, n, allow_haaland, max_att_per_club=MAX_ATT_PER_CLUB_DEFA
     if pin_in or pin_out:
         print(f"  PINNED: force IN {list(pin_in)}, force OUT {list(pin_out)} — "
               f"the remaining budget/transfers are optimised around this\n")
+    # A pin the current squad breaks (sell someone owned, buy someone not
+    # owned) rules holding out, so every k is a FORCED move and a gain below
+    # MIN_GAIN is its cost, not a tie. Found 22 Oct 2026: --force-out
+    # B.Fernandes printed "HOLD ... a tie, not an upgrade" for a -1.66 xP/GW
+    # sale, hiding the one number the run was asked for.
+    forced = (any(pn in owned for pn, _ in pin_out)
+              or any(pn not in owned for pn, _ in pin_in))
 
     for k in range(1, n + 1):
         res = optimise_transfers(pool, owned, BANK, k, allow_haaland, max_att_per_club,
@@ -753,12 +760,23 @@ def transfer_mode(pool, n, allow_haaland, max_att_per_club=MAX_ATT_PER_CLUB_DEFA
         # "transfer". A swap worth 0.00 xP is not a recommendation - it is the
         # solver breaking a tie, and reporting it as a move would be noise.
         MIN_GAIN = 0.01
-        if gain < MIN_GAIN or not inn:
+        if not inn or (gain < MIN_GAIN and not forced):
             print(f"  {k} transfer(s): no gain above {MIN_GAIN} {UNIT} — HOLD")
             if inn:
                 print(f"      (solver is indifferent between {out} and {inn};"
                       f" a tie, not an upgrade)")
             rec["verdict"] = "HOLD"
+            continue
+        if gain < MIN_GAIN:
+            # Forced by the pin: the least-bad version of a move holding can't avoid.
+            print(f"  {k} transfer(s): {gain:+.2f} {UNIT}"
+                  + (f"  (hit −{hits})" if hits else "  (free)")
+                  + "  — FORCED by the pin, a cost against holding, not a recommendation")
+            print(f"      OUT {out}  ->  IN {inn}"
+                  + (f"   captain (implied) {rec['captain']}" if rec["captain"] else ""))
+            print(f"      over a 5-GW hold: {gain*5 - hits:+.1f} pts net vs holding — never breaks even")
+            print(f"      bank after: £{rec['bank_after']:.1f}m")
+            rec.update(verdict="FORCED", net_5gw=round(gain * 5 - hits, 2), breakeven_gws=None)
             continue
 
         print(f"  {k} transfer(s): +{gain:.2f} {UNIT}"

@@ -186,6 +186,17 @@ check("MOVE naming a flagged player becomes ERROR_FLAGGED_PLAYER",
       res["transfers"][0]["verdict"] == "ERROR_FLAGGED_PLAYER" and len(e) == 1, e)
 check("a HOLD tie is left as HOLD, never resolved or vetted into a move",
       res["transfers"][1]["verdict"] == "HOLD")
+forced = {"mode": "transfers", "transfers": [
+    {"k": 1, "verdict": "FORCED", "in": [inj], "out": [ok_p]}]}
+e, _ = vr.assess(forced)
+check("a FORCED move naming a flagged player is vetted into an ERROR too",
+      forced["transfers"][0]["verdict"] == "ERROR_FLAGGED_PLAYER" and len(e) == 1, e)
+_fl = "\n".join(vr.verdict_lines({"mode": "transfers", "current_xi_xp": 61.2, "bank": 1.7,
+                                  "free_transfers": 1, "preference_costs": {}, "transfers": [
+    {"k": 1, "verdict": "FORCED", "gain_xp90": -1.66, "hits": 0, "net_5gw": -8.3,
+     "bank_after": 3.8, "out": [{"name": "B.Fernandes"}], "in": [{"name": "Palmer"}]}]}))
+check("a FORCED move prints its negative cost, not HOLD",
+      "FORCED -1.66" in _fl and "-8.3 vs holding" in _fl and "HOLD" not in _fl, _fl)
 e, _ = vr.assess({"mode": "rebuild", "xi": [ok_p], "bench": [cont]})
 check("rebuild squads are vetted too (bench included)", len(e) == 1, e)
 e, _ = vr.assess(None)

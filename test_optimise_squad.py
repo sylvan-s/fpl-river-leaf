@@ -228,6 +228,40 @@ _v, _vxi = opt._armband_value(_CAP_POOL, OWNED_NAMES)
 check("_armband_value of a fixed 15: its best XI flat + the top scorer again "
       "(current squad: 41.3 + M1 4.5)", abs(_v - 45.8) < 1e-9, _v)
 
+print("\n== transfer_mode: a forced sale reports its cost (22 Oct 2026) ==")
+import contextlib, io
+# Selling M1 (4.5, the captain) for the only MID on offer, WeakMid (3.0):
+# flat -1.5, captain M1 -> M2 4.4 a further -0.1, so -1.6 xP/GW.
+_FORCE_POOL = OWNED + [_row("WeakMid", "MID", "T20", 4.0, 3.0)]
+_saved = (opt.CURRENT_SQUAD, opt.BANK, opt.BOUGHT_FOR)
+opt.CURRENT_SQUAD, opt.BANK, opt.BOUGHT_FOR = sorted(OWNED_NAMES), 0.0, bf_flat
+
+
+def _tm(**kw):
+    opt.RESULT.clear()
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        opt.transfer_mode(_FORCE_POOL, 1, True, max_att_per_club=None, **kw)
+    return buf.getvalue(), opt.RESULT["transfers"][0]
+
+
+try:
+    txt, rec = _tm(pin_out=[("M1", "T8")])
+    check("pinned sale of an owned player is FORCED, not HOLD", rec["verdict"] == "FORCED", rec)
+    check("...with its real negative gain (-1.6) and 5-GW cost (-8.0)",
+          abs(rec["gain_xp90"] + 1.6) < 1e-9 and rec["net_5gw"] == -8.0, rec)
+    check("...and the printout says so instead of calling it a tie",
+          "-1.60" in txt and "FORCED" in txt and "a tie" not in txt, txt)
+    _, rec = _tm()
+    check("same pool, no pin: still HOLD (nothing improves on the squad)",
+          rec["verdict"] == "HOLD", rec)
+    _, rec = _tm(pin_out=[("WeakMid", "T20")])
+    check("a pin the squad already satisfies (sell someone not owned) is not forced -> HOLD",
+          rec["verdict"] == "HOLD", rec)
+finally:
+    opt.CURRENT_SQUAD, opt.BANK, opt.BOUGHT_FOR = _saved
+    opt.RESULT.clear()
+
 print("\n== estimator default (22 Oct 2026) ==")
 check("optimise_squad defaults to the shrunk estimator", opt.ESTIMATOR_DEFAULT == "shrunk")
 check("...without moving build_squad's shared default (dashboard/pages)",
