@@ -33,6 +33,8 @@ active defaults and a choice, before executing anything:
   - Haaland: allowed (exclusion is opt-in since 16 Sep 2026)
   - max attackers per club: 2
   - wildcard/rebuild budget: squad selling value + bank (not £100m)
+  - performance estimator: shrunk (default in optimise_squad.py since 22 Oct
+    2026; `--estimator prior` for 2025/26 rates only)
 
 Ask (via AskUserQuestion in an interactive session) whether to proceed with
 both defaults, or clear/adjust one. Do not run first and ask after — the
@@ -130,3 +132,18 @@ number came from. `--per90` (or `start_weighted=False` on the VM runner) gives
 the old objective; `--compare-start-weighted` shows both. Its 5-GW net and
 breakeven lines are the unit-consistent ones for judging a −4 hit. When stating
 the defaults before a run, include "objective start-weighted xP/GW".
+
+## Captain term — ON by default since 22 Oct 2026
+
+The objective adds the XI's top scorer a second time (`c_i <= x_i`,
+`sum(c_i) == 1`), so a squad is valued with an armband on it rather than as a
+flat sum. Every XI total — current squad, gains, the PRICE OF THE PREFERENCE
+blocks — includes the captain, so figures are not comparable with those logged
+before 22 Oct 2026. One captain covers the whole fixture window (per-gameweek
+captains are the v2 roadmap item). The armband itself is still chosen weekly
+with `captaincy_odds`; the optimiser only prints the captain it implies.
+`--no-captain` gives the flat XI sum back; `--compare-captain` runs both and
+re-scores both squads the same way (best XI + armband) so the gap is what
+picking with captaincy in mind is worth. When stating the defaults before a
+run, include "captain term on". The VM runner tools have no switch for it yet,
+so they run with it on.

@@ -220,6 +220,8 @@ def main():
         opt.UNIT = "xP/GW"
         if "--gate" not in sys.argv:
             bs.GATE_XI = opt.START_WEIGHTED_XI_FLOOR
+    # Captain term - same switch as optimise_squad.py (CAPTAIN_DEFAULT).
+    opt.CAPTAIN = opt.CAPTAIN_DEFAULT and "--no-captain" not in sys.argv
     if "--budget" in sys.argv and "--transfers" in sys.argv:
         sys.exit("--budget applies to wildcard/rebuild mode only")
     estimator = (sys.argv[sys.argv.index("--estimator") + 1]
@@ -356,7 +358,8 @@ def main():
         opt.RESULT.update(mode="rebuild",
                           xi=[opt._pj(r, opt._cost(r) if opt._is_owned(r) else None) for r in xi],
                           bench=[opt._pj(r, opt._cost(r) if opt._is_owned(r) else None) for r in bench],
-                          xi_xp=round(sum(r["score"] for r in xi), 4),
+                          xi_xp=round(opt.xi_xp(xi), 4),
+                          captain=opt.captain_of(xi)["name"] if opt.CAPTAIN else None,
                           squad_cost=cost, budget=budget_info,
                           bank_after=round(budget_info["value"] - cost, 1),
                           kept=sorted(r["name"] for r in xi + bench if opt._is_owned(r)))
@@ -369,6 +372,7 @@ def main():
             hypothetical=True,
             meta={"estimator": estimator, "stp_estimator": stp_estimator,
                   "objective": "per_gw" if start_weighted else "per90", "unit": opt.UNIT,
+                  "captain": opt.CAPTAIN,
                   "base_intel": use_base_intel,
                   "allow_contaminated": not exclude_contam,
                   "fixtures": "--fixtures" in sys.argv, "live_gw": bs._live_gw_cache,

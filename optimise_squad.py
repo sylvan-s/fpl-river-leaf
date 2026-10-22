@@ -15,6 +15,8 @@ one. This solves the same problem exactly.
     python3 optimise_squad.py --no-haaland --gate 0.70
     python3 optimise_squad.py --fixtures               # score on xP_adj (GW1-4)
     python3 optimise_squad.py --fixtures --transfers 1
+    python3 optimise_squad.py --no-captain --transfers 1      # flat XI sum, no armband
+    python3 optimise_squad.py --compare-captain --transfers 1 # flat vs XI + captain
 
 EXOGENOUS PREFERENCES. Standing choices are applied as ILP constraints,
 each overridable per run - see "THE FORMULATION" below for why constraints
@@ -64,12 +66,13 @@ exists in one tool and not in the one actually used every week.
     python3 optimise_squad.py --compare-intel --transfers 1
 
 PLAYER PERFORMANCE ESTIMATOR (roadmap A0.2, revised 31 Aug 2026, extended with
-`raw` 2 Sep 2026) - `--estimator {prior,raw,shrunk}`, default `prior`, unlike
-intel above. Governs how xg90/xa90/xgi90/xgc90/cbit90/cbirt90/sv90 are
+`raw` 2 Sep 2026) - `--estimator {prior,raw,shrunk}`, default `shrunk` in this
+file since 22 Oct 2026 (see ESTIMATOR_DEFAULT; build_squad.py still defaults to
+`prior`). Governs how xg90/xa90/xgi90/xgc90/cbit90/cbirt90/sv90 are
 derived (NOT stp - see METHODOLOGY_ALTERNATIVES.md A0.2 "Phase 2" for why
 start rate stays out of this):
 
-    prior  - 2025/26 prior season only. No live fetch. The long-standing default.
+    prior  - 2025/26 prior season only. No live fetch. The default until 22 Oct 2026.
     raw    - live 2026/27 per-90 rates only, no blending toward the prior at
              all. Gated per-player at scoring.MIN_N90_RAW - below that a raw
              rate is noise (see that constant's comment), so the prior is
@@ -80,11 +83,11 @@ start rate stays out of this):
 
 `raw` and `shrunk` both need live network for build_squad.load()'s
 current-season fetch; both degrade to prior-only with a warning if
-unreachable (e.g. this session's sandbox). `shrunk` is compare-only until
-the GW3 sanity check looks sane, then flips to default-on before GW4:
+unreachable (e.g. this session's sandbox). `shrunk` was planned to flip to
+default-on before GW4; in this file it did so on 22 Oct 2026 (GW8):
 
     python3 optimise_squad.py --estimator raw --fixtures --transfers 1
-    python3 optimise_squad.py --estimator shrunk --fixtures --transfers 1
+    python3 optimise_squad.py --estimator prior --fixtures --transfers 1
     python3 optimise_squad.py --compare-estimators --fixtures --transfers 1   # prior vs raw vs shrunk, one run
 
 (`--shrunk-priors` and `--compare-shrink` still work as legacy aliases for
@@ -107,8 +110,10 @@ THE FORMULATION
       b_i = 1 if i is on the BENCH
       (x_i + b_i <= 1  - a player is in the XI, on the bench, or not owned)
 
-  objective                MAXIMISE  sum( xP_i * x_i )
-      Only the XI scores. The bench is a cost, not a benefit - which is exactly
+  objective                MAXIMISE  sum( xP_i * x_i ) + sum( xP_i * c_i )
+      c_i = 1 for the captain: c_i <= x_i, sum( c_i ) == 1, so the captain's
+      points count twice (22 Oct 2026; --no-captain drops the second sum - see
+      CAPTAIN_DEFAULT). Only the XI scores. The bench is a cost, not a benefit - which is exactly
       why the problem is interesting: every pound spent on fodder is a pound not
       spent on the XI. A naive "maximise over all 15" would buy a luxury bench.
 
@@ -233,6 +238,59 @@ START_WEIGHTED_XI_FLOOR = 0.50
 # Revert here if the GW10 backtest says so, and date it in TEAM_CHANGE_LOG.md.
 START_WEIGHTED_DEFAULT = True
 UNIT = "xP/90"                   # set to "xP/GW" by _main() when start-weighted
+
+# PERFORMANCE ESTIMATOR - "shrunk" since 22 Oct 2026 (Sylvan's call, GW8), for
+# this file only. It had defaulted to "prior" (2025/26 rates, no live data)
+# while the VM runner and the weekly brief always passed --estimator shrunk, so
+# a bare local run quietly answered a different question from the weekly one.
+# build_squad.ESTIMATOR_DEFAULT stays "prior" - the dashboard and page builders
+# read it. Every pool this file builds, compare modes included, uses this
+# unless --estimator says otherwise; --estimator prior restores the old answer.
+ESTIMATOR_DEFAULT = "shrunk"
+
+# CAPTAINCY IN THE OBJECTIVE (built 22 Oct 2026, ON by default). The armband
+# doubles one XI player's points every gameweek - roughly 5-7 xP/GW against a
+# XI total near 50 - but the objective summed the XI flat, so the squad was
+# chosen as if nobody would ever be captain and the armband was only settled
+# afterwards with captaincy_odds. That undervalues having one standout captain
+# option, and understates what --no-haaland costs. The term is a binary c_i per
+# player: c_i <= x_i, sum(c_i) == 1, objective += score_i * c_i. Given the XI,
+# the best c is simply its top scorer, so every XI total in this file is
+# xi_xp(xi) = flat sum + top score - no caller needs the captain back from the
+# solver. ONE captain for the whole fixture window: score is a weighted mean,
+# so two premiums whose good fixtures alternate are still undervalued (per-GW
+# captain variables are v2, and need per-GW xP out of fixture_adjust). The
+# armband itself is still picked weekly with captaincy_odds - this only decides
+# what a squad is worth. --no-captain gives the flat objective back;
+# --compare-captain shows both. Kill criterion: if captain-aware squads do not
+# out-score captain-blind ones in predictive_backtest (actual captain points
+# included), delete it. Unit: XI totals now include the captain, so they are
+# not comparable with figures logged before 22 Oct 2026.
+CAPTAIN_DEFAULT = True
+CAPTAIN = CAPTAIN_DEFAULT        # cleared by _main() / scenario_squad on --no-captain
+
+
+def xi_xp(xi, captain=None):
+    """XI value on the active objective: the flat sum, plus the top scorer's
+    score again when the captain term is on."""
+    captain = CAPTAIN if captain is None else captain
+    flat = sum(r["score"] for r in xi)
+    return flat + (max((r["score"] for r in xi), default=0.0) if captain else 0.0)
+
+
+def captain_of(xi):
+    """The armband the captain term implies: the XI's top scorer."""
+    return max(xi, key=lambda r: r["score"]) if xi else None
+
+
+def _captain_term(prob, P, x):
+    """score_i * c_i, with exactly one captain who must start. Added to the
+    objective it counts the captain's points twice."""
+    c = {i: pulp.LpVariable(f"c{i}", cat="Binary") for i in range(len(P))}
+    prob += pulp.lpSum(c.values()) == 1
+    for i in range(len(P)):
+        prob += c[i] <= x[i]
+    return pulp.lpSum(P[i]["score"] * c[i] for i in range(len(P)))
 
 
 def start_weight(pool):
@@ -374,7 +432,7 @@ def _cost(r, owned_coef=None):
 
 
 def optimise(pool, allow_haaland=True, max_att_per_club=MAX_ATT_PER_CLUB_DEFAULT,
-             verbose=True, role_rivals=(), budget=None, owned_coef=None):
+             verbose=True, role_rivals=(), budget=None, owned_coef=None, captain=None):
     P = [r for r in pool if r["ok"]]
     if not allow_haaland:
         P = [r for r in P if r["name"] != "Haaland"]
@@ -396,8 +454,11 @@ def optimise(pool, allow_haaland=True, max_att_per_club=MAX_ATT_PER_CLUB_DEFAULT
     # and can land on a 61%-starter, which is worthless for autosub and Bench
     # Boost. EPS is small enough that it can never alter an XI decision.
     EPS = 1e-4
-    prob += (pulp.lpSum(P[i]["score"] * x[i] for i in range(len(P)))
-             + EPS * pulp.lpSum(P[i]["stp"] * b[i] for i in range(len(P))))
+    obj = (pulp.lpSum(P[i]["score"] * x[i] for i in range(len(P)))
+           + EPS * pulp.lpSum(P[i]["stp"] * b[i] for i in range(len(P))))
+    if CAPTAIN if captain is None else captain:
+        obj += _captain_term(prob, P, x)
+    prob += obj
 
     for i in range(len(P)):
         prob += x[i] + b[i] <= 1
@@ -439,7 +500,7 @@ def optimise(pool, allow_haaland=True, max_att_per_club=MAX_ATT_PER_CLUB_DEFAULT
 def optimise_transfers(pool, owned_names, bank, n_transfers, allow_haaland=True,
                        max_att_per_club=MAX_ATT_PER_CLUB_DEFAULT,
                        free_transfers=1, force=False, role_rivals=(),
-                       pin_in=(), pin_out=(), bought_for=None):
+                       pin_in=(), pin_out=(), bought_for=None, captain=None):
     """Best n_transfers FROM the current squad. The weekly question.
 
     pin_in / pin_out: (name, team) pairs to force owned=1 / owned=0 - "given
@@ -504,8 +565,11 @@ def optimise_transfers(pool, owned_names, bank, n_transfers, allow_haaland=True,
 
     hits = max(0, n_transfers - free_transfers) * HIT_COST
     EPS = 1e-4
-    prob += (pulp.lpSum(P[i]["score"] * x[i] for i in range(len(P)))
-             + EPS * pulp.lpSum(P[i]["stp"] * b[i] for i in range(len(P))))
+    obj = (pulp.lpSum(P[i]["score"] * x[i] for i in range(len(P)))
+           + EPS * pulp.lpSum(P[i]["stp"] * b[i] for i in range(len(P))))
+    if CAPTAIN if captain is None else captain:
+        obj += _captain_term(prob, P, x)
+    prob += obj
 
     for i in range(len(P)):
         prob += x[i] + b[i] <= 1
@@ -581,13 +645,16 @@ def show(xi, bench, obj):
     form = "-".join(str(sum(1 for r in xi if r["pos"] == p)) for p in order[1:])
     spend_xi = sum(_cost(r) for r in xi)
     spend = spend_xi + sum(_cost(r) for r in bench)
-    xp_xi = sum(r["score"] for r in xi)
+    xp_xi = xi_xp(xi)
+    cap = captain_of(xi) if CAPTAIN else None
     print(f"formation {form}   XI £{spend_xi:.1f}m   squad £{spend:.1f}m   "
-          f"bank £{BUDGET-spend:.1f}m   XI {UNIT} {xp_xi:.2f}   "
-          f"bench avg starts {sum(r['stp'] for r in bench)/len(bench)*100:.0f}%\n")
+          f"bank £{BUDGET-spend:.1f}m   XI {UNIT} {xp_xi:.2f}"
+          + (f" (flat {xi_xp(xi, False):.2f} + captain {cap['score']:.2f})" if cap else "")
+          + f"   bench avg starts {sum(r['stp'] for r in bench)/len(bench)*100:.0f}%\n")
     for r in sorted(xi, key=lambda r: (order.index(r["pos"]), -r["score"])):
         print(f"  {r['name'][:14]:<15}{r['pos']:<5}{r['team']:<5}£{r['price']:<5.1f}"
-              f"{r['stp']*100:>4.0f}%   xP {r['score']:>5.2f}{_q_mark(r)}")
+              f"{r['stp']*100:>4.0f}%   xP {r['score']:>5.2f}"
+              + ("  (C)" if r is cap else "") + _q_mark(r))
     print("  --- bench ---")
     for r in sorted(bench, key=lambda r: order.index(r["pos"])):
         print(f"  {r['name'][:14]:<15}{r['pos']:<5}{r['team']:<5}£{r['price']:<5.1f}"
@@ -625,8 +692,9 @@ def transfer_mode(pool, n, allow_haaland, max_att_per_club=MAX_ATT_PER_CLUB_DEFA
     res0 = optimise_transfers(pool, owned, BANK, 0, allow_haaland, max_att_per_club=None)
     if not res0:
         sys.exit("current squad is infeasible under the base constraints — check CURRENT_SQUAD")
-    xi0 = sum(r["score"] for r in res0[0])
-    print(f"current squad   XI {UNIT} {xi0:.2f}   bank £{BANK:.1f}m\n")
+    xi0 = xi_xp(res0[0])
+    print(f"current squad   XI {UNIT} {xi0:.2f}   bank £{BANK:.1f}m"
+          + (f"   captain (implied) {captain_of(res0[0])['name']}" if CAPTAIN else "") + "\n")
     owned_rows = {r["name"]: r for r in res0[0] + res0[1]}
     RESULT.update(mode="transfers", current_xi_xp=round(xi0, 4), bank=BANK,
                   free_transfers=free_transfers, transfers=[],
@@ -667,7 +735,7 @@ def transfer_mode(pool, n, allow_haaland, max_att_per_club=MAX_ATT_PER_CLUB_DEFA
             RESULT["transfers"].append({"k": k, "verdict": "INFEASIBLE"})
             continue
         xi, bench, hits = res
-        gain = sum(r["score"] for r in xi) - xi0
+        gain = xi_xp(xi) - xi0
         out = sorted(owned - {r["name"] for r in xi + bench})
         inn = sorted({r["name"] for r in xi + bench} - owned)
         new_rows = {r["name"]: r for r in xi + bench}
@@ -677,7 +745,8 @@ def transfer_mode(pool, n, allow_haaland, max_att_per_club=MAX_ATT_PER_CLUB_DEFA
                "out": [_pj(owned_rows[n], sells[n]) for n in out],
                "in": [_pj(new_rows[n]) for n in inn],
                "bank_after": round(BANK + sum(sells.values())
-                                   - sum(new_rows[n]["price"] for n in inn), 1)}
+                                   - sum(new_rows[n]["price"] for n in inn), 1),
+               "captain": captain_of(xi)["name"] if CAPTAIN else None}
         RESULT["transfers"].append(rec)
 
         # MIN_GAIN guards against the epsilon bench tiebreak surfacing as a
@@ -694,7 +763,8 @@ def transfer_mode(pool, n, allow_haaland, max_att_per_club=MAX_ATT_PER_CLUB_DEFA
 
         print(f"  {k} transfer(s): +{gain:.2f} {UNIT}"
               + (f"  (hit −{hits})" if hits else "  (free)"))
-        print(f"      OUT {out}  ->  IN {inn}")
+        print(f"      OUT {out}  ->  IN {inn}"
+              + (f"   captain (implied) {rec['captain']}" if rec["captain"] else ""))
         rec.update(verdict="MOVE", net_5gw=round(gain * 5 - hits, 2),
                    breakeven_gws=round(hits / gain, 2) if hits else 0.0)
         if hits:
@@ -719,7 +789,7 @@ def _price_transfer_preferences(pool, owned, n, allow_haaland, max_att_per_club,
         res = optimise_transfers(pool, owned, BANK, n, ah, cap,
                                  free_transfers=free_transfers, role_rivals=role_rivals,
                                  pin_in=pin_in, pin_out=pin_out)
-        return None if not res else (sum(r["score"] for r in res[0]), res[0] + res[1])
+        return None if not res else (xi_xp(res[0]), res[0] + res[1])
 
     held = best(allow_haaland, max_att_per_club)
     costs = {}
@@ -775,8 +845,8 @@ def compare_intel(allow_haaland, season_starts, use_fixtures, n_transfers,
     the adjustment logic itself - that stays in intel_adjust.py, single source.
     """
     print("=== INTEL COMPARISON — WITH vs WITHOUT ROLE_INTEL.md adjustments ===\n")
-    pool_off = bs.load(season_starts=season_starts, intel=False)
-    pool_on = bs.load(season_starts=season_starts, intel=True)
+    pool_off = bs.load(season_starts=season_starts, intel=False, estimator=ESTIMATOR_DEFAULT)
+    pool_on = bs.load(season_starts=season_starts, intel=True, estimator=ESTIMATOR_DEFAULT)
     if use_fixtures:
         _fixture_scale(pool_off)
         _fixture_scale(pool_on)
@@ -791,8 +861,8 @@ def compare_intel(allow_haaland, season_starts, use_fixtures, n_transfers,
 
     xi_off, bench_off, _ = optimise(pool_off, allow_haaland, max_att_per_club)
     xi_on, bench_on, _ = optimise(pool_on, allow_haaland, max_att_per_club)
-    xp_off = sum(r["score"] for r in xi_off)
-    xp_on = sum(r["score"] for r in xi_on)
+    xp_off = xi_xp(xi_off)
+    xp_on = xi_xp(xi_on)
     out = sorted({r["name"] for r in xi_off + bench_off}
                  - {r["name"] for r in xi_on + bench_on})
     inn = sorted({r["name"] for r in xi_on + bench_on}
@@ -841,7 +911,7 @@ def compare_estimators(allow_haaland, season_starts, use_fixtures, n_transfers,
     for e in estimators:
         xi, bench, _ = optimise(pools[e], allow_haaland, max_att_per_club)
         picks[e] = (xi, bench)
-        print(f"XI {UNIT} [{e:>6}]: {sum(r['score'] for r in xi):.2f}")
+        print(f"XI {UNIT} [{e:>6}]: {xi_xp(xi):.2f}")
 
     base = estimators[0]
     base_names = {r["name"] for r in picks[base][0] + picks[base][1]}
@@ -869,7 +939,7 @@ def compare_shrink(allow_haaland, season_starts, use_fixtures, n_transfers,
 
 
 def compare_start_weighted(allow_haaland, season_starts, use_fixtures, n_transfers,
-                           max_att_per_club=MAX_ATT_PER_CLUB_DEFAULT, estimator="prior",
+                           max_att_per_club=MAX_ATT_PER_CLUB_DEFAULT, estimator=ESTIMATOR_DEFAULT,
                            intel=True, stp_estimator=None):
     """--compare-start-weighted: the per-90 objective (75% XI gate) against
     stp x xP per gameweek (START_WEIGHTED_XI_FLOOR), same pool otherwise. The
@@ -900,7 +970,7 @@ def compare_start_weighted(allow_haaland, season_starts, use_fixtures, n_transfe
 
 
 def compare_stp(allow_haaland, season_starts, use_fixtures, n_transfers,
-                max_att_per_club=MAX_ATT_PER_CLUB_DEFAULT, estimator="prior",
+                max_att_per_club=MAX_ATT_PER_CLUB_DEFAULT, estimator=ESTIMATOR_DEFAULT,
                 intel=True):
     """--compare-stp: start rate on the 2025/26 prior vs shrunk with live
     2026/27 starts (roadmap A0.2), same everything else. stp only moves the
@@ -921,10 +991,79 @@ def compare_stp(allow_haaland, season_starts, use_fixtures, n_transfers,
     for m in ("prior", "shrunk"):
         xi, bench, _ = optimise(pools[m], allow_haaland, max_att_per_club)
         picks[m] = {r["name"] for r in xi + bench}
-        print(f"XI {UNIT} [stp {m:>6}]: {sum(r['score'] for r in xi):.2f}")
+        print(f"XI {UNIT} [stp {m:>6}]: {xi_xp(xi):.2f}")
     out, inn = sorted(picks["prior"] - picks["shrunk"]), sorted(picks["shrunk"] - picks["prior"])
     print(f"\nprior -> shrunk: OUT {out}  IN {inn}" if out or inn
           else "\nprior -> shrunk: same 15 players.")
+
+
+def _armband_value(pool, names):
+    """(best XI value with an armband, that XI) for a FIXED 15 - the yardstick
+    --compare-captain scores both answers on. n=0, so the budget cannot bind
+    and the solve only picks the XI and the captain."""
+    res = optimise_transfers(pool, set(names), 0.0, 0, allow_haaland=True,
+                             max_att_per_club=None, captain=True)
+    return (xi_xp(res[0], True), res[0]) if res else (None, None)
+
+
+def compare_captain(pool, n_transfers, allow_haaland, max_att_per_club=MAX_ATT_PER_CLUB_DEFAULT,
+                    role_rivals=(), free_transfers=1, pin_in=(), pin_out=()):
+    """--compare-captain: the flat XI objective (--no-captain) against the
+    captain-aware one, on the pool _main() built - same estimator, fixtures,
+    start weighting, gates and preferences. The two runs print in their own
+    units (flat vs incl. captain), so the summary re-scores BOTH squads the
+    same way - best XI from that 15 with an armband - and the gap is what
+    choosing the squad with captaincy in mind is worth, not a unit change."""
+    global CAPTAIN
+    keep = CAPTAIN
+    squads = {}
+    print("=== OBJECTIVE COMPARISON — flat XI sum vs XI + captain ===\n")
+    try:
+        for label, flag in (("captain-blind (flat XI sum, --no-captain)", False),
+                            ("captain-aware (XI sum + captain, default)", True)):
+            CAPTAIN = flag
+            print(f"--- {label} ---")
+            if n_transfers is not None:
+                transfer_mode(pool, n_transfers, allow_haaland, max_att_per_club,
+                              free_transfers=free_transfers, role_rivals=role_rivals,
+                              pin_in=pin_in, pin_out=pin_out)
+                squads[flag] = {}
+                for k in range(1, n_transfers + 1):
+                    res = optimise_transfers(pool, set(CURRENT_SQUAD), BANK, k, allow_haaland,
+                                             max_att_per_club, free_transfers=free_transfers,
+                                             role_rivals=role_rivals, pin_in=pin_in,
+                                             pin_out=pin_out)
+                    squads[flag][k] = res and {r["name"] for r in res[0] + res[1]}
+            else:
+                xi, bench, obj = optimise(pool, allow_haaland, max_att_per_club,
+                                          role_rivals=role_rivals)
+                show(xi, bench, obj)
+                squads[flag] = {None: {r["name"] for r in xi + bench}}
+            print()
+    finally:
+        CAPTAIN = keep
+
+    print("--- SUMMARY: both squads scored the same way (best XI + armband, "
+          f"{UNIT}) ---")
+    if n_transfers is not None:
+        v0, xi0 = _armband_value(pool, CURRENT_SQUAD)
+        print(f"  hold (current squad)        : {v0:.2f}   captain {captain_of(xi0)['name']}")
+    for k in squads[True]:
+        blind, aware = squads[False][k], squads[True][k]
+        tag = "wildcard" if k is None else f"{k} transfer(s)"
+        if not blind or not aware:
+            print(f"  {tag}: infeasible under one objective - nothing to compare")
+            continue
+        vb, xb = _armband_value(pool, blind)
+        va, xa = _armband_value(pool, aware)
+        print(f"  {tag:<28}: captain-blind {vb:.2f} (C {captain_of(xb)['name']})   "
+              f"captain-aware {va:.2f} (C {captain_of(xa)['name']})   "
+              f"worth {va - vb:+.2f}")
+        if blind == aware:
+            print(f"      same 15 players - the captain term changes nothing here.")
+        else:
+            print(f"      captain-blind only: {sorted(blind - aware)}")
+            print(f"      captain-aware only: {sorted(aware - blind)}")
 
 
 def _load_tq():
@@ -1002,7 +1141,7 @@ def main():
 
 
 def _main():
-    global BUDGET, _OWNED_COEF, UNIT
+    global BUDGET, _OWNED_COEF, UNIT, CAPTAIN
     # Haaland is allowed by default since 16 Sep 2026; --no-haaland opts back
     # in to the old preference. --haaland is accepted and ignored.
     allow_haaland = "--no-haaland" not in sys.argv
@@ -1015,6 +1154,11 @@ def _main():
     # on; --per90 opts out; --start-weighted is accepted and changes nothing.
     start_weighted = START_WEIGHTED_DEFAULT and "--per90" not in sys.argv
     gate_xi_per90 = bs.GATE_XI                    # for --compare-start-weighted
+    # Captain term - see CAPTAIN_DEFAULT. Set before every dispatch so the
+    # compare modes below value a XI the same way the main run does.
+    if "--no-captain" in sys.argv and "--compare-captain" in sys.argv:
+        sys.exit("--compare-captain already runs both objectives; drop --no-captain.")
+    CAPTAIN = CAPTAIN_DEFAULT and "--no-captain" not in sys.argv
     if start_weighted:
         UNIT = "xP/GW"
         if "--gate" not in sys.argv:
@@ -1077,7 +1221,7 @@ def _main():
     if "--compare-start-weighted" in sys.argv:
         n_transfers = (int(sys.argv[sys.argv.index("--transfers") + 1])
                        if "--transfers" in sys.argv else None)
-        est = sys.argv[sys.argv.index("--estimator") + 1] if "--estimator" in sys.argv else "prior"
+        est = sys.argv[sys.argv.index("--estimator") + 1] if "--estimator" in sys.argv else ESTIMATOR_DEFAULT
         stp = (sys.argv[sys.argv.index("--stp-estimator") + 1]
                if "--stp-estimator" in sys.argv else None)
         bs.GATE_XI = gate_xi_per90
@@ -1090,7 +1234,7 @@ def _main():
     if "--compare-stp" in sys.argv:
         n_transfers = (int(sys.argv[sys.argv.index("--transfers") + 1])
                        if "--transfers" in sys.argv else None)
-        est = sys.argv[sys.argv.index("--estimator") + 1] if "--estimator" in sys.argv else "prior"
+        est = sys.argv[sys.argv.index("--estimator") + 1] if "--estimator" in sys.argv else ESTIMATOR_DEFAULT
         compare_stp(allow_haaland, "--season-starts" in sys.argv, "--fixtures" in sys.argv,
                     n_transfers, max_att_per_club, estimator=est,
                     intel="--no-intel" not in sys.argv)
@@ -1118,7 +1262,7 @@ def _main():
     elif "--shrunk-priors" in sys.argv:
         estimator = "shrunk"
     else:
-        estimator = "prior"                       # default - see A0.2 "Phase 2"
+        estimator = ESTIMATOR_DEFAULT             # "shrunk" since 22 Oct 2026
     if estimator not in bs.ESTIMATOR_CHOICES:
         sys.exit(f"--estimator must be one of {bs.ESTIMATOR_CHOICES}, got {estimator!r}")
     # Start rate (roadmap A0.2) - its own switch, separate from --estimator,
@@ -1151,13 +1295,13 @@ def _main():
         print("INTEL: DISABLED (--no-intel) - stp/xg90/etc. are the raw, "
               "ROLE_INTEL-blind numbers\n")
     est_note = {
-        "prior": "PRIOR — 2025/26 season only (default). "
-                 "Pass --estimator raw or --estimator shrunk to use live 2026/27 data.",
+        "prior": "PRIOR — 2025/26 season only (--estimator prior). Not the default "
+                 "since 22 Oct 2026; shrunk is.",
         "raw": f"RAW — live 2026/27 per-90 rates only, gated at "
                f"{bs.scoring.MIN_N90_RAW:.1f} n90, no blending (--estimator raw).",
         "shrunk": "SHRUNK — Bayesian blend of the 2025/26 prior and live "
-                  "2026/27 rates (--estimator shrunk). See METHODOLOGY_ALTERNATIVES.md "
-                  "A0.2 'Phase 2'.",
+                  "2026/27 rates (default since 22 Oct 2026). See METHODOLOGY_ALTERNATIVES.md "
+                  "A0.2 'Phase 2'. --estimator prior for 2025/26 rates only.",
     }[estimator]
     print(f"ESTIMATOR: {est_note}\n")
     print("START RATE: " + ({
@@ -1207,7 +1351,12 @@ def _main():
     else:
         print("OBJECTIVE UNIT: xP/90 with the 75% XI gate (--per90). Not the default since "
               "16 Sep 2026.")
+    print("OBJECTIVE TERM: " + ("XI + CAPTAIN (default since 22 Oct 2026) - the XI's top "
+                                "scorer counts twice; one armband for the whole window. "
+                                "--no-captain for the flat XI sum." if CAPTAIN else
+                                "FLAT XI SUM (--no-captain) - no armband in the objective."))
     RESULT["meta"]["objective"] = "per_gw" if start_weighted else "per90"
+    RESULT["meta"]["captain"] = CAPTAIN
     RESULT["meta"]["unit"] = UNIT
     RESULT["meta"]["gate_xi"] = bs.GATE_XI
     att_note = ("" if max_att_per_club is None
@@ -1215,6 +1364,18 @@ def _main():
     print(f"pool {len(pool)} players · gates: {bs.MIN_MINUTES}+ mins · "
           f"starts >={bs.GATE_XI:.0%} XI / {bs.GATE_BENCH:.0%} bench"
           + ("" if allow_haaland else " · no Haaland") + att_note + "\n")
+
+    if "--compare-captain" in sys.argv:
+        n_transfers = (int(sys.argv[sys.argv.index("--transfers") + 1])
+                       if "--transfers" in sys.argv else None)
+        if n_transfers is None:
+            set_wildcard_budget(pool)
+        compare_captain(pool, n_transfers, allow_haaland, max_att_per_club,
+                        role_rivals=role_rivals,
+                        free_transfers=(int(sys.argv[sys.argv.index("--free-transfers") + 1])
+                                        if "--free-transfers" in sys.argv else 1),
+                        pin_in=_parse_pins("--force-in"), pin_out=_parse_pins("--force-out"))
+        return
 
     if "--transfers" in sys.argv:
         n = int(sys.argv[sys.argv.index("--transfers") + 1])
@@ -1236,7 +1397,8 @@ def _main():
     cost = round(sum(_tenths(_cost(r)) for r in xi + bench) / 10, 1)
     RESULT.update(mode="rebuild", xi=[_pj(r, _cost(r) if _is_owned(r) else None) for r in xi],
                   bench=[_pj(r, _cost(r) if _is_owned(r) else None) for r in bench],
-                  xi_xp=round(sum(r["score"] for r in xi), 4),
+                  xi_xp=round(xi_xp(xi), 4),
+                  captain=captain_of(xi)["name"] if CAPTAIN else None,
                   squad_cost=cost, budget=budget_info,
                   bank_after=round(budget_info["value"] - cost, 1),
                   kept=sorted(r["name"] for r in xi + bench if _is_owned(r)),
@@ -1251,8 +1413,8 @@ def _main():
         # current value - so the cost reported is this preference's alone,
         # not conflated with the concentration cap.
         fxi, fbench, _ = optimise(pool, allow_haaland=True, max_att_per_club=max_att_per_club)
-        free = sum(r["score"] for r in fxi)
-        held = sum(r["score"] for r in xi)
+        free = xi_xp(fxi)
+        held = xi_xp(xi)
         cost = free - held
         print(f"\n--- PRICE OF THE PREFERENCE (no Haaland) ---")
         print(f"  unconstrained optimum : {free:.2f} {UNIT}"
@@ -1275,8 +1437,8 @@ def _main():
         # Same treatment, other axis: relax the concentration cap only, hold
         # allow_haaland fixed at its current value.
         rxi, rbench, _ = optimise(pool, allow_haaland, max_att_per_club=None)
-        relaxed = sum(r["score"] for r in rxi)
-        held2 = sum(r["score"] for r in xi)
+        relaxed = xi_xp(rxi)
+        held2 = xi_xp(xi)
         cost2 = relaxed - held2
         club_m, m = _max_attackers_from_one_club(rxi + rbench)
         print(f"\n--- PRICE OF THE CONCENTRATION PREFERENCE "
@@ -1311,13 +1473,13 @@ def _main():
     for form in ((3,4,3),(3,5,2),(4,4,2),(4,3,3),(5,3,2),(4,5,1),(5,4,1)):
         ok, gxi, gsq, gxs, gtot = bs.build(pool, form, allow_haaland, bs.GATE_XI)
         if ok and gtot <= BUDGET:
-            m = sum(r["score"] for r in gxi)
+            m = xi_xp(gxi)
             if best is None or m > best[0]:
                 best = (m, gxi, gsq, gxs, gtot)
     if best:
         gm, gxi, gsq, gxs, gtot = best
         print(f"\n=== GREEDY (build_squad.py) ===  XI {UNIT} {gm:.2f}   squad £{gtot:.1f}m")
-        gap = sum(r["score"] for r in xi) - gm
+        gap = xi_xp(xi) - gm
         same = {r["name"] for r in xi} & {r["name"] for r in gxi}
         diff = {r["name"] for r in xi} - {r["name"] for r in gxi}
         if abs(gap) < 1e-6:
@@ -1332,7 +1494,7 @@ def _main():
         print("\n=== GREEDY (build_squad.py) ===  NO FEASIBLE SQUAD at this budget.")
         print("  Greedy never consults the budget while choosing — it takes the best")
         print("  at each slot and checks the total afterwards. The optimiser still")
-        print(f"  finds a squad worth {sum(r['score'] for r in xi):.2f} {UNIT}.")
+        print(f"  finds a squad worth {xi_xp(xi):.2f} {UNIT}.")
 
     print("\nBudget sensitivity — where the method starts to matter:")
     print(f"  {'budget':>7}{'ILP xP':>9}   greedy")
@@ -1340,7 +1502,7 @@ def _main():
         keep, BUDGET = BUDGET, B
         try:
             oxi, _ob, _oo = optimise(pool, allow_haaland)
-            oil = f"{sum(r['score'] for r in oxi):.2f}"
+            oil = f"{xi_xp(oxi):.2f}"
         except SystemExit:
             oil = "infeasible"
         gok = any(bs.build(pool, f_, allow_haaland, bs.GATE_XI)[0]

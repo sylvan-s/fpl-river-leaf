@@ -189,6 +189,50 @@ check("_cost uses the sell price only for owned rows",
       opt._cost({"name": "Riser", "team": "AAA", "price": 5.3}, _coef) == 5.1
       and opt._cost({"name": "Other", "team": "AAA", "price": 5.3}, _coef) == 5.3)
 
+print("\n== captain term (22 Oct 2026) ==")
+_xi = [dict(name="A", score=5.0), dict(name="B", score=3.0), dict(name="C", score=7.0)]
+check("xi_xp with the captain on: flat sum + top score", opt.xi_xp(_xi, True) == 22.0)
+check("xi_xp with the captain off: flat sum only", opt.xi_xp(_xi, False) == 15.0)
+check("captain_of is the XI's top scorer", opt.captain_of(_xi)["name"] == "C")
+check("CAPTAIN_DEFAULT is on", opt.CAPTAIN_DEFAULT is True and opt.CAPTAIN is True)
+
+# Two transfers out of F1 (4.0, sells 5.4) and F2 (3.5, sells 5.0), bank 0.1.
+#   A: FA 5.0 + FB 4.5, both £5.2     flat +2.0   captain M1 4.5 -> FA 5.0: +0.5  = +2.5
+#   B: Star 7.0 £6.4 + Cheap 2.0 £4.0  flat +1.5   captain M1 4.5 -> Star 7.0: +2.5 = +4.0
+# Flat prefers A; with the armband in the objective B wins. Every other
+# combination is unaffordable (worked through when the case was built).
+_CAP_POOL = OWNED + [_row("FA", "FWD", "T16", 5.2, 5.0), _row("FB", "FWD", "T17", 5.2, 4.5),
+                     _row("Star", "FWD", "T18", 6.4, 7.0), _row("Cheap", "FWD", "T19", 4.0, 2.0)]
+_kw = dict(allow_haaland=True, max_att_per_club=None, bought_for=bf_flat, free_transfers=2)
+res_flat_cap = opt.optimise_transfers(_CAP_POOL, OWNED_NAMES, 0.1, 2, captain=False, **_kw)
+res_cap = opt.optimise_transfers(_CAP_POOL, OWNED_NAMES, 0.1, 2, captain=True, **_kw)
+check("flat objective takes the two mid-priced upgrades (A)",
+      res_flat_cap and _swapped_in(res_flat_cap) == {"FA", "FB"},
+      res_flat_cap and _swapped_in(res_flat_cap))
+check("captain-aware objective takes the premium + enabler (B)",
+      res_cap and _swapped_in(res_cap) == {"Star", "Cheap"}, res_cap and _swapped_in(res_cap))
+check("...and the premium STARTS and is the implied captain",
+      res_cap and opt.captain_of(res_cap[0])["name"] == "Star")
+check("captain-aware value of B beats A by exactly 1.5",
+      res_cap and res_flat_cap
+      and abs(opt.xi_xp(res_cap[0], True) - opt.xi_xp(res_flat_cap[0], True) - 1.5) < 1e-9)
+_keep_cap = opt.CAPTAIN
+try:
+    opt.CAPTAIN = False                  # what --no-captain sets
+    res = opt.optimise_transfers(_CAP_POOL, OWNED_NAMES, 0.1, 2, **_kw)
+    check("captain=None follows the module switch (--no-captain -> A)",
+          res and _swapped_in(res) == {"FA", "FB"})
+finally:
+    opt.CAPTAIN = _keep_cap
+_v, _vxi = opt._armband_value(_CAP_POOL, OWNED_NAMES)
+check("_armband_value of a fixed 15: its best XI flat + the top scorer again "
+      "(current squad: 41.3 + M1 4.5)", abs(_v - 45.8) < 1e-9, _v)
+
+print("\n== estimator default (22 Oct 2026) ==")
+check("optimise_squad defaults to the shrunk estimator", opt.ESTIMATOR_DEFAULT == "shrunk")
+check("...without moving build_squad's shared default (dashboard/pages)",
+      opt.bs.ESTIMATOR_DEFAULT == "prior")
+
 print("\n" + ("ALL TESTS PASSED" if not FAILS else f"{len(FAILS)} FAILURE(S): {FAILS}"))
 import sys
 sys.exit(1 if FAILS else 0)
