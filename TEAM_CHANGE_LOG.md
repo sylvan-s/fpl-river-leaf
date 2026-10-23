@@ -15,7 +15,65 @@ one-line record. What remains is what actually governs a decision today.
 
 ---
 
-## CURRENT STATE — as at Sun 18 Oct 2026 (GW7 locked, GW8 pre-deadline)
+## CURRENT STATE — as at Fri 23 Oct 2026 (GW8 pre-deadline)
+
+**Deadline:** Fri 23 Oct 2026, 18:30 BST (17:30 UTC) · **Formation:** 3-4-3 (unchanged)
+
+**Last change: 1 transfer + Bench Boost, Fri 23 Oct 2026 (GW8) — `Shaw -> Botman`.**
+Free transfer, **0 pts cost**. Bank £1.7m -> **£1.0m**. **Bench Boost 1 (set 1) PLAYED
+for GW8.** Sylvan's call; actioned on the live site via Claude in Chrome at his request,
+and both verified after a hard reload (chip shows Active, Botman in the squad, bank £1.0m).
+**Captain Calafiori** (was Tavernier) · **Vice** Gabriel (unchanged).
+
+**Captain changed, 23 Oct 2026 — Sylvan's call: Tavernier -> Calafiori.** Set via Claude in
+Chrome; the armband needs "Save Your Team" (POST /api/my-team returned 200, "Your team has
+been saved"), then verified after a reload, with Bench Boost still Active. `captaincy_odds`
+(GW8 fixtures, shrunk, intel ON, neutral):
+
+| Player | Fixture | E[pts] | P(haul) | P(blank) | Own% |
+|---|---|---|---|---|---|
+| Calafiori | EVE (H) | 5.55 | 10.8% | 37.4% | 54% |
+| Mbeumo | BOU (H) | 5.22 | 12.1% | 43.5% | 21% |
+| João Pedro | TOT (H) | 5.00 | 12.2% | 55.2% | 73% |
+| B.Fernandes | BOU (H) | 4.88 | 10.9% | 42.9% | 28% |
+| Tavernier | MUN (A) | 4.55 | 6.4% | 53.7% | 11% |
+
+Calafiori is top on E[pts] and lowest P(blank) (the protect pick); Mbeumo was the
+higher-ceiling, lower-owned alternative put to Sylvan. Calafiori's start rate is 88%, and
+vice Gabriel is the same club and fixture - if Arsenal rotate Calafiori out, Gabriel still
+covers. Thiago is on 4/5 yellows (ban risk for GW9, not GW8).
+
+| Out | Sold | In | Bought |
+|---|---|---|---|
+| Shaw (MUN, injured) | £4.3m | Botman (NEW) | £5.0m |
+
+**XI:** Raya · Calafiori, Gabriel, Justin · B.Fernandes, E.Le Fée, Tavernier, Mbeumo ·
+Calvert-Lewin, Thiago, João Pedro. **Bench (all score in GW8):** Leno, Virgil, Sadiki,
+Botman. The site put Botman in Shaw's bench slot; the optimiser would start him over
+Justin, which does not matter this week with Bench Boost on.
+
+**Why.** Optimiser (local, origin `23e8235`; start-weighted xP/GW, estimator shrunk,
+start rate shrunk, intel ON, quarantine OFF, fixtures GW8-11, captain term ON, Haaland
+allowed, max 2 attackers/club): `Shaw -> Botman` was the best single move, **+0.15 xP/GW
+free**; Shaw flagged injured, unknown return. The 2-transfer option (`Sadiki, Virgil ->
+Botman, Stach`, +0.29) failed the -4 hit (-2.5 pts over 5 GWs). A full wildcard (budget
+£99.0m) was worth only +1.04 xP/GW — held. Forcing out B.Fernandes cost -1.66 xP/GW (1
+move) or -0.02 after a hit via Haaland; forcing out E.Le Fée gained only +0.10 (Stach) —
+both kept.
+
+**Bench Boost timing.** `bench_boost_forecast()` per GW for the optimiser's post-transfer
+bench (Leno, Justin, Virgil, Sadiki, with Botman starting): GW8 **15.02** vs
+best GW12 15.15 and GW8-17 average 14.26 — timing was a wash, and the wildcard bench was
+no better, so the 'after WC1' plan condition was dropped. The case for holding was only a
+possible pre-GW19 double gameweek, none scheduled for these teams as of 23 Oct.
+
+**Ledger.** Shaw sold £0.2m below his £4.5m bought_for — a real loss of team value (the
+drift this file already flagged), so squad value + bank moves £100.0m -> £99.8m.
+Squad value (ledger) £98.8m · Bank £1.0m.
+
+**Chips left in set 1:** Wildcard, Free Hit, Triple Captain (expire GW19, 2 Jan 2027).
+
+## CURRENT STATE — as at Sun 18 Oct 2026 (GW7 locked, GW8 pre-deadline, superseded above)
 
 **Deadline:** Fri 23 Oct 2026, 18:30 BST (17:30 UTC) · **Formation:** 3-4-3 (unchanged)
 

@@ -1,12 +1,12 @@
 {
   "_comment": "SINGLE SOURCE OF TRUTH for live squad state. Read by squad_state.py. TEAM_CHANGE_LOG.md is the human narrative. Update BOTH after every actioned transfer. LEDGER NOTE, 7 Sep 2026 (GW4 transfer): O.Dango was recorded here at £6.5m but sold LIVE at £6.4m - a real price fall, so the £0.1m is a genuine loss of team value, not a bookkeeping error. squad_value+bank therefore moves 100.1 -> 100.0. THREE unrealised drifts remain and are deliberately NOT reconciled into this ledger (per the weekly-brief runbook: flag drift, never silently absorb it): VERIFIED AGAINST THE LIVE SITE 7 Sep 2026 - Mbeumo £8.0m->£7.9m, Thiago £8.0m->£7.9m, Shaw £4.5m->£4.4m. The live site reports Squad value £98.4m against this file's £98.7m, and those three account for the full £0.3m. DO NOT treat that £0.3m as spendable, and do not reconcile it into squad_value here - the ledger is bought_for-based by design. The live BANK matched this file exactly at £1.3m, so nothing in the GW4 transfer was mispriced. Root cause is roadmap B1 (price forecasting), gate GW3, still not built - now overdue. Previous correction 2 Sep 2026 (Sarr/João Pedro) preserved in TEAM_CHANGE_LOG.md.",
-  "updated_utc": "2026-10-18T15:30:00Z",
-  "as_at_note": "SYNCED TO THE LIVE SITE 18 Oct 2026 (GW7 locked; GW8 deadline Fri 23 Oct 17:30 UTC). This file had stood at GW5 since 17 Sep - the GW6 and GW7 team changes were made directly on the FPL site and never recorded here, so the VM optimiser was scoring a stale squad (it recommended Schade -> Tavernier, a move already made). Back-filled from the FPL API: GW6 no transfers (captain Mbeumo, Virgil in the XI, Szoboszlai benched injured). GW7, 16 Oct 2026 23:36 BST, 2 free transfers, 0 pts: Szoboszlai OUT (sold £6.9m) -> E.Le Fée IN (£5.7m); Schade OUT (sold £6.1m) -> Tavernier IN (£6.1m). Bank £0.5m -> £1.7m, matching the live site exactly. Captain Tavernier, vice Gabriel. Virgil to the bench (bench 1), Justin into the XI. Szoboszlai's £0.1m sale below his recorded £7.0m is a real loss of team value, not a bookkeeping error. PREVIOUS: GW5, 17 Sep 2026 - Van de Ven -> Calafiori, captain Mbeumo; preserved in TEAM_CHANGE_LOG.md.",
-  "gameweek": 7,
+  "updated_utc": "2026-10-23T08:45:00Z",
+  "as_at_note": "SYNCED TO THE LIVE SITE 23 Oct 2026 (GW8 pre-deadline, deadline Fri 23 Oct 17:30 UTC). GW8: 1 free transfer, 0 pts - Shaw OUT (injured, sold £4.3m live vs £4.5m bought_for: a real £0.2m loss of team value) -> Botman IN (£5.0m). Bank £1.7m -> £1.0m, verified on the site after a hard reload. BENCH BOOST (set 1) PLAYED for GW8, verified Active after reload. CAPTAIN changed Tavernier -> Calafiori (Sylvan's call, on captaincy_odds GW8: Calafiori E[pts] 5.55, P(blank) 37.4%, the top two with Mbeumo 5.22; Tavernier 4.55 away at MUN), saved and verified after reload. Vice Gabriel unchanged. Both actioned via Claude in Chrome at Sylvan's request. PREVIOUS: GW7 sync, 18 Oct 2026 - Szoboszlai -> E.Le Fée, Schade -> Tavernier; preserved in TEAM_CHANGE_LOG.md.",
+  "gameweek": 8,
   "formation": "3-4-3",
-  "bank": 1.7,
-  "squad_value": 98.3,
-  "captain": "Tavernier",
+  "bank": 1.0,
+  "squad_value": 98.8,
+  "captain": "Calafiori",
   "vice": "Gabriel",
   "squad": [
     {
@@ -151,14 +151,14 @@
       "selected_on": "Bench fodder, 100% starts. Replaces Evanilson (94% starts, xP_adj 3.91) - a real downgrade in autosub value the objective doesn't price (bench value/A0.6 is not yet built), accepted here because it freed budget for the João Pedro upgrade. Corrected 28 Aug 2026: bench_order was recorded as 3 (behind Shaw) but the live site has always had him 2nd - Sadiki's 100% start rate makes that the more sensible order than Shaw's price-only bench fodder anyway, so squad.json's record was fixed to match live rather than the other way round."
     },
     {
-      "name": "Shaw",
+      "name": "Botman",
       "pos": "DEF",
-      "team": "MUN",
-      "price": 4.5,
-      "bought_for": 4.5,
+      "team": "NEW",
+      "price": 5.0,
+      "bought_for": 5.0,
       "role": "BENCH",
       "bench_order": 3,
-      "selected_on": "Bench fodder - price and availability only. Unchanged since 9 Aug. Corrected 28 Aug 2026: bench_order was recorded as 2, live site has him 3rd behind Sadiki - see Sadiki's note."
+      "selected_on": "Bought GW8 (23 Oct 2026) for injured Shaw. Optimiser (shrunk, fixtures GW8-11, captain term on): best single move, +0.15 xP/GW, free. Start-weighted xP/GW 4.03, 95% starts. Benched on the site in Shaw's slot; irrelevant in GW8 with Bench Boost active."
     }
   ],
   "bought_for_note": "Pre-season, purchase price equals current price. Keep bought_for accurate from GW1 - FPL pays purchase price plus half any rise on sale.",
@@ -168,7 +168,7 @@
       "expires_note": "GW19 deadline. Chips in set 1 do NOT carry over.",
       "wildcard": "available",
       "freehit": "available",
-      "benchboost": "available",
+      "benchboost": "played GW8",
       "triplecaptain": "available"
     },
     "set2": {
