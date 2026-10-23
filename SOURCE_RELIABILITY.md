@@ -1,6 +1,6 @@
 # Source reliability — generated, do not hand-edit
 
-Regenerate with `python3 score_source_reliability.py`. Source: `docs/data/intel_sweep_log.jsonl` (30 bites logged, 11 resolutions). Live gameweek: 5.
+Regenerate with `python3 score_source_reliability.py`. Source: `docs/data/intel_sweep_log.jsonl` (30 bites logged, 11 resolutions). Live gameweek: 8.
 
 **Accuracy only reported at 5+ resolved bites** (confirmed + contradicted) — below that, the percentage would be more noise than signal from two or three claims. Expired and superseded bites count toward `stale_rate` (the check never resolved either way) but not toward accuracy, since going stale is a different failure mode from being wrong.
 
