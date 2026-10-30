@@ -1,13 +1,13 @@
 {
   "_comment": "SINGLE SOURCE OF TRUTH for live squad state. Read by squad_state.py. TEAM_CHANGE_LOG.md is the human narrative. Update BOTH after every actioned transfer. LEDGER NOTE, 7 Sep 2026 (GW4 transfer): O.Dango was recorded here at £6.5m but sold LIVE at £6.4m - a real price fall, so the £0.1m is a genuine loss of team value, not a bookkeeping error. squad_value+bank therefore moves 100.1 -> 100.0. THREE unrealised drifts remain and are deliberately NOT reconciled into this ledger (per the weekly-brief runbook: flag drift, never silently absorb it): VERIFIED AGAINST THE LIVE SITE 7 Sep 2026 - Mbeumo £8.0m->£7.9m, Thiago £8.0m->£7.9m, Shaw £4.5m->£4.4m. The live site reports Squad value £98.4m against this file's £98.7m, and those three account for the full £0.3m. DO NOT treat that £0.3m as spendable, and do not reconcile it into squad_value here - the ledger is bought_for-based by design. The live BANK matched this file exactly at £1.3m, so nothing in the GW4 transfer was mispriced. Root cause is roadmap B1 (price forecasting), gate GW3, still not built - now overdue. Previous correction 2 Sep 2026 (Sarr/João Pedro) preserved in TEAM_CHANGE_LOG.md.",
-  "updated_utc": "2026-10-23T08:45:00Z",
-  "as_at_note": "SYNCED TO THE LIVE SITE 23 Oct 2026 (GW8 pre-deadline, deadline Fri 23 Oct 17:30 UTC). GW8: 1 free transfer, 0 pts - Shaw OUT (injured, sold £4.3m live vs £4.5m bought_for: a real £0.2m loss of team value) -> Botman IN (£5.0m). Bank £1.7m -> £1.0m, verified on the site after a hard reload. BENCH BOOST (set 1) PLAYED for GW8, verified Active after reload. CAPTAIN changed Tavernier -> Calafiori (Sylvan's call, on captaincy_odds GW8: Calafiori E[pts] 5.55, P(blank) 37.4%, the top two with Mbeumo 5.22; Tavernier 4.55 away at MUN), saved and verified after reload. Vice Gabriel unchanged. Both actioned via Claude in Chrome at Sylvan's request. PREVIOUS: GW7 sync, 18 Oct 2026 - Szoboszlai -> E.Le Fée, Schade -> Tavernier; preserved in TEAM_CHANGE_LOG.md.",
-  "gameweek": 8,
+  "updated_utc": "2026-10-30T08:45:00Z",
+  "as_at_note": "SYNCED TO THE LIVE SITE 30 Oct 2026 (GW9 pre-deadline, deadline Sat 31 Oct 11:00 UTC). GW9: 1 free transfer, 0 pts - João Pedro OUT (injured, sold £7.6m live vs £7.7m ledger: a real £0.1m loss of team value) -> Barry IN (£5.6m), actioned 28 Oct. Bank £1.0m -> £3.0m, matching the site. XI change: Botman IN for Justin; bench Leno, Virgil, Justin, Sadiki. CAPTAIN Calafiori -> Tavernier, VICE Gabriel -> Mbeumo (captaincy_odds GW9: Tavernier E[pts] 5.48, P(blank) 38.7%, best on all three measures). All ACTIONED LIVE via Claude in Chrome at Sylvan's request, saved ('Your team has been saved') and verified after a fresh reload, 30 Oct 2026. Live squad value on the site £96.4m vs this ledger - unrealised drift, flagged not reconciled. PREVIOUS: GW8 sync, 23 Oct 2026 - Shaw -> Botman, Bench Boost; preserved in TEAM_CHANGE_LOG.md.",
+  "gameweek": 9,
   "formation": "3-4-3",
-  "bank": 1.0,
-  "squad_value": 98.8,
-  "captain": "Calafiori",
-  "vice": "Gabriel",
+  "bank": 3.0,
+  "squad_value": 96.7,
+  "captain": "Tavernier",
+  "vice": "Mbeumo",
   "squad": [
     {
       "name": "Raya",
@@ -46,8 +46,8 @@
       "team": "LEE",
       "price": 4.5,
       "bought_for": 4.5,
-      "role": "XI",
-      "bench_order": null,
+      "role": "BENCH",
+      "bench_order": 2,
       "selected_on": "First substitute. 100% starts, xP_adj 3.64 - the most valuable autosub in the squad. Unchanged since 9 Aug."
     },
     {
@@ -111,14 +111,14 @@
       "selected_on": "xGI/90 0.62, 22 goals, 100% starts, xP_adj 5.26. VICE (was captain) - captaincy_odds 28 Aug has João Pedro ahead on both E[pts] and P(haul) with intel applied."
     },
     {
-      "name": "João Pedro",
+      "name": "Barry",
       "pos": "FWD",
-      "team": "CHE",
-      "price": 7.7,
-      "bought_for": 7.5,
+      "team": "EVE",
+      "price": 5.6,
+      "bought_for": 5.6,
       "role": "XI",
       "bench_order": null,
-      "selected_on": "xbonus90 0.97 - 4th-highest in the ENTIRE 248-player pool, behind only Haaland, B.Fernandes and Ekitike. Delta +7.13 (one of the largest overperformances in the game) remains an open question the model doesn't resolve, but bonus gives him a second, largely independent route to points that isn't riding on his finishing holding up. Was CAPTAIN briefly on 28 Aug (ahead of Thiago on captaincy_odds), then Sylvan moved the armband to Gabriel later the same day - conservative call after a poor GW1, not a data-driven reversal; see Gabriel's note."
+      "selected_on": "IN for João Pedro (thigh, Alonso 'out a few weeks', FPL 0%), Wed 28 Oct 2026 (GW9), free transfer, 0 pts. João Pedro sold live at £7.6m (ledger £7.7m, bought £7.5m: the price fell overnight before the sale, a real £0.1m loss of team value). VM optimiser (origin f68b375, shrunk, start-weighted xP/GW, intel ON with an empty fence, fixtures GW9-12, no Haaland): best single move +0.41 xP/GW, 5-GW net +2.0; raw estimator +0.85. Barry xG/90 0.67, xGI 5.25 vs 3 G+A (delta -2.25), 8/8 starts this season (44% last season - the case leans on 2026/27). Beat the creators' consensus pick N.Jackson (xGI/90 0.44, delta +1.30; not in the optimiser pool, <900 PL mins in 2025/26) and Evanilson (+0.18 xP/GW). Actioned on the live site via Claude in Chrome at Sylvan's request."
     },
     {
       "name": "Leno",
@@ -147,7 +147,7 @@
       "price": 5.0,
       "bought_for": 5.0,
       "role": "BENCH",
-      "bench_order": 2,
+      "bench_order": 3,
       "selected_on": "Bench fodder, 100% starts. Replaces Evanilson (94% starts, xP_adj 3.91) - a real downgrade in autosub value the objective doesn't price (bench value/A0.6 is not yet built), accepted here because it freed budget for the João Pedro upgrade. Corrected 28 Aug 2026: bench_order was recorded as 3 (behind Shaw) but the live site has always had him 2nd - Sadiki's 100% start rate makes that the more sensible order than Shaw's price-only bench fodder anyway, so squad.json's record was fixed to match live rather than the other way round."
     },
     {
@@ -156,8 +156,8 @@
       "team": "NEW",
       "price": 5.0,
       "bought_for": 5.0,
-      "role": "BENCH",
-      "bench_order": 3,
+      "role": "XI",
+      "bench_order": null,
       "selected_on": "Bought GW8 (23 Oct 2026) for injured Shaw. Optimiser (shrunk, fixtures GW8-11, captain term on): best single move, +0.15 xP/GW, free. Start-weighted xP/GW 4.03, 95% starts. Benched on the site in Shaw's slot; irrelevant in GW8 with Bench Boost active."
     }
   ],

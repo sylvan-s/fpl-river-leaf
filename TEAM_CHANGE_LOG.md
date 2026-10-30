@@ -15,7 +15,84 @@ one-line record. What remains is what actually governs a decision today.
 
 ---
 
-## CURRENT STATE — as at Fri 23 Oct 2026 (GW8 pre-deadline)
+## CURRENT STATE — as at Fri 30 Oct 2026 (GW9 pre-deadline)
+
+**Deadline:** Sat 31 Oct 2026, 11:00 GMT (11:00 UTC) · **Formation:** 3-4-3 (unchanged)
+
+**Last change: 1 transfer, Wed 28 Oct 2026 (GW9) — `João Pedro -> Barry`.** Free
+transfer, **0 pts cost**. Bank £1.0m -> **£3.0m**. Lineup and armband set Fri 30 Oct.
+**Captain Tavernier** (was Calafiori) · **Vice Mbeumo** (was Gabriel). All actioned on
+the live site via Claude in Chrome at Sylvan's request; the lineup was saved ("Your team
+has been saved") and verified after a fresh reload.
+
+| Out | Sold | In | Bought |
+|---|---|---|---|
+| João Pedro (CHE, injured) | £7.6m | Barry (EVE) | £5.6m |
+
+**PRICE DRIFT, flagged not reconciled.** João Pedro was on this ledger at £7.7m and sold
+live at £7.6m after an overnight fall: a real £0.1m loss of team value (ledger total
+£99.8m -> £99.7m). The site shows squad value £96.4m against this ledger's £96.7m: that
+£0.3m is unrealised drift across other players and is **not spendable**. The live bank
+£3.0m matches this file.
+
+**XI:** Raya · Calafiori, Gabriel, **Botman** · B.Fernandes, E.Le Fée, Tavernier (C),
+Mbeumo (VC) · Calvert-Lewin, Thiago, **Barry**. **Bench:** Leno, Virgil, Justin, Sadiki.
+
+**Why João Pedro out.** FPL flag injured, 0%. Alonso (27 Oct, before the Carabao Cup tie
+at Liverpool): thigh, "a few weeks — let's see how many"; creators read it as missing at
+least GW9 (MUN H) and GW10 (SUN A). He had already missed GW8 with fluid on the knee.
+
+**Why Barry.** VM optimiser (origin `f68b375`; start-weighted xP/GW, estimator shrunk,
+start rate shrunk, intel ON with an **empty fence**, quarantine ON with nothing ticked,
+fixtures GW9-12, no Haaland, max 2 attackers/club), João Pedro forced out: **Barry +0.41
+xP/GW free, 5-GW net +2.0**. Raw (2026/27-only) estimator: +0.85, 5-GW net +4.3. Barry
+xG/90 0.67, xGI 5.25 from 3 G+A (delta -2.25, due goals), 8/8 starts this season but 44%
+last season, so the case leans on 2026/27 data.
+
+**Alternatives rejected (28 Oct).**
+- **N.Jackson (AVL, £6.8m)** — the creators' #1 replacement. xGI/90 0.44 vs Barry 0.69;
+  4 goals from 1.83 xG (delta +1.30); no penalties. Better GW9 fixture (FUL H, E[pts] 4.17
+  vs Barry 3.93) but Villa's GW9-12 attack multiplier is only 1.08x vs Everton 1.02x.
+  **Not scoreable by the optimiser** (under 900 PL minutes in 2025/26) — compared on raw
+  per-90 data and captaincy_odds instead.
+- **Evanilson (BOU, £6.2m)** — +0.18 xP/GW, 5-GW net +0.9; delta +2.91.
+- **Isak (LIV, £9.1m)** — over the £8.6m available; needs a second sale and a hit.
+- **J.Pedro + B.Fernandes -> Barry + Palmer (-4)** — 5-GW net -4.7 (shrunk); -1.7 raw
+  (with Groß). Bruno still projects highest in the squad.
+- **J.Pedro + B.Fernandes + Virgil -> Haaland + Groß + Bogle (-8)** — 5-GW net -1.8.
+- **Roll the transfer** (FPL Tom) — João Pedro blanks GW9; Gabriel already owned.
+
+**Lineup, 30 Oct.** `captaincy_odds` GW9 (shrunk, intel ON, neutral), whole squad:
+Tavernier 5.48 · Mbeumo 4.65 · B.Fernandes 4.48 · Thiago 4.34 · Gabriel 4.17 ·
+Calvert-Lewin 3.96 · Le Fée 3.95 · Barry 3.93 · Calafiori 3.62 · Botman 3.53 · Raya 3.48 ·
+Virgil 3.30 · Justin 3.28 · Leno 3.03 · Sadiki 2.79. Botman over Justin (EVE H vs BOU A).
+Calafiori (75%, hip) kept over Botman by 0.09 — noise; his 75% is already in the figure.
+
+| Captaincy (GW9) | Fixture | E[pts] | P(haul) | P(blank) |
+|---|---|---|---|---|
+| **Tavernier** | LEE (H) | 5.48 | 10.5% | 38.7% |
+| Mbeumo | CHE (A) | 4.65 | 9.4% | 53.1% |
+| B.Fernandes | CHE (A) | 4.48 | 8.8% | 50.8% |
+| Thiago | NFO (H) | 4.34 | 10.4% | 54.6% |
+
+**Risks accepted.**
+- **Bruno start** — benched GW8 after criticising Carrick's tactics. Carrick staying for
+  Chelsea; clear-the-air talks; The Athletic and The Guardian expect him to start;
+  Carrick 29 Oct: "Bruno is fully committed to this football club, there's absolutely no
+  issues with that." Trello quarantine card (8E1j3SYn) proposes stp -> 70% GWs 9-10,
+  default Decline.
+- **Three Arsenal defenders/GK at Anfield** (Raya, Gabriel, Calafiori) share one
+  clean-sheet outcome.
+- **Thiago on 4/5 yellows** — ~38% chance of a booking this GW, which bans him for GW10.
+- **Calafiori 75%.** If he misses Sunday, Virgil (bench 1) comes on. Note Newcastle v
+  Everton is **Mon 2 Nov 20:00** — Botman and Barry play last.
+
+**Predictions logged** for GW9 on 28 Oct (8 players, captain Tavernier); merged to the
+repo by the VM log sync (`f68b375`).
+
+---
+
+## CURRENT STATE — as at Fri 23 Oct 2026 (GW8 pre-deadline, superseded above)
 
 **Deadline:** Fri 23 Oct 2026, 18:30 BST (17:30 UTC) · **Formation:** 3-4-3 (unchanged)
 
@@ -792,6 +869,18 @@ share rises; the differential case depends entirely on him playing.
 ---
 
 ## CHANGE HISTORY (newest first)
+
+### Fri 30 Oct 2026 — GW9 lineup and armband (no transfer)
+Botman IN for Justin; bench Leno, Virgil, Justin, Sadiki. Captain Calafiori -> **Tavernier**
+(captaincy_odds GW9 E[pts] 5.48, top on E[pts], P(haul) and P(blank)); vice Gabriel ->
+**Mbeumo**. Actioned via Claude in Chrome, saved and verified after a fresh reload.
+
+### Wed 28 Oct 2026 — GW9 transfer: João Pedro -> Barry
+Free transfer, 0 pts. Sold £7.6m (ledger £7.7m: a real £0.1m fall), bought £5.6m; bank
+£1.0m -> £3.0m. Optimiser +0.41 xP/GW, 5-GW net +2.0 (shrunk); +0.85 raw. Creator
+consensus pick Jackson rejected on xGI/90 0.44 vs 0.69. Actioned via Claude in Chrome.
+Same day: the 6 lapsed GW8 fence rows were removed from ROLE_INTEL.md (`803bd9f`) — the
+adjustments fence is now empty, so every run above is on unadjusted data.
 
 ### Sun 18 Oct 2026 — record catch-up, not a new transfer — GW6/GW7 back-filled from the live site
 
