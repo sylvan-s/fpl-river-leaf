@@ -1,7 +1,7 @@
 {
  "season": "2026-27",
  "prior_season": "2025-26",
- "through_gw": 8,
+ "through_gw": 9,
  "scored_gws": [
   2,
   3,
@@ -9,7 +9,8 @@
   5,
   6,
   7,
-  8
+  8,
+  9
  ],
  "source": "live API",
  "cells": {
@@ -17,11 +18,11 @@
    "xgc90": {
     "best": "prior",
     "runner_up": "shrunk",
-    "margin": 0.0215,
+    "margin": 0.0084,
     "mean_rmse": {
-     "raw": 0.9131,
-     "prior": 0.7346,
-     "shrunk": 0.7504
+     "raw": 0.8943,
+     "prior": 0.7593,
+     "shrunk": 0.7657
     },
     "scored_gws": [
      2,
@@ -30,18 +31,19 @@
      5,
      6,
      7,
-     8
+     8,
+     9
     ],
     "n_players": 15
    },
    "sv90": {
     "best": "shrunk",
     "runner_up": "prior",
-    "margin": 0.0005,
+    "margin": 0.0071,
     "mean_rmse": {
-     "raw": 1.9344,
-     "prior": 1.7375,
-     "shrunk": 1.7366
+     "raw": 1.9879,
+     "prior": 1.8443,
+     "shrunk": 1.8313
     },
     "scored_gws": [
      2,
@@ -50,18 +52,19 @@
      5,
      6,
      7,
-     8
+     8,
+     9
     ],
     "n_players": 15
    },
    "stp": {
     "best": "raw",
     "runner_up": "shrunk",
-    "margin": 0.7075,
+    "margin": 0.631,
     "mean_rmse": {
-     "raw": 0.1951,
-     "prior": 0.4427,
-     "shrunk": 0.3331
+     "raw": 0.2012,
+     "prior": 0.443,
+     "shrunk": 0.3282
     },
     "scored_gws": [
      2,
@@ -70,10 +73,12 @@
      5,
      6,
      7,
-     8
+     8,
+     9
     ],
     "n_players": 16,
     "k": [
+     8.0,
      8.0,
      8.0,
      8.0,
@@ -88,11 +93,11 @@
    "xg90": {
     "best": "prior",
     "runner_up": "shrunk",
-    "margin": 0.0084,
+    "margin": 0.0075,
     "mean_rmse": {
-     "raw": 0.1598,
-     "prior": 0.1216,
-     "shrunk": 0.1226
+     "raw": 0.1577,
+     "prior": 0.1232,
+     "shrunk": 0.1241
     },
     "scored_gws": [
      2,
@@ -101,18 +106,19 @@
      5,
      6,
      7,
-     8
+     8,
+     9
     ],
     "n_players": 65
    },
    "xa90": {
     "best": "prior",
     "runner_up": "shrunk",
-    "margin": 0.0008,
+    "margin": 0.0003,
     "mean_rmse": {
-     "raw": 0.111,
-     "prior": 0.0889,
-     "shrunk": 0.0889
+     "raw": 0.1162,
+     "prior": 0.0964,
+     "shrunk": 0.0965
     },
     "scored_gws": [
      2,
@@ -121,18 +127,19 @@
      5,
      6,
      7,
-     8
+     8,
+     9
     ],
     "n_players": 65
    },
    "xgc90": {
     "best": "prior",
     "runner_up": "shrunk",
-    "margin": 0.0097,
+    "margin": 0.0015,
     "mean_rmse": {
-     "raw": 0.9878,
-     "prior": 0.7596,
-     "shrunk": 0.767
+     "raw": 0.9616,
+     "prior": 0.772,
+     "shrunk": 0.7732
     },
     "scored_gws": [
      2,
@@ -141,18 +148,19 @@
      5,
      6,
      7,
-     8
+     8,
+     9
     ],
     "n_players": 65
    },
    "cbit90": {
     "best": "prior",
     "runner_up": "shrunk",
-    "margin": 0.0109,
+    "margin": 0.0123,
     "mean_rmse": {
-     "raw": 3.9723,
-     "prior": 3.3766,
-     "shrunk": 3.4135
+     "raw": 3.9134,
+     "prior": 3.3356,
+     "shrunk": 3.3768
     },
     "scored_gws": [
      2,
@@ -161,18 +169,19 @@
      5,
      6,
      7,
-     8
+     8,
+     9
     ],
     "n_players": 65
    },
    "stp": {
     "best": "shrunk",
     "runner_up": "raw",
-    "margin": 0.0251,
+    "margin": 0.0221,
     "mean_rmse": {
-     "raw": 0.421,
-     "prior": 0.4822,
-     "shrunk": 0.4106
+     "raw": 0.4204,
+     "prior": 0.4867,
+     "shrunk": 0.4113
     },
     "scored_gws": [
      2,
@@ -181,7 +190,8 @@
      5,
      6,
      7,
-     8
+     8,
+     9
     ],
     "n_players": 93,
     "k": [
@@ -191,6 +201,7 @@
      1.4,
      1.44,
      1.62,
+     1.59,
      1.59
     ]
    }
@@ -199,11 +210,11 @@
    "xg90": {
     "best": "shrunk",
     "runner_up": "prior",
-    "margin": 0.0095,
+    "margin": 0.0075,
     "mean_rmse": {
-     "raw": 0.2834,
-     "prior": 0.2383,
-     "shrunk": 0.236
+     "raw": 0.2811,
+     "prior": 0.239,
+     "shrunk": 0.2372
     },
     "scored_gws": [
      2,
@@ -212,18 +223,19 @@
      5,
      6,
      7,
-     8
+     8,
+     9
     ],
     "n_players": 75
    },
    "xa90": {
     "best": "shrunk",
     "runner_up": "prior",
-    "margin": 0.0068,
+    "margin": 0.0097,
     "mean_rmse": {
-     "raw": 0.1767,
-     "prior": 0.1605,
-     "shrunk": 0.1594
+     "raw": 0.1697,
+     "prior": 0.1571,
+     "shrunk": 0.1556
     },
     "scored_gws": [
      2,
@@ -232,18 +244,19 @@
      5,
      6,
      7,
-     8
+     8,
+     9
     ],
     "n_players": 75
    },
    "cbirt90": {
     "best": "shrunk",
     "runner_up": "prior",
-    "margin": 0.0261,
+    "margin": 0.0168,
     "mean_rmse": {
-     "raw": 3.8008,
-     "prior": 3.6338,
-     "shrunk": 3.5412
+     "raw": 3.8098,
+     "prior": 3.6142,
+     "shrunk": 3.5545
     },
     "scored_gws": [
      2,
@@ -252,18 +265,19 @@
      5,
      6,
      7,
-     8
+     8,
+     9
     ],
     "n_players": 75
    },
    "stp": {
-    "best": "raw",
-    "runner_up": "shrunk",
-    "margin": 0.0014,
+    "best": "shrunk",
+    "runner_up": "raw",
+    "margin": 0.0007,
     "mean_rmse": {
-     "raw": 0.4042,
-     "prior": 0.5252,
-     "shrunk": 0.4048
+     "raw": 0.4048,
+     "prior": 0.5246,
+     "shrunk": 0.4045
     },
     "scored_gws": [
      2,
@@ -272,7 +286,8 @@
      5,
      6,
      7,
-     8
+     8,
+     9
     ],
     "n_players": 120,
     "k": [
@@ -282,7 +297,8 @@
      1.03,
      1.02,
      1.03,
-     1.06
+     1.06,
+     1.14
     ]
    }
   },
@@ -290,11 +306,11 @@
    "xg90": {
     "best": "prior",
     "runner_up": "shrunk",
-    "margin": 0.0131,
+    "margin": 0.004,
     "mean_rmse": {
-     "raw": 0.4604,
-     "prior": 0.3925,
-     "shrunk": 0.3976
+     "raw": 0.4476,
+     "prior": 0.3922,
+     "shrunk": 0.3938
     },
     "scored_gws": [
      2,
@@ -303,18 +319,19 @@
      5,
      6,
      7,
-     8
+     8,
+     9
     ],
     "n_players": 16
    },
    "xa90": {
     "best": "prior",
     "runner_up": "shrunk",
-    "margin": 0.0004,
+    "margin": 0.0075,
     "mean_rmse": {
-     "raw": 0.1065,
-     "prior": 0.1039,
-     "shrunk": 0.1039
+     "raw": 0.1051,
+     "prior": 0.1004,
+     "shrunk": 0.1012
     },
     "scored_gws": [
      2,
@@ -323,18 +340,19 @@
      5,
      6,
      7,
-     8
+     8,
+     9
     ],
     "n_players": 16
    },
    "cbirt90": {
     "best": "shrunk",
     "runner_up": "prior",
-    "margin": 0.038,
+    "margin": 0.035,
     "mean_rmse": {
-     "raw": 2.4943,
-     "prior": 2.3832,
-     "shrunk": 2.296
+     "raw": 2.5016,
+     "prior": 2.3865,
+     "shrunk": 2.3059
     },
     "scored_gws": [
      2,
@@ -343,18 +361,19 @@
      5,
      6,
      7,
-     8
+     8,
+     9
     ],
     "n_players": 16
    },
    "stp": {
     "best": "shrunk",
     "runner_up": "raw",
-    "margin": 0.0146,
+    "margin": 0.0073,
     "mean_rmse": {
-     "raw": 0.3727,
-     "prior": 0.4536,
-     "shrunk": 0.3673
+     "raw": 0.3658,
+     "prior": 0.4606,
+     "shrunk": 0.3631
     },
     "scored_gws": [
      2,
@@ -363,7 +382,8 @@
      5,
      6,
      7,
-     8
+     8,
+     9
     ],
     "n_players": 20,
     "k": [
@@ -373,7 +393,8 @@
      1.94,
      2.2,
      1.9,
-     1.7
+     1.7,
+     1.65
     ]
    }
   }
@@ -382,5 +403,5 @@
   "rates": "build_prediction_tracker.walk_forward, per position; 60+ minute appearances scored",
   "stp": "starts per team match vs build_squad last-16 prior, k = scoring.estimate_k_start (selection's definition since 16 Sep 2026)"
  },
- "updated_utc": "2026-10-27T17:53:21Z"
+ "updated_utc": "2026-11-03T19:25:27Z"
 }
