@@ -15,7 +15,68 @@ one-line record. What remains is what actually governs a decision today.
 
 ---
 
-## CURRENT STATE — as at Fri 30 Oct 2026 (GW9 pre-deadline)
+## CURRENT STATE — as at Fri 6 Nov 2026 (GW10 pre-deadline)
+
+**Deadline:** Fri 6 Nov 2026, 18:30 GMT (18:30 UTC) · **Formation:** 3-4-3 (unchanged)
+
+**Last change: 1 transfer, Fri 6 Nov 2026 (GW10) — `Botman -> De Cuyper`.** Free
+transfer, **0 pts cost**. Bank £3.0m -> **£2.6m**. **Captain Tavernier · Vice Mbeumo**
+(both unchanged from GW9). Actioned on the live site via Claude in Chrome at Sylvan's
+request: the "Confirm Transfers" dialog showed Botman -> De Cuyper, total cost 0 pts,
+"active for Gameweek 10"; after confirming, Pick Team already showed the wanted XI, bench
+and armband, so no lineup save was needed.
+
+| Out | Sold | In | Bought |
+|---|---|---|---|
+| Botman (NEW) | £5.0m | De Cuyper (BHA) | £5.4m |
+
+**XI:** Raya · Calafiori, Gabriel, **De Cuyper** · B.Fernandes, E.Le Fée, Tavernier (C),
+Mbeumo (VC) · Calvert-Lewin, Thiago, Barry. **Bench:** Leno, Virgil, Justin, Sadiki.
+
+**Price drift, flagged not reconciled.** Botman sold at £5.0m, matching this ledger. The
+site shows Raya at £6.1m against £6.0m here: unrealised, not spendable. Ledger total stays
+£99.7m (value £97.1m + bank £2.6m).
+
+**Why this move.** The Oracle VM was offline, so the optimiser ran **locally** (local
+HEAD `780e94f`, 9 behind origin on price-history commits only; fixture window stamped
+GW10 at 08:09 UTC). Settings: start-weighted xP/GW, estimator shrunk, start rate shrunk,
+intel ON, fixtures GW10-13 weighted 40/30/20/10, captain term on, Haaland allowed, max 2
+attackers/club. **Quarantine overlay NOT applied** (no Trello credentials in the local
+shell; `--allow-fence-only-fallback`), so any ticked board decisions are not reflected.
+
+- **1 FT:** Botman -> De Cuyper **+0.24 xP/GW, 5-GW net +1.2**, bank £2.6m. Forcing
+  Virgil or Justin out instead gives the identical XI gain (De Cuyper takes the eleventh
+  slot either way); Virgil out would bank £1.4m more but he has the best clean-sheet run
+  of the three (exp CS GW10-13: Virgil 1.23, De Cuyper 0.95, Botman 0.58), so Botman,
+  with the worst run (FUL a, ARS H, BHA a, MUN H), went.
+- **De Cuyper's case is attacking returns, not defending:** exp xGI 1.54 over GW10-13 vs
+  Virgil 0.53; 9/9 starts this season against a 31% prior (shrunk to 90%). Fixtures
+  BRE (H), HUL (a), NEW (H), BOU (a).
+- **Rejected:** Le Fée -> Wirtz (+0.17, 5-GW +0.9); De Cuyper + Wirtz for -4 (breakeven
+  9.6 GWs, 5-GW net -1.9); Calvert-Lewin out despite 75% doubtful (forced best
+  replacement Evanilson costs 0.45 xP/GW). Full rebuild at £99.1m scores 60.95 vs
+  current 60.10 xP/GW: no wildcard case.
+
+**Captaincy (GW10)** — `captaincy_odds`, shrunk, intel ON, neutral:
+
+| Player | Fixture | E[pts] | P(haul) | P(blank) |
+|---|---|---|---|---|
+| Calafiori | HUL (H) | 5.72 | 11.8% | 34.0% |
+| **Tavernier** | IPS (A) | 5.65 | 11.5% | 31.0% |
+| Mbeumo | AVL (H) | 5.59 | 14.9% | 37.9% |
+| B.Fernandes | AVL (H) | 5.42 | 14.5% | 35.9% |
+| Gabriel | HUL (H) | 5.21 | 7.8% | 37.4% |
+
+Tavernier kept: 0.07 behind Calafiori on E[pts] is noise, lowest blank risk, and both
+GW10 opponents are promoted sides with no opponent data (assumed average). Thiago is on
+4 yellows: a booking this week bans him for GW11.
+
+**Watch before 18:30:** Calvert-Lewin (foot, 75%). If ruled out, Justin autosubs; no
+manual change made.
+
+---
+
+## CURRENT STATE — as at Fri 30 Oct 2026 (GW9 pre-deadline, superseded above)
 
 **Deadline:** Sat 31 Oct 2026, 11:00 GMT (11:00 UTC) · **Formation:** 3-4-3 (unchanged)
 
