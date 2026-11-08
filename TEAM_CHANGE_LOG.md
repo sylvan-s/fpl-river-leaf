@@ -15,7 +15,50 @@ one-line record. What remains is what actually governs a decision today.
 
 ---
 
-## CURRENT STATE — as at Fri 6 Nov 2026 (GW10 pre-deadline)
+## CURRENT STATE — as at Sun 8 Nov 2026 (GW11 pre-deadline)
+
+**Deadline:** Sat 21 Nov 2026, 11:00 GMT (11:00 UTC) · **Formation:** 3-4-3 (unchanged)
+
+**Last change: 1 transfer, Sun 8 Nov 2026 (GW11) — `Thiago -> Evanilson`.** Free
+transfer, **0 pts cost**. Bank £2.6m -> **£3.9m**. **Captain Tavernier · Vice Mbeumo**
+(unchanged). Actioned on the live site via Claude in Chrome at Sylvan's request: the
+"Confirm Transfers" dialog showed Thiago -> Evanilson, total cost 0 pts, "active for
+Gameweek 11"; Pick Team then showed Evanilson in Thiago's XI slot with bench and armband
+as before, so no lineup save was needed. One free transfer now banked for GW12.
+
+| Out | Sold | In | Bought |
+|---|---|---|---|
+| Thiago (BRE) | £7.8m (bought £8.0m) | Evanilson (BOU) | £6.5m |
+
+**XI:** Raya · Calafiori, Gabriel, De Cuyper · B.Fernandes, E.Le Fée, Tavernier (C),
+Mbeumo (VC) · Calvert-Lewin, **Evanilson**, Barry. **Bench:** Leno, Virgil, Justin, Sadiki.
+
+**Why this move.** Thiago was sent off in GW10 and FPL lists him suspended until 5 Dec,
+so he blanks GW11-14. Sold the day the news broke, before the next price fall (he had
+already dropped £8.0m -> £7.8m, a £0.2m realised loss). Optimiser ran **locally** again
+(Oracle VM still offline): weekly defaults (shrunk estimator and start rate, fixtures
+GW11-14 weighted 40/30/20/10, intel ON, captain term on, max 2 attackers/club),
+**quarantine NOT applied** (no Trello credentials locally; fence-only fallback), Thiago
+forced out, 1 FT. Evanilson was the pick: start-weighted xP_adj 4.19/GW at 99% starts,
+exp xGI 2.20 over GW11-15, fixtures NFO(H) FUL(a) BHA(H) HUL(H). The optimiser's headline
+"-0.65 xP/GW vs holding" prices Thiago as if he plays; against a four-blank Thiago the
+move is the whole of his slot (c. +4.2 xP/GW).
+
+**Alternatives rejected.** Haaland £15.8m, £5.4m out of reach in one move. Brobbey (SUN)
+blocked by the 2-attackers-per-club cap (Le Fée, Sadiki). Mateta suspended until 2 Dec.
+Gyökeres (17%), Solanke (57%), Nmecha, Isidor all under or near the 50% start gate.
+Two transfers (Sadiki -> Wirtz on a -4 hit) never breaks even over 5 GWs; the second
+free transfer stays in hand.
+
+**Price drift, flagged not reconciled.** Site squad value £95.9m against £95.6m here
+(Raya and others up since purchase): unrealised, not spendable. Ledger total £99.5m
+(value £95.6m + bank £3.9m), down £0.2m on the Thiago loss.
+
+**Watch:** Calvert-Lewin (foot, was 75%) and Mbeumo/Fernandes at Liverpool (A) in GW11.
+
+---
+
+## PREVIOUS STATE — as at Fri 6 Nov 2026 (GW10 pre-deadline, superseded above)
 
 **Deadline:** Fri 6 Nov 2026, 18:30 GMT (18:30 UTC) · **Formation:** 3-4-3 (unchanged)
 
