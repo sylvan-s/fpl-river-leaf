@@ -46,7 +46,7 @@ jobs:
           fi
           curl --fail --silent --show-error --max-time 90 \
             -H "Authorization: Bearer ${FPL_VM_TOKEN}" \
-            -o delta.json https://140-238-66-196.nip.io/append-only-delta
+            -o delta.json https://141-147-98-166.nip.io/append-only-delta
 
       - name: Merge, commit and push (resets and retries on a race)
         shell: bash   # -eo pipefail: a refused payload must fail the job, not hide behind tee
