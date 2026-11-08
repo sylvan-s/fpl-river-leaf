@@ -134,7 +134,7 @@ Mac's stdio server never loads them. Tests: `python3 test_vm_runner.py`.
 | A1 clone + ff-only sync | `repo_sync()` before every tool; cron uses `vm_runner.py --sync` |
 | A2 Trello secrets | **done 16 Sep 2026** — `/etc/fpl-mcp/runner.env` (root, 0600) via `EnvironmentFile=`; fresh Power-Up key + read-only token, overlay verified live from the VM |
 | A3 PuLP + CBC | installed in the service venv (aarch64, PuLP 3.3.2) |
-| A4 status exclusion | `i` excluded; `d` below 50% chance excluded, 50%+ reported as STATUS DOUBTFUL |
+| A4 status exclusion | `i` excluded; `d` below 50% chance excluded, 50%+ reported as STATUS DOUBTFUL; since 8 Nov 2026 `s` is read against the fixture window from FPL's "Suspended until" text — excluded when the ban covers every window GW, start rate scaled by the available share when it ends inside it |
 | A5 docs/data home | **open** — see below |
 | B1–B11 | all built; B5 is `optimise_matrix` (background job) + `optimise_job(job_id)` |
 | C1–C3 | not built (phase 2) |

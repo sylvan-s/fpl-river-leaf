@@ -869,6 +869,7 @@ Tier 1 (uncapped, model inapplicable): **van Ewijk** — no PL data at all;
 
 Live gaps and standing technical notes — not resolved, not urgent unless flagged.
 
+- **Suspensions now gate the optimiser pool (8 Nov 2026).** `build_squad.py` reads FPL's "Suspended until D Mon" against the fixture window (the until-date is the first eligible match, checked against BRE/CRY/ARS kickoffs): a ban covering every window GW sets ok=False, one ending inside it scales the start rate by the available share of window weight and is reported as STATUS SUSPENDED (partial); the GW11 run that proposed Evanilson -> Thiago (10% of GW11-14 available, back for GW14 on 5 Dec, not GW15) now proposes Sadiki -> Wirtz. Covered in `test_optimise_squad.py`; VM_OPTIMISER_TOOLS A4 closed.
 - **Screens sort on season-total, not per-90.** `midfielder_screen(sort_by="xgi")`
   ranks by total xGI while displaying xGI/90, so high-rate/low-minutes players
   (Cherki, Palmer) sink out of a small `limit` and are never seen, not

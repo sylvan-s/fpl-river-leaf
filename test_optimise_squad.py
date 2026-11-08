@@ -267,6 +267,76 @@ check("optimise_squad defaults to the shrunk estimator", opt.ESTIMATOR_DEFAULT =
 check("...without moving build_squad's shared default (dashboard/pages)",
       opt.bs.ESTIMATOR_DEFAULT == "prior")
 
+print("\n== suspension-aware status gate (8 Nov 2026) ==")
+# On 8 Nov 2026 the GW11 1-transfer run recommended Evanilson -> Thiago, whom
+# FPL listed "Suspended until 5 Dec": banned for GW11-13 of the GW11-14 window
+# (BRE's GW14 kickoff IS 5 Dec, the first match he is eligible for). Status 's'
+# was reported but never excluded. These are build_squad's pure helpers, fed
+# the real dates of that day, then the optimiser end to end.
+from datetime import date
+bs = opt.bs
+REF = date(2026, 11, 8)
+check("parses 'Suspended until 5 Dec' to 5 Dec of the reference year",
+      bs.parse_suspension_end("Suspended until 5 Dec", REF) == date(2026, 12, 5))
+check("a January date read in November is NEXT year's",
+      bs.parse_suspension_end("Suspended until 3 Jan", REF) == date(2027, 1, 3))
+check("news with no 'until' date -> None (left to the old reported-only path)",
+      bs.parse_suspension_end("Knee injury - 75% chance of playing", REF) is None)
+# Brentford's real kickoffs, GW11-14, as /fixtures/ listed them on 8 Nov 2026.
+KO = {("BRE", 11): [date(2026, 11, 23)], ("BRE", 12): [date(2026, 11, 28)],
+      ("BRE", 13): [date(2026, 12, 2)], ("BRE", 14): [date(2026, 12, 5)]}
+W = (0.4, 0.3, 0.2, 0.1)
+DL = {11: date(2026, 11, 21), 12: date(2026, 11, 27), 13: date(2026, 12, 1), 14: date(2026, 12, 5)}
+cov = bs.suspension_cover(date(2026, 12, 5), "BRE", 11, 4, W, KO, {})
+check("until 5 Dec blanks GW11-13 and is back for GW14 (10% of window weight)",
+      cov is not None and cov[0] == [11, 12, 13] and abs(cov[1] - 0.1) < 1e-9, cov)
+cov = bs.suspension_cover(date(2026, 12, 12), "BRE", 11, 4, W, KO, {})
+check("a ban past the last window kickoff blanks every GW -> 0% available",
+      cov == ([11, 12, 13, 14], 0.0), cov)
+cov = bs.suspension_cover(date(2026, 11, 21), "BRE", 11, 4, W, KO, {})
+check("a ban ending on/before the first kickoff blanks nothing -> 100%",
+      cov == ([], 1.0), cov)
+check("no club kickoffs AND no deadlines -> None (undeterminable, never guessed)",
+      bs.suspension_cover(date(2026, 12, 5), "XXX", 11, 4, W, {}, {}) is None)
+cov = bs.suspension_cover(date(2026, 12, 5), "XXX", 11, 4, W, {}, DL)
+check("GW-deadline fallback gives the same GW11-13 answer",
+      cov is not None and cov[0] == [11, 12, 13] and abs(cov[1] - 0.1) < 1e-9, cov)
+check("no start GW (no window, no live GW) -> None",
+      bs.suspension_cover(date(2026, 12, 5), "BRE", None, 4, W, KO, DL) is None)
+cov = bs.suspension_cover(date(2026, 12, 5), "BRE", 11, 4, None, KO, {})
+check("without weights the share is a plain fixture count (1 of 4)",
+      cov is not None and abs(cov[1] - 0.25) < 1e-9, cov)
+
+# Row level: the gate is_available() reads, and the start-rate scaling.
+thiago = {"name": "Thiago", "team": "BRE", "status": "s", "stp": 0.9, "chance": None}
+v = bs._apply_suspension(thiago, "Suspended until 5 Dec", (11, 4, W), KO, {}, ref=REF)
+check("Thiago is PARTIAL: still selectable, stp 0.90 -> 0.09, blanks recorded",
+      v == "partial" and bs.is_available(thiago) and abs(thiago["stp"] - 0.09) < 1e-9
+      and thiago["susp_blank"] == [11, 12, 13] and thiago["susp_out"] is False, thiago)
+long_ban = {"name": "LongBan", "team": "BRE", "status": "s", "stp": 0.9, "chance": None}
+v = bs._apply_suspension(long_ban, "Suspended until 12 Dec", (11, 4, W), KO, {}, ref=REF)
+check("a ban covering the whole window is OUT: ok=False, stp 0",
+      v == "out" and not bs.is_available(long_ban) and long_ban["stp"] == 0.0
+      and long_ban["susp_out"] is True, long_ban)
+unread = {"name": "Unread", "team": "BRE", "status": "s", "stp": 0.9, "chance": None}
+v = bs._apply_suspension(unread, "Suspended - club awaiting FA decision", (11, 4, W), KO, {}, ref=REF)
+check("unreadable news -> 'unknown', row untouched and still selectable (old behaviour)",
+      v == "unknown" and bs.is_available(unread) and unread["stp"] == 0.9, unread)
+
+# End to end: a FWD better than anyone owned, on the 8 Nov pattern. With the
+# gate (ok=False) he is never bought; with the pre-fix ok=True he is - the
+# same pool, so the outcome is the gate's and nothing else's.
+BANNED = _row("BannedFwd", "FWD", "T17", 5.0, 6.0, ok=False)
+res = opt.optimise_transfers(OWNED + [BANNED], OWNED_NAMES, 5.0, 1, allow_haaland=True,
+                             max_att_per_club=None, bought_for=bf_flat)
+check("a status-'s' player whose ban covers the window is never bought",
+      res is not None and "BannedFwd" not in _swapped_in(res),
+      _swapped_in(res) if res else res)
+res = opt.optimise_transfers(OWNED + [dict(BANNED, ok=True)], OWNED_NAMES, 5.0, 1,
+                             allow_haaland=True, max_att_per_club=None, bought_for=bf_flat)
+check("...and the same player with ok=True WOULD be (the 8 Nov 2026 Thiago failure)",
+      res is not None and "BannedFwd" in _swapped_in(res), _swapped_in(res) if res else res)
+
 print("\n" + ("ALL TESTS PASSED" if not FAILS else f"{len(FAILS)} FAILURE(S): {FAILS}"))
 import sys
 sys.exit(1 if FAILS else 0)

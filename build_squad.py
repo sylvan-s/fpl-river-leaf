@@ -36,6 +36,9 @@ degrade to the frozen snapshot (with a warning) if it is unreachable.
     STATUS (15 Sep 2026) - a stale availability is a player who cannot play.
     FPL's live `status` flag now feeds gate 3 alongside the hand-kept
     UNAVAILABLE list; see LIVE_STATUS_EXCLUDE for which flags exclude and why.
+    Since 8 Nov 2026 a suspension ('s') is read against the scoring window:
+    excluded when the ban covers every GW of it, start rate scaled by the
+    available share when it ends inside it - see _apply_suspension().
 
 GATE 2 CHANGED 9 Aug 2026 — starts% is now measured over the LAST 16 GAMEWEEKS
 of 2025/26 (GW23-38), not the full 38-GW season. Sylvan's point: a lot changes
@@ -69,8 +72,9 @@ tackled-penalty removed) — same evidentiary standard as the Rice `stp`
 override in ROLE_INTEL.md. Pass `--no-bonus` to rebuild without it, for
 comparison. Re-derive from real 2026/27 BPS data as soon as GW1-5 exist.
 """
-import json, math, os, sys
+import json, math, os, re, sys
 import importlib.util as _il
+from datetime import date, datetime, timedelta
 
 import scoring
 import constants
@@ -202,17 +206,24 @@ UNAVAILABLE = {
 #                      this horizon either. It is occasionally a short absence
 #                      instead (e.g. ineligible vs parent club), which is why
 #                      load() prints FPL's `news` text next to every exclusion.
-#   's' suspended    - NOT excluded automatically. A ban ends, and this pool is
-#                      scored over a multi-GW window (GW5-8 on 15 Sep 2026), so
-#                      a short ban zeroing him for the whole horizon would
-#                      overstate it - GLOSSARY.md's "hold signal, not a blank
-#                      signal" point. (Strictly, that note is about yellow-card
-#                      RISK; a ban being served does blank those GWs -
-#                      GLOSSARY's BANNED row.) Bans are NOT reliably short:
-#                      on 15 Sep 2026 Foden's ran to 17 Oct, past the whole
-#                      window. So load() prints each one with FPL's "Suspended
-#                      until" text; add him to UNAVAILABLE when it covers the
-#                      window.
+#   's' suspended    - READ AGAINST THE WINDOW since 8 Nov 2026. FPL's news
+#                      text ("Suspended until 5 Dec") names the first match he
+#                      is eligible for (checked 8 Nov 2026: for all three live
+#                      bans the date was the club's own kickoff in the return
+#                      GW). _apply_suspension() works out which window GWs the
+#                      ban blanks from the club's kickoffs (/fixtures/, falling
+#                      back to GW deadlines): every GW -> EXCLUDED (ok=False,
+#                      stp 0); some -> still selectable but stp scaled by the
+#                      share of window weight he is available for, reported as
+#                      STATUS SUSPENDED (partial); none readable -> the old
+#                      behaviour, reported and left selectable. Before this the
+#                      flag was only reported, and on 8 Nov 2026 the GW11
+#                      1-transfer run recommended Evanilson -> Thiago, banned
+#                      for GW11-13 of a GW11-14 window. Bans are NOT reliably
+#                      short: on 15 Sep 2026 Foden's ran to 17 Oct, past the
+#                      whole window. GLOSSARY.md's BANNED row: a ban being
+#                      served does blank those GWs; yellow-card RISK is the
+#                      "hold signal, not a blank signal" and is untouched here.
 #   'i' injured      - EXCLUDED since 15 Sep 2026. Left to the hand list until
 #                      then, which nobody updated in time: the GW5 shrunk run
 #                      recommended Hinshelwood (status 'i', chance 0, ankle,
@@ -236,6 +247,8 @@ def is_available(r):
     """
     if r["name"] in UNAVAILABLE or r.get("status") in LIVE_STATUS_EXCLUDE:
         return False
+    if r.get("susp_out"):
+        return False
     return not _doubtful_out(r)
 
 
@@ -243,6 +256,136 @@ def _doubtful_out(r):
     """'d' with a live chance below DOUBTFUL_MIN_CHANCE - see LIVE_STATUS_EXCLUDE."""
     chance = r.get("chance")
     return r.get("status") == "d" and chance is not None and chance < DOUBTFUL_MIN_CHANCE
+
+
+# gate 3, SUSPENSIONS - ADDED 8 Nov 2026 (see the 's' entry above).
+_SUSP_RE = re.compile(r"suspended\s+until\s+(\d{1,2})\s+([A-Za-z]{3,})", re.I)
+_MONTHS = {m: i for i, m in enumerate(
+    ("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"), 1)}
+
+
+def parse_suspension_end(news, ref=None):
+    """The date a 'Suspended until 5 Dec' ban ends - the FIRST match he is
+    eligible for, per FPL's convention (checked 8 Nov 2026 against the three
+    live bans). None when the text carries no such phrase. FPL prints no year:
+    the nearest date on or after `ref` (today) minus 60 days is taken, so a
+    January date read in November is next year's."""
+    m = _SUSP_RE.search(news or "")
+    if not m:
+        return None
+    mon = _MONTHS.get(m.group(2)[:3].lower())
+    if mon is None:
+        return None
+    ref = ref or date.today()
+    try:
+        d = date(ref.year, mon, int(m.group(1)))
+        if d < ref - timedelta(days=60):
+            d = date(ref.year + 1, mon, int(m.group(1)))
+    except ValueError:
+        return None
+    return d
+
+
+def _window_spec():
+    """(start_gw, horizon, gw_weights) of the window optimise_squad.py scores
+    over. Start is the live next GW when known - fixture_window.json may still
+    be stale at load() time, since optimise_squad refreshes it AFTER load() -
+    else the stamp's generated_for_gw; None when neither is known. Weights are
+    the stamp's when it is for that start GW, else constants.FIXTURE_GW_WEIGHTS
+    when the horizon matches, else None (plain fixture count is used)."""
+    stamp = {}
+    try:
+        with open(os.path.join(HERE, "fixture_window.json"), encoding="utf-8") as fh:
+            stamp = json.load(fh) or {}
+    except Exception:
+        pass
+    horizon = int(stamp.get("horizon") or len(constants.FIXTURE_GW_WEIGHTS))
+    start = _live_gw_cache or stamp.get("generated_for_gw")
+    weights = None
+    if stamp.get("generated_for_gw") == start and len(stamp.get("gw_weights") or []) == horizon:
+        weights = tuple(stamp["gw_weights"])
+    elif len(constants.FIXTURE_GW_WEIGHTS) == horizon:
+        weights = tuple(constants.FIXTURE_GW_WEIGHTS)
+    return start, horizon, weights
+
+
+def _club_kickoffs():
+    """{(SHORT_CODE, gw): [kickoff dates]} from /fixtures/; {} when that fetch
+    failed (suspension_cover then falls back to GW deadlines)."""
+    codes = _team_code_cache or {}
+    out = {}
+    for fx in _fetch_fixtures():
+        gw, ko = fx.get("event"), fx.get("kickoff_time")
+        if not gw or not ko:
+            continue
+        try:
+            d = datetime.strptime(ko[:10], "%Y-%m-%d").date()
+        except ValueError:
+            continue
+        for side in ("team_h", "team_a"):
+            code = codes.get(fx.get(side))
+            if code:
+                out.setdefault((code, gw), []).append(d)
+    return out
+
+
+def _gw_deadlines():
+    """{gw: deadline date} from the bootstrap-static events; {} if unknown."""
+    out = {}
+    for ev in _events_cache or []:
+        try:
+            out[ev["id"]] = datetime.strptime(ev["deadline_time"][:10], "%Y-%m-%d").date()
+        except (KeyError, TypeError, ValueError):
+            continue
+    return out
+
+
+def suspension_cover(end, team, start_gw, horizon, weights=None, kickoffs=None, deadlines=None):
+    """Which window GWs a ban ending on `end` blanks for `team`.
+
+    Returns (blank_gws, frac_available), or None when it cannot be told: no
+    start GW, or some window GW has neither a club kickoff nor a GW deadline
+    to compare against. A GW is blanked when every kickoff the club has in it
+    (else the GW deadline) falls BEFORE `end` - the until-date is the first
+    eligible match. frac_available is the share of window gw_weights on the
+    GWs he can play, or the plain share of GWs when weights are None.
+    """
+    if end is None or start_gw is None:
+        return None
+    kickoffs, deadlines = kickoffs or {}, deadlines or {}
+    gws = list(range(start_gw, start_gw + horizon))
+    blank = []
+    for gw in gws:
+        dates = kickoffs.get((team, gw)) or ([deadlines[gw]] if gw in deadlines else None)
+        if not dates:
+            return None
+        if max(dates) < end:
+            blank.append(gw)
+    if weights and len(weights) == horizon:
+        avail = sum(w for gw, w in zip(gws, weights) if gw not in blank) / float(sum(weights))
+    else:
+        avail = (horizon - len(blank)) / float(horizon)
+    return blank, round(avail, 6)
+
+
+def _apply_suspension(r, news, spec, kickoffs, deadlines, ref=None):
+    """For a status-'s' row: record the ban's reach over the window and scale
+    r['stp'] by the available share (0 when it covers every GW, which also
+    sets susp_out -> is_available() False). Returns 'out' | 'partial' |
+    'clear' | 'unknown'. 'unknown' leaves the row untouched (old behaviour:
+    reported, still selectable)."""
+    end = parse_suspension_end(news, ref)
+    r["susp_end"] = end.isoformat() if end else None
+    start, horizon, weights = spec
+    cover = suspension_cover(end, r["team"], start, horizon, weights, kickoffs, deadlines)
+    if cover is None:
+        r["susp_blank"], r["susp_frac"], r["susp_out"] = None, None, False
+        return "unknown"
+    blank, frac = cover
+    r["susp_blank"], r["susp_frac"], r["susp_out"] = blank, frac, frac <= 0
+    r["stp_pre_susp"] = r["stp"]
+    r["stp"] = r["stp"] * frac
+    return "out" if frac <= 0 else ("partial" if blank else "clear")
 
 POS = {1: "GKP", 2: "DEF", 3: "MID", 4: "FWD"}
 
@@ -375,6 +518,13 @@ _team_code_cache = None
 # {SHORT_CODE: finished fixtures} for --stp-estimator shrunk. None = not
 # fetched yet this process, {} = fetch failed.
 _team_games_cache = None
+# Raw /fixtures/ list behind _team_games_cache, kept since 8 Nov 2026 so the
+# suspension gate can read per-club kickoff dates from the same fetch. None =
+# not fetched yet, [] = fetch failed.
+_fixtures_cache = None
+# bootstrap-static `events` from the same fetch as _current_cache - GW
+# deadlines, the suspension gate's fallback when /fixtures/ is unavailable.
+_events_cache = None
 
 
 def current_live_gw():
@@ -399,6 +549,7 @@ def _fetch_current_season():
             data = json.loads(resp.read().decode("utf-8"))
         _current_cache = {str(e["id"]): e for e in data.get("elements", [])}
         _events = data.get("events", [])
+        globals()["_events_cache"] = _events
         _live_gw_cache = (
             next((ev["id"] for ev in _events if ev.get("is_next")), None)
             or next((ev["id"] for ev in _events if ev.get("is_current")), None)
@@ -425,6 +576,30 @@ def _fetch_current_season():
     return _current_cache
 
 
+def _fetch_fixtures():
+    """The raw /fixtures/ list, fetched once per process. [] on any failure
+    (said once on stderr); callers degrade - _fetch_team_games() keeps every
+    start rate on its prior, the suspension gate falls back to GW deadlines."""
+    global _fixtures_cache
+    if _fixtures_cache is not None:
+        return _fixtures_cache
+    _fetch_current_season()
+    import urllib.request
+    try:
+        req = urllib.request.Request(
+            "https://fantasy.premierleague.com/api/fixtures/",
+            headers={"User-Agent": "fpl-build-squad/1.0"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            _fixtures_cache = json.loads(resp.read().decode("utf-8"))
+    except Exception as exc:
+        print(f"  FIXTURES: /fixtures/ fetch failed ({exc}) - no team match counts, so "
+              f"every start rate stays on its 2025/26 prior this run, and the "
+              f"suspension gate reads bans against GW deadlines instead of club "
+              f"kickoffs.", file=sys.stderr)
+        _fixtures_cache = []
+    return _fixtures_cache
+
+
 def _fetch_team_games():
     """{SHORT_CODE: finished fixtures} - the start-rate denominator. Counted
     from /fixtures/ rather than bootstrap's teams[].played, which reads 0 all
@@ -433,27 +608,15 @@ def _fetch_team_games():
     global _team_games_cache
     if _team_games_cache is not None:
         return _team_games_cache
-    _fetch_current_season()
-    import urllib.request
-    try:
-        req = urllib.request.Request(
-            "https://fantasy.premierleague.com/api/fixtures/",
-            headers={"User-Agent": "fpl-build-squad/1.0"})
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            fixtures = json.loads(resp.read().decode("utf-8"))
-        codes = _team_code_cache or {}
-        games = {}
-        for fx in fixtures:
-            if fx.get("finished") and fx.get("event"):
-                for side in ("team_h", "team_a"):
-                    code = codes.get(fx.get(side))
-                    if code:
-                        games[code] = games.get(code, 0) + 1
-        _team_games_cache = games
-    except Exception as exc:
-        print(f"  STP: fixtures fetch failed ({exc}) - no team match counts, so "
-              f"every start rate stays on its 2025/26 prior this run.", file=sys.stderr)
-        _team_games_cache = {}
+    codes = _team_code_cache or {}
+    games = {}
+    for fx in _fetch_fixtures():
+        if fx.get("finished") and fx.get("event"):
+            for side in ("team_h", "team_a"):
+                code = codes.get(fx.get(side))
+                if code:
+                    games[code] = games.get(code, 0) + 1
+    _team_games_cache = games
     return _team_games_cache
 
 
@@ -732,10 +895,17 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
         # list is these rows, clubs already corrected to live.
         for w in ia.resolve_overlay(rows):
             print(f"  {w}", file=sys.stderr)
+    # Suspension gate inputs, resolved once and only when a flagged row needs
+    # them (the /fixtures/ fetch is a network call). See _apply_suspension().
+    susp_inputs = None
     for r in rows:
         if use_intel:
             for e in ia.apply(r):
                 matched.add((e["player"], e["team"]))
+        if r["status"] == "s" and current:
+            if susp_inputs is None:
+                susp_inputs = (_window_spec(), _club_kickoffs(), _gw_deadlines())
+            _apply_suspension(r, live_news.get(id(r), ""), *susp_inputs)
         r["p_cs"] = math.exp(-max(r["xgc90"], 0.05)) if CS[r["pos"]] else 0.0
         r["ok"] = is_available(r)
         r["score"] = scoring.expected_points(r, empirical=use_empirical_dc)
@@ -797,12 +967,44 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
                   + ". Check each before acting on a recommendation that names him.",
                   file=sys.stderr)
         if suspended:
-            print(f"  STATUS SUSPENDED — {len(suspended)} player(s) FPL flags as "
-                  f"suspended ('s'), still SELECTABLE - not excluded automatically: "
-                  + ", ".join(f"{r['name']} ({r['team']}){_news(r)}" for r in suspended)
-                  + ". Check each end date against the scoring window and add "
-                    "anyone it covers to UNAVAILABLE in build_squad.py.",
-                  file=sys.stderr)
+            spec = susp_inputs[0] if susp_inputs else _window_spec()
+            win = (f"GW{spec[0]}-{spec[0] + spec[1] - 1}" if spec[0] else "the window")
+
+            def _reach(r):
+                b = r.get("susp_blank") or []
+                gws = (f"blanks GW{b[0]}" + (f"-{b[-1]}" if len(b) > 1 else "")) if b else "no blank"
+                return f"{r['name']} ({r['team']}, {gws}, {r['susp_frac']:.0%} of {win} available){_news(r)}"
+            s_out = [r for r in suspended if r.get("susp_out")]
+            s_part = [r for r in suspended if r.get("susp_frac") is not None and 0 < r["susp_frac"] < 1]
+            s_clear = [r for r in suspended if r.get("susp_frac") is not None and r["susp_frac"] >= 1]
+            s_unknown = [r for r in suspended if r.get("susp_frac") is None]
+            if s_out:
+                print(f"  STATUS EXCLUDED (suspended) — {len(s_out)} player(s) whose ban "
+                      f"covers every gameweek of {win}, set ok=False and start rate 0: "
+                      + ", ".join(f"{r['name']} ({r['team']}){_news(r)}" for r in s_out)
+                      + ".", file=sys.stderr)
+            if s_part:
+                print(f"  STATUS SUSPENDED (partial) — {len(s_part)} player(s) banned for "
+                      f"part of {win}, still SELECTABLE with start rate scaled by the "
+                      f"share of window weight he is available for: "
+                      + ", ".join(_reach(r) for r in s_part)
+                      + ". A buy here is a hold for the blank GWs - check before acting.",
+                      file=sys.stderr)
+            if s_clear:
+                print(f"  STATUS SUSPENDED (ends before {win}) — {len(s_clear)} player(s) "
+                      f"still flagged 's' but eligible for every window kickoff, "
+                      f"selectable at full start rate: "
+                      + ", ".join(f"{r['name']} ({r['team']}){_news(r)}" for r in s_clear)
+                      + ".", file=sys.stderr)
+            if s_unknown:
+                print(f"  STATUS SUSPENDED — {len(s_unknown)} player(s) FPL flags as "
+                      f"suspended ('s') whose end date could not be read against {win} "
+                      f"(no 'Suspended until D Mon' text, or no fixture/deadline data), "
+                      f"still SELECTABLE - not excluded automatically: "
+                      + ", ".join(f"{r['name']} ({r['team']}){_news(r)}" for r in s_unknown)
+                      + ". Check each end date against the scoring window and add "
+                        "anyone it covers to UNAVAILABLE in build_squad.py.",
+                      file=sys.stderr)
     else:
         print(f"  STATUS: no live status flags this run (bootstrap-static "
               f"unreachable) — availability is the hand-maintained UNAVAILABLE "
