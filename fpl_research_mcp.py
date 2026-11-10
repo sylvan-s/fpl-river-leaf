@@ -3001,9 +3001,39 @@ def _cap_rows(names: str, shrunk: bool = True, with_intel: bool = False,
     return rows, {"k": (sum(ks.values()) / len(ks)) if ks else 0.0}
 
 
+# E[pts] TIE BAND (10 Nov 2026, Sylvan's call, GW11). Two captain options
+# within 0.1 expected points are a model-noise tie, not a ranking - so in the
+# neutral ordering a tie is broken by the LOWER P(blank), then by E[pts].
+# Bands are anchored on each band's leader (not chained pairwise), so
+# 5.00 / 4.95 / 4.89 is one band only if 4.89 is within 0.1 of 5.00.
+CAPTAIN_TIE_XP = 0.10
+
+
+def _rank_neutral(rows, tie=CAPTAIN_TIE_XP):
+    """Sort captaincy rows by E[pts], treating any within `tie` of a band's
+    leader as tied and ordering that band by P(blank) ascending. Marks each
+    row's r['tied'] = True when it shares a band with someone else."""
+    by_exp = sorted(rows, key=lambda r: -r["exp"])
+    out, i = [], 0
+    while i < len(by_exp):
+        lead = by_exp[i]["exp"]
+        j = i
+        while j < len(by_exp) and lead - by_exp[j]["exp"] <= tie + 1e-9:
+            j += 1
+        band = sorted(by_exp[i:j], key=lambda r: (r["blank"], -r["exp"]))
+        for r in band:
+            r["tied"] = len(band) > 1
+        out += band
+        i = j
+    rows[:] = out
+    return rows
+
+
 @mcp.tool(
     description=(
         "Captaincy analysis by DISTRIBUTION, not point estimate (design D6). "
+        "Neutral mode ranks by E[pts], but options within 0.1 E[pts] of each "
+        "other are treated as tied and ordered by lower P(blank). "
         "Models goals and assists as Poisson draws and reports E[points], "
         "P(haul >=10) and P(blank <=2). Variance is symmetric but captaincy is "
         "not - the upper tail is what gains rank, the lower tail is what loses "
@@ -3023,7 +3053,10 @@ def captaincy_odds(names: str, mode: str = "neutral", shrunk: bool = True,
         return f"No players matched: {names}"
 
     key = {"chase": lambda r: -r["diff"], "protect": lambda r: (r["blank"], -r["exp"])}
-    rows.sort(key=key.get(mode.lower(), lambda r: -r["exp"]))
+    if mode.lower() in key:
+        rows.sort(key=key[mode.lower()])
+    else:
+        _rank_neutral(rows)
 
     head = (f"{'Player':<14}{'Tm':<5}{'Opponent':<16}{'xG/90':>7}{'E[pts]':>8}"
             f"{'P(haul)':>9}{'P(blank)':>10}{'SD':>7}{'Own%':>7}{'DiffUp':>8}"
@@ -3040,6 +3073,7 @@ def captaincy_odds(names: str, mode: str = "neutral", shrunk: bool = True,
             f"{r['xg90']:>7.2f}{r['exp']:>8.2f}{r['haul']:>8.1f}%{r['blank']:>9.1f}%"
             f"{r['sd']:>7.2f}{r['own']:>7.1f}{r['diff']:>8.1f}"
             f"{r['susp']['label']:>11}"
+            f"{'  TIE' if r.get('tied') else ''}"
             f"{'  DGW' if r['dgw'] else ''}{flag}"
             f"{'  [' + r['intel'] + ']' if r.get('intel') else ''}"
         )
@@ -3077,7 +3111,9 @@ def captaincy_odds(names: str, mode: str = "neutral", shrunk: bool = True,
         "          largely rank-neutral whatever happens; a differential is a real bet.",
         "",
         "MODES: protect = lowest P(blank) first | chase = highest DiffUp first",
-        "       neutral = highest expected points",
+        "       neutral = highest expected points; options within "
+        f"{CAPTAIN_TIE_XP:.1f} E[pts] of each",
+        "       other are a TIE (marked), ordered by lower P(blank)",
         "",
         "TRIPLE CAPTAIN is purely a P(haul) maximisation - the chip's value is one",
         "extra copy of the score, so target the upper tail, not the mean.",
@@ -3134,7 +3170,7 @@ def captaincy_snapshot_refresh(with_intel: bool = True) -> str:
         rows, _meta = _cap_rows(names, shrunk_flag, with_intel, estimator=est_arg)
         if not rows:
             return f"No squad XI players matched captaincy_odds under {key} — snapshot not written."
-        rows.sort(key=lambda r: -r["exp"])
+        _rank_neutral(rows)
         top = rows[0]
         by_estimator.append({
             "estimator": key, "label": label,

@@ -954,6 +954,22 @@ finally:
     m._PRICE_HISTORY_PATH = _ov_ph_path
     m._DB_PATH = _ov_db_path
 
+print("\n== captaincy E[pts] tie band ==")
+_tr = [{"name": "A", "exp": 5.00, "blank": 50.0}, {"name": "B", "exp": 4.95, "blank": 40.0},
+       {"name": "C", "exp": 4.89, "blank": 30.0}, {"name": "D", "exp": 4.85, "blank": 20.0},
+       {"name": "E", "exp": 3.00, "blank": 10.0}]
+m._rank_neutral(_tr)
+check("within 0.1 E[pts] -> lower P(blank) ranks first", [r["name"] for r in _tr][:2] == ["B", "A"],
+      [r["name"] for r in _tr])
+check("band anchored on its leader, not chained (C is 0.11 off A)",
+      [r["name"] for r in _tr] == ["B", "A", "D", "C", "E"], [r["name"] for r in _tr])
+check("a clear E[pts] gap is never overridden by P(blank)", _tr[-1]["name"] == "E")
+check("tied rows are marked, untied are not",
+      _tr[0]["tied"] and _tr[2]["tied"] and not _tr[4]["tied"])
+_t2 = [{"name": "X", "exp": 5.08, "blank": 39.8}, {"name": "Y", "exp": 4.57, "blank": 47.6}]
+m._rank_neutral(_t2)
+check("0.5 gap stays an E[pts] ranking", _t2[0]["name"] == "X" and not _t2[0]["tied"])
+
 print("\n== read-only guarantee ==")
 src = open(m.__file__).read()
 check("no HTTP writes in source", not any(f"httpx.{v}(" in src for v in ("post", "put", "patch", "delete")))
