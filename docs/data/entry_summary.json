@@ -1,9 +1,9 @@
 {
   "entry": 1041614,
-  "total_points": 562.0,
-  "gws_played": 9,
-  "avg_per_gw": 62.4,
-  "next_gw": 10,
-  "next_deadline_utc": "2026-11-06T18:30:00Z",
-  "fetched_utc": "2026-11-06T08:12:33+00:00"
+  "total_points": 633.0,
+  "gws_played": 10,
+  "avg_per_gw": 63.3,
+  "next_gw": 11,
+  "next_deadline_utc": "2026-11-21T11:00:00Z",
+  "fetched_utc": "2026-11-10T19:38:01+00:00"
 }
