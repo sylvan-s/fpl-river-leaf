@@ -7,6 +7,10 @@ whether the quantity it would add is large enough to change a decision.
 
     python3 size_bench_value.py            # flat xP
     python3 size_bench_value.py --fixtures # xP_adj over the window  <-- use this
+    python3 size_bench_value.py --fixtures --estimator prior   # 2025/26 rates only
+
+Rates default to the `shrunk` estimator (2025/26 prior blended with live
+2026/27 data), the same as optimise_squad.py - see ESTIMATOR_DEFAULT below.
 
 THE MODEL, first-order and deliberately an UPPER BOUND
 ------------------------------------------------------
@@ -157,8 +161,27 @@ def best_bench_at_spend(pool, xi, spend, clubs_used):
     return [P[i] for i in range(len(P)) if b[i].value() > 0.5]
 
 
+# PERFORMANCE ESTIMATOR - "shrunk" by default since 10 Nov 2026 (Sylvan's
+# call, GW11), matching optimise_squad.ESTIMATOR_DEFAULT. This script called
+# bs.load() bare, which inherits build_squad's "prior" default - 2025/26 rates
+# only - so the bench check ranked the squad on last season while the brief,
+# captaincy_odds and player_estimates all used shrunk. It showed: the GW11 run
+# benched Evanilson (shrunk xP_adj 4.21) for Virgil (3.98 shrunk, 4.26 prior).
+# --estimator prior|raw restores the other answers.
+ESTIMATOR_DEFAULT = "shrunk"
+
+
+def _estimator():
+    est = (sys.argv[sys.argv.index("--estimator") + 1]
+           if "--estimator" in sys.argv else ESTIMATOR_DEFAULT)
+    if est not in bs.ESTIMATOR_CHOICES:
+        sys.exit(f"--estimator must be one of {bs.ESTIMATOR_CHOICES}, got {est!r}")
+    return est
+
+
 def main():
-    pool = bs.load()
+    estimator = _estimator()
+    pool = bs.load(estimator=estimator)
     label = "flat xP/90"
     if "--fixtures" in sys.argv:
         fa = _load("fa", "fixture_adjust.py")
@@ -174,7 +197,7 @@ def main():
         sys.exit("current squad infeasible — check CURRENT_SQUAD")
     xi, bench, _ = res
 
-    print(f"SIZING THE BENCH PRIZE   objective: {label}")
+    print(f"SIZING THE BENCH PRIZE   objective: {label}   estimator: {estimator}")
     print("=" * 74)
     xi_p90 = sum(r["score"] for r in xi)
     xi_pgw = sum(r["stp"] * r["score"] for r in xi)
