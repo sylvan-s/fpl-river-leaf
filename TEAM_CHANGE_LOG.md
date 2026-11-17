@@ -902,9 +902,11 @@ Live gaps and standing technical notes — not resolved, not urgent unless flagg
 
 ---
 
-## PENDING — METHODOLOGY BACKTEST, GW10
+## RESULT — METHODOLOGY BACKTEST, GW10 (run Tue 17 Nov 2026)
 
 **Scheduled: Tue 10 Nov 2026, 09:00** (task `fpl-methodology-backtest-gw10`, one-off).
+**The scheduled task did not fire / left no result; run by hand Tue 17 Nov 2026,
+06:05 GMT, at Sylvan's request** (VM runner, repo HEAD 03b2fcd).
 
 Tests the xGI-first framework against real 2026/27 data rather than borrowed
 literature. Splits GW1–5 and GW6–10 and asks which period-1 metric better
@@ -919,6 +921,60 @@ so the test is capable of failing.
 - Difference under 0.05 → inconclusive, not a refutation
 - A negative result gets logged and acted on, not explained away
 - The skill is not rewritten unilaterally — the case goes to Sylvan
+
+### Results (recorded 17 Nov 2026)
+
+**1. xGI-first framework — SUPPORTED.** `predictive_backtest(compare_shrinkage=True)`,
+GW1–5 vs GW6–10, n = 83 MID/FWD (270/180 min floors). Period-1 xGI → period-2
+G+A r = +0.341; period-1 G+A → period-2 G+A r = +0.269; difference **+0.072**,
+above the pre-committed 0.05 inconclusive band. Persistence: xGI→xGI r = +0.514
+(chance creation repeats), delta→delta r = +0.092 (finishing over-performance
+does not — as expected; published ~0.63 / ~0.12). Single 5-GW split, so modest power.
+
+**2. Per-90 shrinkage — KEEP; shrinkage TARGET is the open question.**
+- D4 bake-off (n = 119, p1 floor 45 min, k estimated 8.8): MSE vs raw control
+  1.753 raw · 1.541 own-last-season · **1.355 team x position** · 1.434
+  position x price · 1.434 position overall. Reduction vs control by period-1
+  sample: sparse (<180 min) +39.1%, moderate +20.9%, rich (450+) +3.8%, all
+  +22.7% — the James-Stein pattern. Tool verdict: ADOPT (team x position).
+- Walk-forward (`docs/data/priors_payload.json`, generated 10 Nov 19:38),
+  mean weekly RMSE GW6–10, raw / prior / shrunk: xg90 .224/.212/**.208**;
+  xa90 .131/.126/**.125**; xgc90 .856/.813/**.800**; cbirt90 3.70/3.63/**3.57**;
+  cbit90 3.60/**3.30**/3.34 (the one metric where prior-only edges shrunk).
+- Reading: the live estimator (own 2025/26 rate blended with 2026/27) beats both
+  raw and prior-only, but a **team x position** shrinkage target beat the
+  own-last-season target in the bake-off (1.355 vs 1.541). Not adopted — proposal
+  to Sylvan (below).
+
+**3. Start-rate shrinkage (A0.2) — KEEP. Kill criterion NOT met.** Walk-forward
+`stp` mean RMSE GW6–10: last-16 prior **0.486**, raw 0.385, shrunk **0.372**
+(−23.6% vs prior, −3.4% vs raw). Shrunk start rate beats the last-16 prior out
+of sample as required. Caveat: by GW6+ the mean raw weight is 0.75–0.82, so
+shrunk ≈ raw for most players; GKP k is still fixed at 8 (degenerate estimate).
+
+**4. Start-weighted objective (A0.5) — UNDECIDED.** No existing tool compares
+start-weighted ranking against per-90 ranking out of sample, so its kill
+criterion cannot yet be evaluated. Needs a small backtest build. The objective
+stays live in the meantime; this is a gap, not a pass.
+
+**Captaincy calibration (`score_calibration`, gate for full Bayesian model) — FAILS,
+low power.** n = 80 scored predictions (8 awaiting results). Reliability:
+P(haul) 0–5% → predicted 2.9% / observed 0.0% (n 11); 5–10% → 7.9% / 15.6% (n 32);
+10–20% → 12.8% / 18.9% (n 37). Brier 0.1280 vs base rate 0.1275 — **skill −0.4%**
+(no better than predicting the average haul rate). E[pts] MAE 3.80, bias +0.15;
+P(blank) 49.3% predicted vs 53.8% observed. Verdict **UNDER-CONFIDENT** (haul gap
++5.5%). n = 80 is small and the Brier gap tiny, but the direction is consistent
+across both populated bins. Per the harness: try a lower k before a bigger model.
+**The full Bayesian build is NOT justified by this result.**
+
+### Proposals for Sylvan (none actioned — per the pre-commitment)
+1. Test a **team x position** shrinkage target (or blend of it with own-last-
+   season) for per-90 rates in `build_squad.py`, re-scored on the same backtest.
+2. **Lower k** for the haul probabilities feeding `captaincy_odds`, then re-score
+   calibration as more GWs bank. Treat captaincy P(haul) as uncalibrated until then.
+3. **Build the A0.5 test** (start-weighted vs per-90 ranking, out of sample) so
+   its kill criterion can actually be applied.
+4. Re-schedule the next calibration read for ~GW15 (≈140 scored predictions).
 
 ---
 
