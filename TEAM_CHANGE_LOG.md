@@ -975,6 +975,36 @@ across both populated bins. Per the harness: try a lower k before a bigger model
 3. **Build the A0.5 test** (start-weighted vs per-90 ranking, out of sample) so
    its kill criterion can actually be applied.
 4. Re-schedule the next calibration read for ~GW15 (≈140 scored predictions).
+5. **Position-specific forecasting** (added 17 Nov 2026, from the by-position
+   re-run below): forecast DEF from team-level inputs (xGC/clean sheets,
+   team x position target) with little weight on individual xGI; MID shrink to
+   own-last-season for regulars, team x position for sparse-minute players; FWD
+   unchanged until n allows. **Confirm first** with rolling splits across
+   GW1–15 and a defensive-points test by position before touching the model.
+
+### By-position re-run (Tue 17 Nov 2026, 09:30 GMT)
+
+`predictive_backtest(compare_shrinkage=True)` per position, GW1–5 vs GW6–10.
+The pooled MID+FWD SUPPORTED verdict above does not hold for either position
+alone.
+
+| Pos | n | xGI→G+A r | G+A→G+A r | diff | verdict | xGI persistence | best shrink target (MSE, all) |
+|---|---|---|---|---|---|---|---|
+| DEF | 69 | +0.126 | +0.203 | **−0.077** | **NOT SUPPORTED** | +0.430 | team x pos 0.429 vs own-last 0.530 vs raw 0.601 (−28.6%) |
+| MID | 66 | +0.323 | +0.290 | +0.032 | inconclusive | +0.521 | team x pos 1.021 vs own-last 1.087 vs raw 1.317 (−22.5%) |
+| FWD | 17 | +0.152 | +0.111 | +0.040 | inconclusive (n too small) | +0.286 | team x pos 2.824 vs own-last 3.598 vs raw 3.701 (−23.7%) |
+
+- **DEF** is a negative result outside the 0.05 band — logged per the
+  pre-commitment, to be acted on, not explained away. Team x position beat
+  own-last-season even for data-rich defenders (450+ p1 mins: 0.241 vs 0.332,
+  −37.4% vs raw): defender attacking output behaves like a team effect.
+  Walk-forward defensive metrics (above): xgc90 best on shrunk; cbit90 best on
+  prior-only. k estimated 18.1.
+- **MID** splits by sample size: sparse (<180 min) team x pos best (−41.5%);
+  moderate (180–450) **own-last-season** best (0.907 vs team x pos 0.941). k 9.6.
+- **FWD** n = 17 (21 in the bake-off) — direction only, no verdict. k 10.0.
+- Power caveat: one 5-GW split; at n ≈ 70 the SE on r is ~0.12, so the DEF
+  and MID gaps are leads, not settled findings.
 
 ---
 
