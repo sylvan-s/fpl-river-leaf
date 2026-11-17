@@ -981,6 +981,10 @@ across both populated bins. Per the harness: try a lower k before a bigger model
    own-last-season for regulars, team x position for sparse-minute players; FWD
    unchanged until n allows. **Confirm first** with rolling splits across
    GW1–15 and a defensive-points test by position before touching the model.
+   **TEST estimator built 17 Nov 2026 (commit 3b5bcdb):** `--estimator
+   positional` in build_squad/optimise_squad (`--compare-positional` for
+   shrunk vs positional). Opt-in only; weekly default stays `shrunk`. Needs an
+   fpl-mcp-http restart before the VM runner tools accept it.
 
 ### By-position re-run (Tue 17 Nov 2026, 09:30 GMT)
 
