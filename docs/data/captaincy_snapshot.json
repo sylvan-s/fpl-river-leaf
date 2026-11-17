@@ -1,7 +1,7 @@
 {
   "entry": 1041614,
   "next_gw": 11,
-  "fetched_utc": "2026-11-10T19:38:02+00:00",
+  "fetched_utc": "2026-11-17T20:45:11+00:00",
   "source": "captaincy_odds (mechanical refresh), neutral mode, per-estimator, with_intel=True",
   "by_estimator": [
     {
@@ -14,7 +14,7 @@
       "e_pts": 5.57,
       "p_haul": 11.8,
       "p_blank": 36.7,
-      "own_pct": 31.2,
+      "own_pct": 31.6,
       "diffup": 8.1,
       "sd": 4.15,
       "intel": ""
@@ -44,8 +44,8 @@
       "e_pts": 5.08,
       "p_haul": 9.0,
       "p_blank": 39.8,
-      "own_pct": 31.2,
-      "diffup": 6.2,
+      "own_pct": 31.6,
+      "diffup": 6.1,
       "sd": 3.83,
       "intel": ""
     }
