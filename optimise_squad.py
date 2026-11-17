@@ -93,6 +93,14 @@ default-on before GW4; in this file it did so on 22 Oct 2026 (GW8):
 (`--shrunk-priors` and `--compare-shrink` still work as legacy aliases for
 `--estimator shrunk` and a prior-vs-shrunk-only compare.)
 
+TEST estimator, 17 Nov 2026: `--estimator positional` uses a different
+shrinkage target per position (build_squad._apply_positional; TEAM_CHANGE_LOG
+proposal 5). Opt-in only - the weekly default stays `shrunk`.
+`--compare-positional` runs shrunk vs positional side by side:
+
+    python3 optimise_squad.py --estimator positional --fixtures --transfers 1
+    python3 optimise_squad.py --compare-positional --fixtures --transfers 1
+
 TWO MODES, AND THE WEEKLY ONE IS THE SECOND.
 
 Rebuild mode answers "what is the best 15 for £100m?" - the wildcard question,
@@ -1263,6 +1271,14 @@ def _main():
                        if "--transfers" in sys.argv else None)
         compare_estimators(allow_haaland, "--season-starts" in sys.argv,
                             "--fixtures" in sys.argv, n_transfers, max_att_per_club)
+        return
+
+    if "--compare-positional" in sys.argv:       # TEST estimator, 17 Nov 2026
+        n_transfers = (int(sys.argv[sys.argv.index("--transfers") + 1])
+                       if "--transfers" in sys.argv else None)
+        compare_estimators(allow_haaland, "--season-starts" in sys.argv,
+                            "--fixtures" in sys.argv, n_transfers, max_att_per_club,
+                            estimators=("shrunk", "positional"))
         return
 
     # Parses its own argv now (architecture review candidate #3) rather than

@@ -430,7 +430,7 @@ USE_EMPIRICAL_DC = True   # roadmap A4. Pass --legacy-dc for the superseded step
 USE_INTEL = True          # ROLE_INTEL.md adjustments. Pass --no-intel to disable.
 USE_BONUS = True          # roadmap A1 (xbonus90). Pass --no-bonus to rebuild without it.
 USE_CONTAM_FILTER = True  # Tier-1 contaminated-prior exclusion. Pass --allow-contaminated to include them.
-ESTIMATOR_CHOICES = ("prior", "raw", "shrunk")
+ESTIMATOR_CHOICES = ("prior", "raw", "shrunk", "positional")
 ESTIMATOR_DEFAULT = "prior"  # roadmap A0.2 Phase 2 (revised 31 Aug 2026; extended
                           # 2 Sep 2026 with the standalone "raw" choice). One of:
                           #   prior  - 2025/26 prior season only, no live fetch.
@@ -442,6 +442,11 @@ ESTIMATOR_DEFAULT = "prior"  # roadmap A0.2 Phase 2 (revised 31 Aug 2026; extend
                           #            un-gated raw rate is unusable early on).
                           #            No blending toward the prior at all.
                           #   shrunk - Bayesian blend of the two (roadmap A0.2).
+                          #   positional - TEST ESTIMATOR (17 Nov 2026), opt-in only:
+                          #            a different shrinkage target per position,
+                          #            from the by-position GW10 backtest. See
+                          #            _apply_positional() and TEAM_CHANGE_LOG.md
+                          #            proposal 5. Not the weekly default.
                           # Pass --estimator {prior,raw,shrunk} to override.
                           # DEFAULT STAYS "prior" until shrunk/raw are exercised
                           # via --compare-estimators and look sane - see
@@ -696,6 +701,90 @@ def _shrink_start_rates(rows, games, season_starts):
                   file=sys.stderr)
 
 
+# ---- positional estimator (TEST, 17 Nov 2026) --------------------------------
+# The GW10 backtest, re-run by position (TEAM_CHANGE_LOG.md "By-position
+# re-run", proposal 5), found the best shrinkage TARGET differs by position:
+#
+#   DEF  attacking rates (xg90/xa90/xgi90): team x position target beat the
+#        player's own last season everywhere, even for data-rich defenders
+#        (MSE 0.429 vs 0.530) - defender attacking output behaves like a team
+#        effect. xgc90 stays on the own-last-season blend (best walk-forward);
+#        cbit90 stays on the 2025/26 prior alone (prior-only beat shrunk
+#        walk-forward, 3.30 vs 3.34).
+#   MID  sparse (< POSITIONAL_SPARSE_N90 current 90s): team x position target
+#        (-41.5% MSE). Regulars: own-last-season blend (moderate stratum
+#        0.907 vs 0.941). Every metric.
+#   FWD  unchanged (own-last-season blend) - n = 17, no verdict yet.
+#   GKP  unchanged - not tested.
+#
+# The team x position target mirrors the backtest's bl_group(): mean
+# CURRENT-SEASON rate of rows at the same live club and position with at
+# least POSITIONAL_BASELINE_N90 90s (the player himself included, as there).
+# Falls back to the position-wide mean, then to the own-last-season blend.
+# k is the same per-metric pool-wide k the shrunk estimator uses.
+# Kill/keep: this is a candidate, not a method. Adopt only if it holds up on
+# rolling GW1-15 splits (proposal 5's "confirm first").
+POSITIONAL_SPARSE_N90 = 2.0      # 180 mins - the backtest's sparse stratum
+POSITIONAL_BASELINE_N90 = 5.0    # 450 mins - bl_group()'s minutes floor
+POSITIONAL_DEF_TEAM_METRICS = ("xg90", "xa90", "xgi90")
+POSITIONAL_DEF_PRIOR_METRICS = ("cbit90",)
+
+
+def _team_pos_baselines(rows, metrics):
+    """{metric: ({(team, pos): mean}, {pos: mean})} from rows' live `_cur`
+    rates, counting only rows with >= POSITIONAL_BASELINE_N90 current 90s."""
+    out = {}
+    for metric in metrics:
+        by_tp, by_p = {}, {}
+        for r in rows:
+            cur = r.get("_cur") or {}
+            if cur.get("n90", 0) < POSITIONAL_BASELINE_N90:
+                continue
+            by_tp.setdefault((r["team"], r["pos"]), []).append(cur[metric])
+            by_p.setdefault(r["pos"], []).append(cur[metric])
+        out[metric] = ({k: sum(v) / len(v) for k, v in by_tp.items()},
+                       {k: sum(v) / len(v) for k, v in by_p.items()})
+    return out
+
+
+def _apply_positional(rows, ks):
+    """Blend each row's live per-90 rates with a per-position target (see the
+    block comment above). Mutates rows in place, pops `_cur`, tags each row
+    with `pos_method`. Returns {method: count} for the run header."""
+    metrics = tuple(scoring.PRIORS_DISPERSION)
+    base = _team_pos_baselines(rows, metrics)
+    counts = {}
+    for r in rows:
+        cur = r.pop("_cur")
+        n90 = cur["n90"]
+        pos = r["pos"]
+        tags = []
+        for metric in metrics:
+            own = scoring.shrink_rate(cur[metric], n90, r[metric], ks[metric])
+            team_target = None
+            if (pos == "DEF" and metric in POSITIONAL_DEF_TEAM_METRICS) or \
+               (pos == "MID" and n90 < POSITIONAL_SPARSE_N90):
+                by_tp, by_p = base[metric]
+                team_target = by_tp.get((r["team"], pos), by_p.get(pos))
+            if pos == "DEF" and metric in POSITIONAL_DEF_PRIOR_METRICS:
+                tags.append("prior")          # r[metric] already holds the 2025/26 rate
+            elif team_target is not None:
+                r[metric] = scoring.shrink_rate(cur[metric], n90, team_target, ks[metric])
+                tags.append("team")
+            else:
+                r[metric] = own
+                tags.append("own")
+        if pos == "DEF":
+            method = "DEF team-attack/own-xgc/prior-cbit"
+        elif pos == "MID":
+            method = "MID sparse team" if "team" in tags else "MID regular own"
+        else:
+            method = f"{pos} own"
+        r["pos_method"] = method
+        counts[method] = counts.get(method, 0) + 1
+    return counts
+
+
 def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
          empirical=None, estimator=None, stp_estimator=None):
     use_stp = STP_ESTIMATOR_DEFAULT if stp_estimator is None else stp_estimator
@@ -708,7 +797,7 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
     use_estimator = ESTIMATOR_DEFAULT if estimator is None else estimator
     if use_estimator not in ESTIMATOR_CHOICES:
         raise ValueError(f"estimator must be one of {ESTIMATOR_CHOICES}, got {use_estimator!r}")
-    needs_live = use_estimator in ("raw", "shrunk")
+    needs_live = use_estimator in ("raw", "shrunk", "positional")
     snap = json.load(open(SNAP, encoding="utf-8"))
     teams = {int(k): v for k, v in snap["teams"].items()}
     last16 = {} if season_starts else _load_last16()
@@ -844,7 +933,7 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
     # per-position — a deliberate scope decision for this first activation,
     # not an oversight; see METHODOLOGY_ALTERNATIVES.md A0.2 "Phase 2" for
     # what the GW5 review should reconsider if this looks wrong.
-    if use_estimator == "shrunk":
+    if use_estimator in ("shrunk", "positional"):
         ks = {}
         for metric, disp in scoring.PRIORS_DISPERSION.items():
             samples = [(r["_cur"][metric], r["_cur"]["n90"]) for r in rows]
@@ -855,10 +944,17 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
                   f"— not derived from variance (population too thin, or GW1's "
                   f"no-current-data case) — treat those metrics as unvalidated "
                   f"this run.", file=sys.stderr)
-        for r in rows:
-            cur = r.pop("_cur")
-            for metric in scoring.PRIORS_DISPERSION:
-                r[metric] = scoring.shrink_rate(cur[metric], cur["n90"], r[metric], ks[metric])
+        if use_estimator == "positional":
+            counts = _apply_positional(rows, ks)
+            print("  POSITIONAL (TEST estimator, opt-in): per-position shrinkage "
+                  "targets from the 17 Nov 2026 by-position backtest - "
+                  + ", ".join(f"{k} {v}" for k, v in sorted(counts.items())),
+                  file=sys.stderr)
+        else:
+            for r in rows:
+                cur = r.pop("_cur")
+                for metric in scoring.PRIORS_DISPERSION:
+                    r[metric] = scoring.shrink_rate(cur[metric], cur["n90"], r[metric], ks[metric])
     elif use_estimator == "raw":
         # No blending at all - the live rate replaces the prior outright once
         # there is enough current-season sample to trust it (scoring.MIN_N90_RAW),

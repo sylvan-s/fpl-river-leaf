@@ -421,8 +421,8 @@ def optimiser_args(transfers=1, hits=False, estimator="shrunk", intel=True,
     `hits` is informational in the script: every k up to `transfers` is shown
     with its hit cost. hits=False with transfers above the free allowance is
     refused rather than silently priced as a hit."""
-    if estimator not in ("prior", "raw", "shrunk"):
-        raise ValueError(f"estimator must be prior/raw/shrunk, got {estimator!r}")
+    if estimator not in ("prior", "raw", "shrunk", "positional"):
+        raise ValueError(f"estimator must be prior/raw/shrunk/positional, got {estimator!r}")
     if quarantine and not intel:
         raise ValueError("quarantine layers ON TOP of the ROLE_INTEL fence; it needs intel=True")
     if transfers is None and (force_in or force_out):
@@ -1035,8 +1035,8 @@ def register(mcp, live_gw, fixture_table):
                 return refused
             try:
                 lines = validate_rows(rows)
-                if estimator not in ("prior", "raw", "shrunk"):
-                    raise ValueError(f"estimator must be prior/raw/shrunk, got {estimator!r}")
+                if estimator not in ("prior", "raw", "shrunk", "positional"):
+                    raise ValueError(f"estimator must be prior/raw/shrunk/positional, got {estimator!r}")
                 if transfers is None and (force_in or force_out):
                     raise ValueError("force_in/force_out need transfers=N")
                 if budget is not None and transfers is not None:
@@ -1093,8 +1093,8 @@ def register(mcp, live_gw, fixture_table):
             try:
                 ests = estimators or ["prior", "raw", "shrunk"]
                 for e in ests:
-                    if e not in ("prior", "raw", "shrunk"):
-                        raise ValueError(f"estimator must be prior/raw/shrunk, got {e!r}")
+                    if e not in ("prior", "raw", "shrunk", "positional"):
+                        raise ValueError(f"estimator must be prior/raw/shrunk/positional, got {e!r}")
                 rows = validate_rows(extra_rows) if extra_rows else None
                 if stp_estimator not in ("prior", "shrunk"):
                     raise ValueError(f"stp_estimator must be prior/shrunk, got {stp_estimator!r}")
