@@ -1336,6 +1336,11 @@ def _main():
         "shrunk": "SHRUNK — Bayesian blend of the 2025/26 prior and live "
                   "2026/27 rates (default since 22 Oct 2026). See METHODOLOGY_ALTERNATIVES.md "
                   "A0.2 'Phase 2'. --estimator prior for 2025/26 rates only.",
+        "positional": "POSITIONAL — TEST estimator (17 Nov 2026), opt-in: per-position "
+                      "shrinkage targets (DEF attacking rates -> team x position, MID "
+                      "sparse -> team x position, else own-last-season blend). See "
+                      "build_squad._apply_positional / TEAM_CHANGE_LOG proposal 5. "
+                      "A comparison, not the weekly answer.",
     }[estimator]
     print(f"ESTIMATOR: {est_note}\n")
     print("START RATE: " + ({
