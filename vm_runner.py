@@ -78,6 +78,13 @@ MAX_FILE_CHARS = 200_000
 
 # Files whose change means the RUNNING server is stale until restarted: the
 # tool definitions live in the server process, the scripts run fresh each call.
+# KNOWN GAP (18 Nov 2026): the VM cron restarts fpl-mcp-http only when ITS OWN
+# 15-minute pull brings a change to one of these files. If repo_sync() (run by
+# every tool call) pulls the change first, cron sees nothing new and never
+# restarts - the server ran from 8b138fd while vm_runner.py and
+# fpl_research_mcp.py moved on. Fix belongs in the cron script on the VM:
+# restart when the running process's start HEAD differs from HEAD on any of
+# SERVER_FILES (the STARTED_HEAD check below already detects exactly this).
 SERVER_FILES = ("fpl_research_mcp.py", "vm_runner.py", "scoring.py", "constants.py")
 
 # stderr lines worth lifting to the top of a response. The full stderr is
