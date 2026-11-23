@@ -637,7 +637,7 @@ def _current_rates(el):
     n90 = m / 90.0
     if n90 <= 0:
         return dict(n90=0.0, xg90=0.0, xa90=0.0, xgi90=0.0, xgc90=0.0,
-                    cbit90=0.0, cbirt90=0.0, sv90=0.0)
+                    cbit90=0.0, cbirt90=0.0, sv90=0.0, bonus90=0.0)
     cbi = el.get("clearances_blocks_interceptions", 0) or 0
     tk, rec = el.get("tackles", 0) or 0, el.get("recoveries", 0) or 0
     return dict(
@@ -649,6 +649,9 @@ def _current_rates(el):
         cbit90=(cbi + tk) / n90,
         cbirt90=(cbi + tk + rec) / n90,
         sv90=(el.get("saves") or 0) / n90,
+        # Live bonus/90 - NOT in scoring.PRIORS_DISPERSION, blended separately
+        # by scoring.blend_live_bonus() (23 Nov 2026 re-fit).
+        bonus90=(el.get("bonus") or 0) / n90,
     )
 
 
@@ -933,6 +936,19 @@ def load(season_starts=False, intel=None, bonus=None, exclude_contaminated=None,
     # per-position — a deliberate scope decision for this first activation,
     # not an oversight; see METHODOLOGY_ALTERNATIVES.md A0.2 "Phase 2" for
     # what the GW5 review should reconsider if this looks wrong.
+    # Bonus first, while every row still carries `_cur` (the rate branches
+    # below pop it). Only when bonus is on and live data exists.
+    if needs_live and use_bonus and current:
+        bk, rescale = scoring.blend_live_bonus(rows, mode=use_estimator)
+        if bk is not None:
+            print(f"  BONUS LIVE — xbonus90 blended with 2026/27 bonus/90, k {bk:.1f} "
+                  f"(dispersion {scoring.BONUS_POINT_DISPERSION}); 2025/26 prior rescaled "
+                  + ", ".join(f"{p} x{v:.2f}" for p, v in rescale.items()),
+                  file=sys.stderr)
+        elif use_estimator == "raw":
+            print("  BONUS LIVE — raw: live bonus/90 replaces the prior above "
+                  f"{scoring.MIN_N90_RAW:.1f} n90.", file=sys.stderr)
+
     if use_estimator in ("shrunk", "positional"):
         ks = {}
         for metric, disp in scoring.PRIORS_DISPERSION.items():

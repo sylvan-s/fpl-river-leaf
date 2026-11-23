@@ -138,5 +138,33 @@ check("un-netting recovers a non-negative pure DC figure",
       _breakdown["defensive_contribution"] - _pen >= 0,
       f"dc={_breakdown['defensive_contribution']} pen={_pen}")
 
+print("\n== blend_live_bonus: 2026/27 bonus re-fit (23 Nov 2026) ==")
+import random as _rnd
+_rnd.seed(7)
+def _row(pos, prior, live, n90):
+    return {"pos": pos, "xbonus90": prior, "_cur": {"n90": n90, "bonus90": live}}
+# 40 MIDs whose live bonus runs at 80% of prior, with player-level spread,
+# plus a "Bruno": high prior, ~zero live over 10 90s.
+_mids = [_row("MID", p, max(0.0, 0.8 * p + _rnd.gauss(0, 0.15)), 10.0)
+         for p in [_rnd.uniform(0.1, 1.6) for _ in range(40)]]
+_bruno = _row("MID", 1.11, 0.0, 10.0)
+_nolive = _row("MID", 0.50, 0.0, 0.0)
+_bk, _rs = s.blend_live_bonus(_mids + [_bruno, _nolive])
+check("k derived (not a fallback) on a 42-row pool", _bk not in (10.0, 40.0, 60.0), f"k={_bk}")
+check("MID rescale picks up the ~0.8 league shift", 0.65 < _rs["MID"] < 0.95, f"{_rs}")
+check("zero-live high-prior player is pulled well down",
+      _bruno["xbonus90"] < 0.8 * 1.11, f"{_bruno['xbonus90']:.3f}")
+check("prior and live kept for audit",
+      _bruno["xbonus90_prior"] == 1.11 and _bruno["xbonus90_live"] == 0.0)
+check("no live minutes -> rescaled prior only, no shrink",
+      abs(_nolive["xbonus90"] - 0.5 * _rs["MID"]) < 1e-9, f"{_nolive['xbonus90']}")
+_empty = [_row("FWD", 0.4, 0.0, 0.0)]
+check("no live data anywhere -> untouched", s.blend_live_bonus(_empty) == (None, {})
+      and _empty[0]["xbonus90"] == 0.4)
+_raw = [_row("FWD", 0.4, 0.9, 5.0), _row("FWD", 0.4, 0.9, 0.5)]
+s.blend_live_bonus(_raw, mode="raw")
+check("raw mode: live replaces prior only above MIN_N90_RAW",
+      _raw[0]["xbonus90"] == 0.9 and _raw[1]["xbonus90"] == 0.4)
+
 print("\n" + ("ALL TESTS PASSED" if not FAILS else f"{len(FAILS)} FAILURE(S): {FAILS}"))
 sys.exit(1 if FAILS else 0)

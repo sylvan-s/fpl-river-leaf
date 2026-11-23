@@ -240,6 +240,78 @@ def bonus_shrinkage(players, teams, min_minutes=900):
     return out, k
 
 
+# ---- live bonus blend (re-fit 23 Nov 2026, GW12) -----------------------------
+# bonus_shrinkage() above fits xbonus90 on the FROZEN 2025/26 snapshot only,
+# and until this change nothing blended 2026/27 bonus into it - the shrunk
+# estimator blended xg/xa/cbit/... but bonus stayed last season's all year.
+# Found chasing B.Fernandes: prior xbonus90 1.11 (~11 bonus pts expected by
+# GW11) against ~0-1 actual, which is most of his 47-vs-~72 points gap.
+#
+# The fix, both halves derived rather than chosen:
+#  1. POSITION RESCALE replaces the unsourced CBI_HAIRCUT/TACKLE_BUMP guess
+#     for the 2026/27 BPS rule change: the prior is multiplied by
+#     (league live bonus/90 for that position) / (same players' prior
+#     xbonus90), so a rule change that moves the whole position is measured,
+#     not assumed. Clamped to [BONUS_RESCALE_MIN, BONUS_RESCALE_MAX].
+#  2. SHRINK the rescaled prior toward each player's live bonus/90 with the
+#     same Poisson-Gamma method of moments as the rate metrics, at
+#     BONUS_POINT_DISPERSION.
+#
+# BONUS_POINT_DISPERSION = 2.0: median within-player Var/mean of per-match
+# bonus across 210 players with 20+ 2025/26 appearances (mean 1.96). Not 1.0:
+# bonus arrives in 1-3 point lumps, so it is a compound count. (The older
+# BONUS_DISPERSION = 1.0 above fits a full-season prior where it matters
+# far less; left alone, flagged.)
+#
+# Validation (2025/26, players with 5+ 90s prior / 3+ 90s target, n=172):
+# prior = GW20-38 bonus/90, live = GW1-11, target = GW12-19, minutes-weighted
+# MSE: fitted k 12.8 -> 0.1482 (best); k 10 0.1484; k 20 0.1496; k 5 0.1526;
+# prior only 0.1661; live only 0.1901. Same-season test, so it carries no
+# rule change - which is what step 1 is for. scratch script recorded in
+# TEAM_CHANGE_LOG.md, 23 Nov 2026.
+BONUS_POINT_DISPERSION = 2.0
+BONUS_RESCALE_MIN, BONUS_RESCALE_MAX = 0.5, 1.5
+BONUS_RESCALE_MIN_N90 = 3.0      # live 90s a player needs to count toward the rescale
+
+
+def blend_live_bonus(rows, mode="shrunk"):
+    """Blend each row's prior xbonus90 with its 2026/27 bonus/90.
+
+    rows carry r["xbonus90"] (2025/26 prior) and r["_cur"] with "n90" and
+    "bonus90" (live). mode "shrunk"/"positional": rescale + shrink; "raw":
+    live rate outright above MIN_N90_RAW. Mutates rows: sets xbonus90 and
+    keeps xbonus90_prior / xbonus90_live / xbonus_k for audit. Returns
+    (k, {pos: rescale}) or (None, {}) when there is no live data at all.
+    """
+    live = [r for r in rows if (r.get("_cur") or {}).get("n90", 0) > 0]
+    for r in rows:
+        r["xbonus90_prior"] = r.get("xbonus90", 0.0)
+        r["xbonus90_live"] = (r.get("_cur") or {}).get("bonus90")
+    if not live:
+        return None, {}
+    if mode == "raw":
+        for r in live:
+            if r["_cur"]["n90"] >= MIN_N90_RAW:
+                r["xbonus90"] = r["_cur"]["bonus90"]
+        return None, {}
+    rescale = {}
+    for pos in ("GKP", "DEF", "MID", "FWD"):
+        sel = [r for r in live if r["pos"] == pos and r["_cur"]["n90"] >= BONUS_RESCALE_MIN_N90
+               and r["xbonus90_prior"] > 0]
+        live_b = sum(r["_cur"]["bonus90"] * r["_cur"]["n90"] for r in sel)
+        prior_b = sum(r["xbonus90_prior"] * r["_cur"]["n90"] for r in sel)
+        ratio = (live_b / prior_b) if (len(sel) >= 10 and prior_b > 0) else 1.0
+        rescale[pos] = max(BONUS_RESCALE_MIN, min(BONUS_RESCALE_MAX, ratio))
+    k = estimate_k_priors([(r["_cur"]["bonus90"], r["_cur"]["n90"]) for r in live],
+                          dispersion=BONUS_POINT_DISPERSION)
+    for r in rows:
+        base = r["xbonus90_prior"] * rescale.get(r["pos"], 1.0)
+        cur = r.get("_cur") or {}
+        r["xbonus90"] = shrink_rate(cur.get("bonus90", 0.0), cur.get("n90", 0.0), base, k)
+        r["xbonus_k"] = k
+    return k, rescale
+
+
 # ---- continuous-metric shrinkage for build_squad.py (roadmap A0.2, activation
 # REVISED 31 Aug 2026 — see METHODOLOGY_ALTERNATIVES.md "Phase 2") -----------
 #
