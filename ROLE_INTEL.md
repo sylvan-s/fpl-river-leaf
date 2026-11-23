@@ -902,6 +902,27 @@ baseline?
 
 **Rows removed, 26 Oct 2026 (on Sylvan's instruction).** cbit90 x1.15 and xgi90 x0.75 (GWs 4-8) lapsed at the GW8 deadline; no extension. Card moved to Reject / Expired (https://trello.com/c/pqgginRd).
 
+### 16. Igor Thiago (BRE, FWD) — red card v Brighton, 3-match ban GW11-13 — **ALREADY OWNED**
+
+**Thesis:** sent off v Brighton 8 Nov (violent conduct, upgraded at the
+monitor). Brentford appealed; BBC (via Daily Cannon, 11 Nov) reports the
+appeal rejected. Misses BRE v EVE (GW11), MUN v BRE (GW12) and BRE v ARS
+(GW13). FPL API: element 106, status `s`, "Suspended until 5 Dec".
+
+**Model implication:** `stp set 0.0`, GWs 11-13. Sourced (the ban itself),
+not an estimate. It duplicates build_squad.py gate 3, which since 8 Nov
+reads the `s` flag and blanks the banned GWs automatically, so it changes
+no number; kept as belt and braces by Sylvan's choice.
+
+**Accepted, Friday review 20 Nov 2026.** Row ticked by Sylvan 18 Nov 12:24
+on https://trello.com/c/PPrf6U80 (`Thiago-BRE-suspension-20261020-1`) and
+written to the fence today. Remove after the GW13 deadline (1 Dec 2026).
+
+**Falsifiable check:** FPL flag still `s` at the GW11 deadline and Thiago
+absent from the BRE v EVE squad on 23 Nov.
+
+---
+
 ## Machine-readable set-piece overrides
 
 `fpl_research_mcp.py` parses the block below and merges it into the `SP` column
@@ -1171,7 +1192,7 @@ note) for the underlying theses — those still stand as intel, they just no
 longer move a number until re-approved.
 
 ```adjustments
-
+Thiago     | BRE | stp    | set  | 0.0 | 11-13 | high   | 2026-11-20 | Accepted in Friday review 20 Nov 2026 (Thiago-BRE-suspension-20261020-1, https://trello.com/c/PPrf6U80): ticked by Sylvan on the Live-in-model card 18 Nov 12:24. Sent off v Brighton 8 Nov (violent conduct); appeal rejected (BBC via Daily Cannon 11 Nov); 3-match ban covers BRE v EVE (GW11), MUN v BRE (GW12), BRE v ARS (GW13). FPL API status 's', 'Suspended until 5 Dec'. Magnitude SOURCED (the ban), not an estimate. Belt-and-braces: duplicates build_squad.py gate 3's automatic 's'-flag exclusion; both give stp 0 for GW11-13. Remove after GW13
 ```
 
 **Also wired into the live weekly tools, not just the offline squad scripts.**
