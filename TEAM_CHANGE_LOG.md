@@ -34,14 +34,14 @@ as before, so no lineup save was needed. One free transfer now banked for GW12.
 Mbeumo (VC) · Calvert-Lewin, **Evanilson**, Barry. **Bench:** Leno, Virgil, Justin, Sadiki.
 
 **Why this move.** Thiago was sent off in GW10 and FPL lists him suspended until 5 Dec,
-so he blanks GW11-14. Sold the day the news broke, before the next price fall (he had
+so he blanks GW11-13 (3-match ban; back for GW14). Sold the day the news broke, before the next price fall (he had
 already dropped £8.0m -> £7.8m, a £0.2m realised loss). Optimiser ran **locally** again
 (Oracle VM still offline): weekly defaults (shrunk estimator and start rate, fixtures
 GW11-14 weighted 40/30/20/10, intel ON, captain term on, max 2 attackers/club),
 **quarantine NOT applied** (no Trello credentials locally; fence-only fallback), Thiago
 forced out, 1 FT. Evanilson was the pick: start-weighted xP_adj 4.19/GW at 99% starts,
 exp xGI 2.20 over GW11-15, fixtures NFO(H) FUL(a) BHA(H) HUL(H). The optimiser's headline
-"-0.65 xP/GW vs holding" prices Thiago as if he plays; against a four-blank Thiago the
+"-0.65 xP/GW vs holding" prices Thiago as if he plays; against a three-blank Thiago the
 move is the whole of his slot (c. +4.2 xP/GW).
 
 **Alternatives rejected.** Haaland £15.8m, £5.4m out of reach in one move. Brobbey (SUN)
