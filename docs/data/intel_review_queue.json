@@ -1,8 +1,17 @@
 {
-  "generated_utc": "2026-10-23T08:41:01.082436+00:00",
-  "live_gw": 8,
-  "review_date": "2026-10-23",
-  "decided": [],
+  "generated_utc": "2026-11-23T08:14:41.993314+00:00",
+  "live_gw": 11,
+  "review_date": "2026-11-20",
+  "decided": [
+    {
+      "bite_id": "Thiago-BRE-suspension-20261020-1",
+      "bite": null,
+      "decision": "accepted",
+      "decided_by": "Sylvan",
+      "note": "stp set 0.0 GWs 11-13 written to adjustments fence in Friday review 20 Nov (unattended run); authorised by Sylvan's tick on Live-in-model card PPrf6U80, 18 Nov 12:24. Duplicates build_squad gate 3 automatic 's' exclusion; kept as belt and braces.",
+      "status": null
+    }
+  ],
   "still_pending": [
     {
       "kind": "bite",
