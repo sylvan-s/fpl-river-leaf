@@ -15,7 +15,57 @@ one-line record. What remains is what actually governs a decision today.
 
 ---
 
-## CURRENT STATE — as at Sun 8 Nov 2026 (GW11 pre-deadline)
+## CURRENT STATE — as at Fri 27 Nov 2026 (GW12 pre-deadline)
+
+**Deadline:** Fri 27 Nov 2026, 18:30 GMT (18:30 UTC) · **Formation:** 3-4-3
+
+**Last change: 1 transfer + lineup + armband, Fri 27 Nov 2026 (GW12) — `E.Le Fée -> Groß`.**
+Free transfer, **0 pts cost**. Bank £3.9m -> **£3.3m**. **Captain Mbeumo** (was
+Tavernier) · **Vice De Cuyper** (was Mbeumo). **ACTIONED LIVE, confirmed 27 Nov 2026, via
+Claude-in-Chrome browser automation**: 'Confirm Transfers' showed E.Le Fée -> Groß, total
+cost 0 pts, active for Gameweek 12; budget £3.3m, 15/15. Lineup saved ('Your Team has been
+Saved') and the XI, bench order and C/V badges verified after a fresh reload.
+
+**Price drift, flagged not reconciled.** Site sell values Raya £6.1m, De Cuyper £5.5m,
+Tavernier £6.4m against 6.0/5.4/6.1 here: unrealised, not spendable. Live bank £3.3m
+matches this file.
+
+| Out | Sold | In | Bought |
+|---|---|---|---|
+| E.Le Fée (SUN) | £5.7m (bought £5.7m) | Groß (BHA) | £6.3m |
+
+**XI:** Raya · De Cuyper, **Justin**, Calafiori · Mbeumo (C), Tavernier, B.Fernandes,
+**Groß** · Calvert-Lewin, Barry, Evanilson. **Bench:** Leno, **Gabriel**, Virgil, Sadiki.
+
+**Why this move.** VM optimiser (HEAD `eed605f`; start-weighted xP/GW, estimator shrunk,
+start rate shrunk, intel ON, quarantine ON with 1 ticked item, fixtures GW12-15 weighted
+40/30/20/10, no Haaland, max 2 attackers/club): **Le Fée -> Groß +0.39 xP/GW free, 5-GW
+net +1.9**, breakeven 0 GW. No-Haaland preference cost 0.0 xP/GW. captaincy_odds GW12:
+Groß NEW(H) E[pts] 4.49 vs Le Fée TOT(H) 4.15.
+
+**Lineup.** Gabriel benched (first sub) to cut Arsenal exposure v MCI(H): Raya, Gabriel
+and Calafiori share one clean sheet and ARS has the second-worst DEF x of the window
+(1.20). Gabriel E[pts] 4.01 v Evanilson 3.92 is a tie, so the swap is free. Justin starts
+(E[pts] 5.24, COV at home; Virgil at EVE 3.60).
+
+**Captain.** Mbeumo BRE(H): E[pts] 5.32, P(haul) 13.4%, the best haul odds in the squad.
+De Cuyper NEW(H) leads on E[pts] (5.46, P(haul) 9.4%) and takes the vice. Tavernier 4.75.
+
+**Risks accepted.** Groß is on 4 yellows (~30% chance of a fifth this GW = GW13 ban).
+B.Fernandes is an illness doubt for BRE(H) (missed training Fri 27 Nov; Pochettino: decision
+Saturday, no risks); held, with Gabriel first sub as cover. A cameo would block the autosub.
+Raya (shoulder, FPL 75%) unconfirmed for MCI on Sunday; Leno autosubs if he misses.
+
+**Alternatives rejected.** Hold and roll the transfer (costs c. 0.4 xP/GW). Selling
+B.Fernandes: not priced (the forced-out optimiser run was refused on a calibration-log
+sync block) and not wanted for a one-match illness.
+
+**Predictions logged** for GW12 before the deadline (captain changed after logging:
+Tavernier -> Mbeumo).
+
+---
+
+## CURRENT STATE — as at Sun 8 Nov 2026 (GW11 pre-deadline, superseded above)
 
 **Deadline:** Sat 21 Nov 2026, 11:00 GMT (11:00 UTC) · **Formation:** 3-4-3 (unchanged)
 
@@ -1064,6 +1114,8 @@ share rises; the differential case depends entirely on him playing.
 ---
 
 ## CHANGE HISTORY (newest first)
+
+- **Fri 27 Nov 2026 (GW12).** `E.Le Fée -> Groß`, free, 0 pts; bank £3.9m -> £3.3m. Lineup: Justin in for Gabriel (first sub), 3-4-3 kept. Captain Mbeumo (was Tavernier), vice De Cuyper (was Mbeumo). Optimiser +0.39 xP/GW, 5-GW net +1.9. See CURRENT STATE.
 
 ### Fri 30 Oct 2026 — GW9 lineup and armband (no transfer)
 Botman IN for Justin; bench Leno, Virgil, Justin, Sadiki. Captain Calafiori -> **Tavernier**
